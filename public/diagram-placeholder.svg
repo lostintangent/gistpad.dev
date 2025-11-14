@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+  <rect width="200" height="100" fill="#cdcdcdff"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#484747ff">
+    Generating diagram<tspan id="dot1">.<animate attributeName="opacity" values="0;0;1;1;1;1;1;1" dur="2s" repeatCount="indefinite" /></tspan><tspan id="dot2">.<animate attributeName="opacity" values="0;0;0;0;1;1;1;1" dur="2s" repeatCount="indefinite" /></tspan><tspan id="dot3">.<animate attributeName="opacity" values="0;0;0;0;0;0;1;1" dur="2s" repeatCount="indefinite" /></tspan>
+  </text>
+</svg>

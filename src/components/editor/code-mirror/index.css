@@ -1,0 +1,183 @@
+/* Emoji completions */
+
+.cm-emoji-completion {
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.cm-emoji-completion:hover {
+  background-color: hsl(var(--accent));
+}
+
+.dark .cm-emoji-completion:hover {
+  background-color: hsl(var(--accent));
+}
+
+/* Clickable URLs/wikilinks */
+
+.cm-url-link {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cm-url-link:hover {
+  text-decoration: underline;
+}
+
+.cm-wikilink-brackets {
+  color: hsl(var(--muted-foreground));
+}
+
+.cm-wikilink-content {
+  color: hsl(var(--primary));
+  cursor: pointer;
+  background: hsl(var(--muted));
+  padding: 0 4px;
+  border-radius: 4px;
+  margin: 0 -2px;
+}
+
+.cm-wikilink-content:hover {
+  background: hsl(var(--accent));
+  text-decoration: underline;
+}
+
+.cm-image-url {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Image preview tooltip */
+
+.cm-tooltip {
+  z-index: 9999;
+  position: absolute !important;
+}
+
+.cm-image-preview-tooltip {
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  padding: 4px;
+  pointer-events: none;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.cm-image-preview-tooltip img {
+  display: block;
+  max-width: 400px;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Asset URLs */
+
+.cm-supabase-url {
+  color: hsl(var(--primary));
+  cursor: pointer;
+  background: hsl(var(--muted));
+  padding: 0 4px;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+  border: none;
+  font: inherit;
+  margin: 0;
+  display: inline;
+  text-align: left;
+  outline: none;
+  line-height: inherit;
+  height: auto;
+}
+
+.cm-supabase-url:hover {
+  background: hsl(var(--accent));
+  text-decoration: underline;
+}
+
+.cm-code-fence {
+  color: white;
+  padding: 2px 4px;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+  margin: 0;
+  display: inline;
+  text-align: left;
+  line-height: inherit;
+  font-weight: 500;
+}
+
+/* Comment quote highlight */
+
+.cm-comment-quote {
+  background: #4ade80;
+  border-radius: 3px;
+  padding: 1px;
+  cursor: pointer;
+
+  &,
+  & span {
+    color: black;
+  }
+}
+
+.cm-comment-quote:hover {
+  text-decoration: underline;
+}
+
+.cm-comment-quote.selected {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Comment tooltip styles */
+
+.cm-comment-tooltip {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  padding: 1rem;
+  max-width: 500px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.cm-comment-tooltip .markdown-content {
+  color: hsl(var(--popover-foreground));
+}
+
+/* Selection comment button */
+
+.cm-selection-comment-wrapper {
+  display: inline-block;
+  position: relative;
+}
+
+.cm-selection-comment-button {
+  position: absolute;
+  right: -55px;
+  transform: translateY(-140%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  opacity: 1;
+  transition: all 0.2s ease;
+}
+
+/* When the formatting toolbar is shown, add a little
+bit of padding in the editor, so it doesn't look cramped. */
+#cm-formatting-toolbar + .cm-theme .cm-editor {
+  padding-top: 3px;
+}

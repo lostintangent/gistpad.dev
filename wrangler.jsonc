@@ -1,0 +1,7 @@
+{
+    "name": "gistpad",
+    "compatibility_date": "2025-04-12",
+    "assets": {
+       "directory": "./dist"
+    }
+}

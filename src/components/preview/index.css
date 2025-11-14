@@ -1,0 +1,296 @@
+@import "remark-github-alerts/styles/github-base.css";
+@import "remark-github-alerts/styles/github-colors-dark-class.css";
+@import "remark-github-alerts/styles/github-colors-light.css";
+
+/* Base styles */
+
+.prose .markdown-container > :first-child {
+  margin-top: 0;
+}
+
+.prose tbody tr:nth-child(even) {
+  td,
+  th:first-child:not([rowspan]) {
+    background: hsl(var(--muted));
+  }
+}
+
+.prose table {
+  width: fit-content;
+}
+
+.prose tbody tr td:first-child,
+.prose tbody tr th,
+.prose thead tr th:first-child {
+  padding-left: 0.5rem;
+}
+
+.prose tbody tr td:last-child,
+.prose thead tr th:last-child,
+.prose tbody th[rowspan] {
+  padding-right: 0.5rem;
+}
+
+.prose a {
+  color: rgb(68, 147, 248);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Ensure cell content can break to avoid layout blowouts */
+.prose td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.prose summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.prose figcaption {
+  margin-top: -10px;
+  font-style: italic;
+}
+
+/* Inline code blocks */
+
+.prose li code,
+.prose p code,
+.prose td code {
+  background: hsl(var(--muted));
+  padding: 0.25rem;
+  border-radius: 6px;
+}
+
+.prose tbody tr:nth-child(even) td code {
+  background: hsl(var(--background));
+}
+
+.prose hr {
+  margin-top: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+/* Reduce the font size for headings */
+
+.prose h1 {
+  font-size: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1.25px solid hsl(var(--border));
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1.25px solid hsl(var(--border));
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+}
+
+/* Remove the wrapping quotes from quotes and inline code blocks */
+
+.prose td code::before,
+.prose td code::after,
+.prose li code::before,
+.prose li code::after,
+.prose p code::before,
+.prose p code::after {
+  content: "";
+}
+
+.prose blockquote p::before,
+.prose blockquote p::after {
+  content: "";
+}
+
+/* Wikilinks */
+
+.prose .cm-wikilink-content {
+  text-decoration: none;
+  background: hsl(var(--muted));
+  padding: 0 4px;
+  border-radius: 4px;
+  margin: 0 -2px;
+  border: none;
+  font: inherit;
+  color: hsl(var(--primary));
+  cursor: pointer;
+}
+
+.prose .cm-wikilink-content:hover {
+  background: hsl(var(--accent));
+  text-decoration: underline;
+}
+
+/* Comment quotes and tooltips */
+
+.markdown-container .md-comment-quote {
+  background: #4ade80;
+  color: black;
+  border-radius: 3px;
+  padding: 1px;
+  cursor: pointer;
+}
+
+.markdown-container .md-comment-quote:hover {
+  text-decoration: underline;
+  background: #22c55e;
+}
+
+.markdown-container .md-comment-quote.selected {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.markdown-container .tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.markdown-container .md-comment-tooltip {
+  visibility: hidden;
+  position: absolute;
+  z-index: 50;
+  bottom: 100%;
+  min-width: 300px;
+  max-width: 500px;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+
+  .prose {
+    font-weight: normal;
+  }
+}
+
+.markdown-container .md-comment-tooltip.below {
+  bottom: auto;
+  top: 100%;
+}
+
+.markdown-container .md-comment-tooltip img {
+  margin: 0;
+}
+
+.markdown-container .tooltip-wrapper:hover .md-comment-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ToC */
+
+pre:has(.markdown-toc) {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+pre:has(.tl-container) {
+  margin: 0.25rem;
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-toc {
+  background: hsl(var(--sidebar-primary));
+  border-radius: 6px;
+  padding: 0.25rem;
+  padding-right: 1.5rem;
+  margin: 0.25rem;
+  margin-bottom: 1.5rem;
+  display: inline-block;
+}
+
+.markdown-toc ul {
+  margin: 0;
+  padding: 0;
+}
+
+.markdown-toc li a {
+  color: hsl(var(--sidebar-primary-foreground));
+}
+
+/* Task lists */
+
+li.task-list-item {
+  cursor: pointer;
+
+  button {
+    margin-right: 0.25rem;
+    position: relative;
+    top: 2px;
+
+    svg {
+      height: 14px;
+    }
+  }
+}
+
+/* Text selection */
+.markdown-container ::selection {
+  background: #9333ea;
+  color: white;
+}
+
+/* Blockquote copy button */
+.markdown-container blockquote {
+  position: relative;
+}
+
+.markdown-container blockquote .quote-copy-button {
+  display: none;
+}
+
+.markdown-container blockquote:hover .quote-copy-button {
+  display: inline-flex;
+}
+
+/* Footnotes */
+
+.prose a[data-footnote-ref]::before {
+  content: "[";
+}
+
+.prose a[data-footnote-ref]::after {
+  content: "]";
+}
+
+.prose section.footnotes {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.prose section.footnotes h2 {
+  display: none;
+}
+
+.prose section.footnotes li {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8rem;
+}
+
+.prose section.footnotes li:focus,
+a[data-footnote-ref]:focus {
+  background-color: #9e4bec;
+  border-radius: 5px;
+  color: white;
+}
+
+.prose section.footnotes li:focus a {
+  color: white;
+}
+
+.prose section.footnotes a[data-footnote-backref] {
+  text-decoration: none;
+}
