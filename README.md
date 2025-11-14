@@ -1,8 +1,8 @@
-# 📓 GistPad
+# 📓 GistPad.dev
 
-![image](https://github.com/user-attachments/assets/73dce3a7-2ce1-49da-bc5b-e843372f266e)
+<img width="1933" height="1464" alt="image" src="https://github.com/user-attachments/assets/7ca6a2ba-5c10-43d4-ae29-7316509efb35" />
 
-## Additional resources
+## 📋 Learn more
 
 1. 📓 [GistPad feature overview](https://gh.io/gistpad-features)
 1. 📆 [GistPad changelog](https://gh.io/gistpad-changelog)
