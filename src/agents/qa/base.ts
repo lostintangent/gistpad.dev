@@ -64,9 +64,7 @@ export interface StreamingAgentOptions {
   abortSignal?: AbortSignal;
 }
 
-export async function runStreamingAgent(
-  options: StreamingAgentOptions
-): Promise<string | null> {
+export async function runStreamingAgent(options: StreamingAgentOptions): Promise<string | null> {
   const openai = createOpenAIClient();
   setDefaultOpenAIClient(openai as any);
 
@@ -136,17 +134,11 @@ export async function runStreamingAgent(
         if (eventData.event.type === "response.reasoning_summary_text.delta") {
           reasoningSummary += eventData.event.delta;
           options.onReasoning?.(reasoningSummary);
-        } else if (
-          eventData.event.type === "response.reasoning_summary_part.added"
-        ) {
+        } else if (eventData.event.type === "response.reasoning_summary_part.added") {
           reasoningSummary = "";
-        } else if (
-          eventData.event.type === "response.web_search_call.in_progress"
-        ) {
+        } else if (eventData.event.type === "response.web_search_call.in_progress") {
           options.onIsWebSearching?.(true);
-        } else if (
-          eventData.event.type === "response.web_search_call.completed"
-        ) {
+        } else if (eventData.event.type === "response.web_search_call.completed") {
           options.onIsWebSearching?.(false);
         }
         break;

@@ -101,9 +101,7 @@ const Index = () => {
   const [selectedGist, setSelectedGist] = useAtom(selectedGistAtom);
   const [selectedFile, setSelectedFile] = useAtom(selectedGistFileAtom);
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useAtom(
-    hasUnsavedChangesAtom
-  );
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useAtom(hasUnsavedChangesAtom);
   const [originalContent, setOriginalContent] = useState<string>("");
   const embededdedFileHandlers = useAtomValue(embededdedFileHandlersAtom);
 
@@ -128,11 +126,8 @@ const Index = () => {
   const [gistToSwitch, setGistToSwitch] = useState<Gist | null>(null);
   const [fileToSwitch, setFileToSwitch] = useState<string | null>(null);
 
-  const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(
-    null
-  );
-  const [showClearRecentlyViewedDialog, setShowClearRecentlyViewedDialog] =
-    useState(false);
+  const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
+  const [showClearRecentlyViewedDialog, setShowClearRecentlyViewedDialog] = useState(false);
 
   const [hasPendingAiEdit, setHasPendingAiEdit] = useState(false);
   const [showPendingAiDiffs, setShowPendingAiDiffs] = useState(() => {
@@ -298,9 +293,7 @@ const Index = () => {
         .then((gist) => {
           setSelectedGist(gist);
           const fileToView =
-            urlFilePath && gist.files[urlFilePath]
-              ? urlFilePath
-              : getDefaultFile(gist);
+            urlFilePath && gist.files[urlFilePath] ? urlFilePath : getDefaultFile(gist);
 
           setSelectedFile(fileToView);
 
@@ -369,12 +362,8 @@ const Index = () => {
 
   // Persist sidebar collapsed state to localStorage
   useEffect(
-    () =>
-      localStorage.setItem(
-        "gistpad-sidebar-collapsed",
-        JSON.stringify(isSidebarCollapsed)
-      ),
-    [isSidebarCollapsed]
+    () => localStorage.setItem("gistpad-sidebar-collapsed", JSON.stringify(isSidebarCollapsed)),
+    [isSidebarCollapsed],
   );
 
   useEffect(() => {
@@ -402,9 +391,7 @@ const Index = () => {
     setShowClearRecentlyViewedDialog(false);
   };
 
-  const handleSelectRecentGistFile = async (
-    recentFile: RecentlyViewedGistFile
-  ) => {
+  const handleSelectRecentGistFile = async (recentFile: RecentlyViewedGistFile) => {
     // TODO: Check if the gist has been deleted
     const virtualGist: Gist = {
       id: recentFile.id,
@@ -462,12 +449,7 @@ const Index = () => {
 
       try {
         const extraFiles = embededdedFileHandlers?.map((h) => h());
-        const updatedGist = await updateGistContent(
-          gistId,
-          content,
-          selectedFile,
-          extraFiles
-        );
+        const updatedGist = await updateGistContent(gistId, content, selectedFile, extraFiles);
 
         // When saving, we're creating a new version so clear revision state
         setSelectedRevisionId(null);
@@ -475,13 +457,10 @@ const Index = () => {
         updateGistState(updatedGist, selectedFile);
 
         // Add the saved revision to the list of revisions
-        queryClient.setQueryData(
-          ["gist-revisions", gistId],
-          (previousRevisions: any) => [
-            updatedGist.history[0],
-            ...previousRevisions,
-          ]
-        );
+        queryClient.setQueryData(["gist-revisions", gistId], (previousRevisions: any) => [
+          updatedGist.history[0],
+          ...previousRevisions,
+        ]);
 
         // If this was a fork (gistId different from selectedGist.id), we need to:
         // 1. Update the selected gist
@@ -495,7 +474,7 @@ const Index = () => {
         toast("Error", { description: "Failed to update gist" });
       }
     },
-    [embededdedFileHandlers, selectedGist, selectedFile]
+    [embededdedFileHandlers, selectedGist, selectedFile],
   );
 
   const handleGistSelect = useCallback(
@@ -509,10 +488,7 @@ const Index = () => {
       }
 
       // If the selected gist/file is being re-selected, then simply no-op
-      if (
-        gist.id === selectedGist?.id &&
-        (!filename || filename === selectedFile)
-      ) {
+      if (gist.id === selectedGist?.id && (!filename || filename === selectedFile)) {
         if (isMobile) setIsSidebarCollapsed(true);
 
         return;
@@ -555,7 +531,7 @@ const Index = () => {
       gistContent,
       isMobile,
       handleSaveGist,
-    ]
+    ],
   );
 
   // Update the internal gist state and query cache
@@ -574,11 +550,9 @@ const Index = () => {
         }
 
         // Check if the gist was previously in a different list (archived vs regular)
-        const wasInRegularList = previousGistData.gists.some(
-          (g) => g.id === updatedGist.id
-        );
+        const wasInRegularList = previousGistData.gists.some((g) => g.id === updatedGist.id);
         const wasInArchivedList = previousGistData.archivedGists.some(
-          (g) => g.id === updatedGist.id
+          (g) => g.id === updatedGist.id,
         );
 
         // If archived state changed, we need to move it between lists
@@ -586,18 +560,14 @@ const Index = () => {
           // Gist was moved to archived
           return {
             ...previousGistData,
-            gists: previousGistData.gists.filter(
-              (g) => g.id !== updatedGist.id
-            ),
+            gists: previousGistData.gists.filter((g) => g.id !== updatedGist.id),
             archivedGists: [updatedGist, ...previousGistData.archivedGists],
           };
         } else if (!isGistArchived && wasInArchivedList) {
           // Gist was moved from archived to regular
           return {
             ...previousGistData,
-            archivedGists: previousGistData.archivedGists.filter(
-              (g) => g.id !== updatedGist.id
-            ),
+            archivedGists: previousGistData.archivedGists.filter((g) => g.id !== updatedGist.id),
             gists: [updatedGist, ...previousGistData.gists],
           };
         } else if (isGistArchived) {
@@ -606,19 +576,14 @@ const Index = () => {
             ...previousGistData,
             archivedGists: [
               updatedGist,
-              ...previousGistData.archivedGists.filter(
-                (g) => g.id !== updatedGist.id
-              ),
+              ...previousGistData.archivedGists.filter((g) => g.id !== updatedGist.id),
             ],
           };
         } else {
           // Just update within regular list
           return {
             ...previousGistData,
-            gists: [
-              updatedGist,
-              ...previousGistData.gists.filter((g) => g.id !== updatedGist.id),
-            ],
+            gists: [updatedGist, ...previousGistData.gists.filter((g) => g.id !== updatedGist.id)],
           };
         }
       });
@@ -627,7 +592,7 @@ const Index = () => {
       setHasPendingAiEdit(false);
       handleGistSelect(updatedGist, filename);
     },
-    [queryClient, handleGistSelect]
+    [queryClient, handleGistSelect],
   );
 
   const handleViewFullscreen = useCallback(
@@ -635,12 +600,11 @@ const Index = () => {
       if (!selectedGist && !gistId) return;
 
       const selectedGistId = gistId || selectedGist.id;
-      const filePath =
-        !gistId && selectedFile !== "README.md" ? `/${selectedFile}` : "";
+      const filePath = !gistId && selectedFile !== "README.md" ? `/${selectedFile}` : "";
 
       navigate(`/share/${selectedGistId}${filePath}`);
     },
-    [selectedGist, selectedFile, navigate]
+    [selectedGist, selectedFile, navigate],
   );
 
   const togglePendingAiDiffs = useCallback(() => {
@@ -651,10 +615,7 @@ const Index = () => {
 
   const handleContentChange = useCallback(
     (content: string, saveImmediately: boolean = false) => {
-      queryClient.setQueryData(
-        ["gist", selectedGist?.id, selectedFile],
-        content
-      );
+      queryClient.setQueryData(["gist", selectedGist?.id, selectedFile], content);
 
       if (saveImmediately) {
         handleSaveGist(selectedGist!.id, content);
@@ -669,7 +630,7 @@ const Index = () => {
         }
       }
     },
-    [queryClient, selectedGist, selectedFile, originalContent]
+    [queryClient, selectedGist, selectedFile, originalContent],
   );
 
   // Auto-save effect
@@ -749,7 +710,7 @@ const Index = () => {
       description?: string,
       initialContent?: string,
       isPublic?: boolean,
-      selectedTags?: string[]
+      selectedTags?: string[],
     ) => {
       const toastId = toast.loading("Creating gist...", { dismissible: false });
 
@@ -758,10 +719,7 @@ const Index = () => {
 
         // If the user is currently in preview mode, then we
         // need to switch into edit mode. But we'll retain split view.
-        if (
-          searchParams.has("view") &&
-          searchParams.get("view") === "preview"
-        ) {
+        if (searchParams.has("view") && searchParams.get("view") === "preview") {
           // Make sure we put the editor into edit mode
           setSearchParams((searchParams) => {
             searchParams.delete("view");
@@ -783,13 +741,10 @@ const Index = () => {
         toast.error("Failed to create gist");
       }
     },
-    [queryClient, isMobile, searchParams, editorRef, updateGistState]
+    [queryClient, isMobile, searchParams, editorRef, updateGistState],
   );
 
-  const handleUpdateDescription = async (
-    gistId: string,
-    description: string
-  ) => {
+  const handleUpdateDescription = async (gistId: string, description: string) => {
     try {
       // Find the gist to check if it's archived
       const gist =
@@ -828,27 +783,19 @@ const Index = () => {
             unpinGist(gistId);
 
             if (dailyNotes && dailyNotes.id === gistId) {
-              queryClient.setQueryData(
-                ["gists"],
-                (previousGistData: GistData) => {
-                  return {
-                    ...previousGistData,
-                    dailyNotes: null,
-                  };
-                }
-              );
+              queryClient.setQueryData(["gists"], (previousGistData: GistData) => {
+                return {
+                  ...previousGistData,
+                  dailyNotes: null,
+                };
+              });
             } else {
-              queryClient.setQueryData(
-                ["gists"],
-                (previousGistData: GistData) => {
-                  return {
-                    ...previousGistData,
-                    gists: previousGistData.gists.filter(
-                      (g) => g.id !== gistId
-                    ),
-                  };
-                }
-              );
+              queryClient.setQueryData(["gists"], (previousGistData: GistData) => {
+                return {
+                  ...previousGistData,
+                  gists: previousGistData.gists.filter((g) => g.id !== gistId),
+                };
+              });
             }
           } else {
             updateGistState(updatedGist, selectedFile);
@@ -862,9 +809,7 @@ const Index = () => {
 
           queryClient.setQueryData(["gists"], (previousGistData: GistData) => {
             // Check if the gist is in the archived list and remove it from there if needed
-            const isGistArchived = previousGistData.archivedGists.some(
-              (g) => g.id === gistId
-            );
+            const isGistArchived = previousGistData.archivedGists.some((g) => g.id === gistId);
 
             return {
               ...previousGistData,
@@ -891,21 +836,12 @@ const Index = () => {
         }
       } catch (error) {
         const message =
-          selectedFile !== "README.md"
-            ? "Failed to delete file"
-            : "Failed to delete gist";
+          selectedFile !== "README.md" ? "Failed to delete file" : "Failed to delete gist";
 
         toast.error(message);
       }
     },
-    [
-      queryClient,
-      selectedGist,
-      selectedFile,
-      isMobile,
-      updateGistState,
-      unpinGist,
-    ]
+    [queryClient, selectedGist, selectedFile, isMobile, updateGistState, unpinGist],
   );
 
   const handleDiscardChanges = useCallback(() => {
@@ -914,10 +850,7 @@ const Index = () => {
 
     if (gistToSwitch) {
       // Reset the data cache back to the original content
-      queryClient.setQueryData(
-        ["gist", selectedGist.id, selectedFile],
-        originalContent
-      );
+      queryClient.setQueryData(["gist", selectedGist.id, selectedFile], originalContent);
 
       setSelectedGist(gistToSwitch);
       setSelectedFile(fileToSwitch || "README.md");
@@ -927,13 +860,7 @@ const Index = () => {
     }
     setGistToSwitch(null);
     setFileToSwitch(null);
-  }, [
-    gistToSwitch,
-    fileToSwitch,
-    isMobile,
-    originalContent,
-    setSelectedRevisionId,
-  ]);
+  }, [gistToSwitch, fileToSwitch, isMobile, originalContent, setSelectedRevisionId]);
 
   const handleSaveBeforeSwitch = useCallback(async () => {
     if (!selectedGist) return;
@@ -972,49 +899,33 @@ const Index = () => {
       if (revisionId === null) {
         // Reset to current version
         setSelectedRevisionId(null);
-        const currentContent = await fetchGistContent(
-          selectedGist.id,
-          selectedFile
-        );
-        queryClient.setQueryData(
-          ["gist", selectedGist.id, selectedFile],
-          currentContent
-        );
+        const currentContent = await fetchGistContent(selectedGist.id, selectedFile);
+        queryClient.setQueryData(["gist", selectedGist.id, selectedFile], currentContent);
         setOriginalContent(currentContent);
         return;
       }
 
-      const selectedRevisionIndex = revisions.findIndex(
-        (rev) => rev.version === revisionId
-      );
+      const selectedRevisionIndex = revisions.findIndex((rev) => rev.version === revisionId);
       if (selectedRevisionIndex === -1) return;
 
       // Get the selected and previous revision contents
       const [selectedRevisionGist, previousRevisionGist] = await Promise.all([
         getGistRevisionContent(selectedGist.id, revisionId),
         selectedRevisionIndex < revisions.length - 1
-          ? getGistRevisionContent(
-            selectedGist.id,
-            revisions[selectedRevisionIndex + 1].version
-          )
+          ? getGistRevisionContent(selectedGist.id, revisions[selectedRevisionIndex + 1].version)
           : null,
       ]);
 
-      const selectedRevisionContent =
-        selectedRevisionGist.files[selectedFile]?.content || "";
+      const selectedRevisionContent = selectedRevisionGist.files[selectedFile]?.content || "";
 
-      const previousRevisionContent =
-        previousRevisionGist?.files[selectedFile]?.content || "";
+      const previousRevisionContent = previousRevisionGist?.files[selectedFile]?.content || "";
 
       // First set the revision ID to enable diff view
       setSelectedRevisionId(revisionId);
 
       // Then update the content states, always using the previous revision as base
       setOriginalContent(previousRevisionContent);
-      queryClient.setQueryData(
-        ["gist", selectedGist.id, selectedFile],
-        selectedRevisionContent
-      );
+      queryClient.setQueryData(["gist", selectedGist.id, selectedFile], selectedRevisionContent);
     } catch (error) {
       toast.error("Failed to fetch revision content");
     } finally {
@@ -1030,10 +941,7 @@ const Index = () => {
 
     // The current content is already set to the revision
     // and so the only thing we need to do is set the original content to it.
-    const currentContent = await fetchGistContent(
-      selectedGist.id,
-      selectedFile
-    );
+    const currentContent = await fetchGistContent(selectedGist.id, selectedFile);
 
     setOriginalContent(currentContent);
     setIsRevisionLoading(false);
@@ -1094,23 +1002,17 @@ const Index = () => {
       if (isCurrentlyStarred) {
         await unstarGist(gistId);
         // Update starred gists cache
-        queryClient.setQueryData(
-          ["starred-gists"],
-          (previousGists: Gist[] = []) => {
-            return previousGists.filter((gist) => gist.id !== gistId);
-          }
-        );
+        queryClient.setQueryData(["starred-gists"], (previousGists: Gist[] = []) => {
+          return previousGists.filter((gist) => gist.id !== gistId);
+        });
       } else {
         await starGist(gistId);
         // Add to starred gists cache
         const gistToAdd = gists?.find((g) => g.id === gistId) || selectedGist;
         if (gistToAdd) {
-          queryClient.setQueryData(
-            ["starred-gists"],
-            (previousGists: Gist[] = []) => {
-              return [gistToAdd, ...previousGists];
-            }
-          );
+          queryClient.setQueryData(["starred-gists"], (previousGists: Gist[] = []) => {
+            return [gistToAdd, ...previousGists];
+          });
 
           removeGistFilesFromRecentlyViewed(gistId);
         }
@@ -1133,9 +1035,7 @@ const Index = () => {
         pinGist(gistId);
       }
     } catch (error) {
-      const message = pinnedGists.includes(gistId)
-        ? "Failed to unpin gist"
-        : "Failed to pin gist";
+      const message = pinnedGists.includes(gistId) ? "Failed to unpin gist" : "Failed to pin gist";
 
       toast.error(message);
     }
@@ -1148,9 +1048,7 @@ const Index = () => {
       (selectedGist?.id === gistId ? selectedGist : null);
 
     const isCurrentlyArchived = isArchived(gist);
-    const updatedGist = isCurrentlyArchived
-      ? await unarchiveGist(gist)
-      : await archiveGist(gist);
+    const updatedGist = isCurrentlyArchived ? await unarchiveGist(gist) : await archiveGist(gist);
 
     updateGistState(updatedGist);
   };
@@ -1189,17 +1087,14 @@ const Index = () => {
       gistContent,
       selectedGist,
       handleSaveGist,
-    ]
+    ],
   );
 
   const handleAddFile = useCallback(
     async (gistId: string, filename: string, content?: string) => {
       try {
         const updatedGist = await addGistFile(gistId, filename, content);
-        if (
-          searchParams.has("view") &&
-          searchParams.get("view") === "preview"
-        ) {
+        if (searchParams.has("view") && searchParams.get("view") === "preview") {
           // Make sure we put the editor into edit mode
           setSearchParams((searchParams) => {
             searchParams.delete("view");
@@ -1213,18 +1108,14 @@ const Index = () => {
         toast.error("Failed to add file");
       }
     },
-    [updateGistState, searchParams, editorRef]
+    [updateGistState, searchParams, editorRef],
   );
 
   const handleRenameFile = useCallback(
     async (oldFilename: string, newFilename: string) => {
       if (!selectedGist) return;
       try {
-        const updatedGist = await renameGistFile(
-          selectedGist.id,
-          oldFilename,
-          newFilename
-        );
+        const updatedGist = await renameGistFile(selectedGist.id, oldFilename, newFilename);
 
         updateGistState(updatedGist, newFilename);
       } catch (error) {
@@ -1232,7 +1123,7 @@ const Index = () => {
         throw error; // Re-throw so the editor component can handle the error state
       }
     },
-    [selectedGist, queryClient]
+    [selectedGist, queryClient],
   );
 
   const handleDuplicateGist = useCallback(
@@ -1248,7 +1139,7 @@ const Index = () => {
         toast.error("Failed to duplicate gist");
       }
     },
-    [updateGistState, isMobile]
+    [updateGistState, isMobile],
   );
 
   // keep the latest tasks in a ref so the timeout never goes stale
@@ -1282,9 +1173,7 @@ const Index = () => {
       // Queue the next poll if either we didn't complete a task
       // or there were additional pending tasks beyond the one we handled.
       const needsAnotherPoll = !completedFirstTask || pending.length > 1;
-      pollingTimeoutRef.current = needsAnotherPoll
-        ? setTimeout(poll, 3000)
-        : null;
+      pollingTimeoutRef.current = needsAnotherPoll ? setTimeout(poll, 3000) : null;
     };
 
     poll();
@@ -1297,19 +1186,13 @@ const Index = () => {
     };
   }, [researchTasks, completeResearchTask]);
 
-  const handleToggleTag = (
-    gistId: string,
-    tagId: string,
-    selected: boolean
-  ) => {
+  const handleToggleTag = (gistId: string, tagId: string, selected: boolean) => {
     const currentTags = gistTags[gistId] || [];
     let newTags: string[];
 
     if (selected) {
       // Add the tag if it's not already there
-      newTags = currentTags.includes(tagId)
-        ? currentTags
-        : [...currentTags, tagId];
+      newTags = currentTags.includes(tagId) ? currentTags : [...currentTags, tagId];
     } else {
       // Remove the tag
       newTags = currentTags.filter((id) => id !== tagId);
@@ -1331,7 +1214,7 @@ const Index = () => {
         const updatedGist = await addGistFile(
           dailyNotes.id,
           TEMPLATE_FILENAME,
-          `# 📆 {{date}}\n\n`
+          `# 📆 {{date}}\n\n`,
         );
         updateGistState(updatedGist, TEMPLATE_FILENAME);
       }
@@ -1364,21 +1247,16 @@ const Index = () => {
             <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
               {recentlyViewedGistFiles.map((recentFile) => {
                 const isSelected =
-                  selectedGist?.id === recentFile.id &&
-                  selectedFile === recentFile.filename;
+                  selectedGist?.id === recentFile.id && selectedFile === recentFile.filename;
                 return (
                   <DropdownMenuItem
                     key={`${recentFile.id}-${recentFile.filename}`}
                     onClick={() => handleSelectRecentGistFile(recentFile)}
-                    className={
-                      isSelected ? "bg-primary text-primary-foreground" : ""
-                    }
+                    className={isSelected ? "bg-primary text-primary-foreground" : ""}
                   >
                     <div className="flex flex-col max-w-[200px]">
                       <div className="flex items-center">
-                        <span className="font-medium">
-                          {recentFile.description}
-                        </span>
+                        <span className="font-medium">{recentFile.description}</span>
                       </div>
                       <span className="text-xs text-gray-500">
                         {formatDistanceToNow(new Date(recentFile.viewedDate), {
@@ -1391,9 +1269,7 @@ const Index = () => {
               })}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() =>
-                  setTimeout(() => setShowClearRecentlyViewedDialog(true), 200)
-                }
+                onClick={() => setTimeout(() => setShowClearRecentlyViewedDialog(true), 200)}
               >
                 <Trash2 className="h-4 w-4 mr-2 text-red-500" />
                 Clear recent list
@@ -1404,27 +1280,15 @@ const Index = () => {
         </>
       )}
       <DropdownMenuItem onClick={toggleAutoSave}>
-        {isAutoSaveEnabled ? (
-          <Check className="h-4 w-4 mr-2" />
-        ) : (
-          <span className="w-4 mr-2" />
-        )}
+        {isAutoSaveEnabled ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
         Auto-save changes
       </DropdownMenuItem>
       <DropdownMenuItem onClick={toggleSpellcheck}>
-        {isSpellcheckEnabled ? (
-          <Check className="h-4 w-4 mr-2" />
-        ) : (
-          <span className="w-4 mr-2" />
-        )}
+        {isSpellcheckEnabled ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
         Enable spell checking
       </DropdownMenuItem>
       <DropdownMenuItem onClick={toggleLineNumbers}>
-        {showLineNumbers ? (
-          <Check className="h-4 w-4 mr-2" />
-        ) : (
-          <span className="w-4 mr-2" />
-        )}
+        {showLineNumbers ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
         Show line numbers
       </DropdownMenuItem>
       <DropdownMenuSeparator />
@@ -1440,11 +1304,7 @@ const Index = () => {
               <DropdownMenuItem
                 key={themeName}
                 onClick={() => setEditorTheme(themeName)}
-                className={
-                  isSelected
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : ""
-                }
+                className={isSelected ? "bg-primary text-primary-foreground font-medium" : ""}
               >
                 {themeName}
               </DropdownMenuItem>
@@ -1459,36 +1319,20 @@ const Index = () => {
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
           <DropdownMenuItem onClick={toggleStarredGists}>
-            {showStarredGists ? (
-              <Check className="h-4 w-4 mr-2" />
-            ) : (
-              <span className="w-4 mr-2" />
-            )}
+            {showStarredGists ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
             Show starred gists
           </DropdownMenuItem>
           <DropdownMenuItem onClick={toggleArchivedGists}>
-            {showArchivedGists ? (
-              <Check className="h-4 w-4 mr-2" />
-            ) : (
-              <span className="w-4 mr-2" />
-            )}
+            {showArchivedGists ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
             Show archived gists
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={toggleDiffs}>
-            {showDiffs ? (
-              <Check className="h-4 w-4 mr-2" />
-            ) : (
-              <span className="w-4 mr-2" />
-            )}
+            {showDiffs ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
             Enable diff tracking
           </DropdownMenuItem>
           <DropdownMenuItem onClick={toggleFrontmatter}>
-            {showFrontmatter ? (
-              <Check className="h-4 w-4 mr-2" />
-            ) : (
-              <span className="w-4 mr-2" />
-            )}
+            {showFrontmatter ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
             Show frontmatter
           </DropdownMenuItem>
           <DropdownMenuItem onClick={toggleInlineComments}>
@@ -1509,11 +1353,7 @@ const Index = () => {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={togglePasteImagesAsHtml}>
-            {pasteImagesAsHtml ? (
-              <Check className="h-4 w-4 mr-2" />
-            ) : (
-              <span className="w-4 mr-2" />
-            )}
+            {pasteImagesAsHtml ? <Check className="h-4 w-4 mr-2" /> : <span className="w-4 mr-2" />}
             Paste images as HTML
           </DropdownMenuItem>
           {!isMobile && (
@@ -1584,18 +1424,13 @@ const Index = () => {
             {renderGistList(false)}
           </SheetContent>
         </Sheet>
-      )
-      }
+      )}
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold flex gap-2">
             <img
-              src={
-                user?.login === "lostintangent1"
-                  ? "/scratch.svg"
-                  : "/icon.png"
-              }
+              src={user?.login === "lostintangent1" ? "/scratch.svg" : "/icon.png"}
               className="w-8"
             />{" "}
             GistPad
@@ -1650,9 +1485,7 @@ const Index = () => {
           )}
           {isZenMode && (
             <div className="flex items-center">
-              {hasUnsavedChanges && (
-                <span className="bg-blue-500 w-2 h-2 rounded-full mr-2" />
-              )}
+              {hasUnsavedChanges && <span className="bg-blue-500 w-2 h-2 rounded-full mr-2" />}
               <Button
                 variant="outline"
                 size="sm"
@@ -1667,20 +1500,14 @@ const Index = () => {
           {!isZenMode && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full h-8 w-8 p-0 mt-1"
-                >
+                <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 mt-1">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user?.avatar_url} />
                     <AvatarFallback>{user?.initial}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {userSettingsMenuItems}
-              </DropdownMenuContent>
+              <DropdownMenuContent align="end">{userSettingsMenuItems}</DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
@@ -1702,29 +1529,22 @@ const Index = () => {
       >
         {/* Gist list sidebar */}
         <div
-          className={`overflow-hidden ${isMobile ? "" : "transition-[width,opacity] duration-200 ease-in-out"} ${isSidebarCollapsed || isZenMode
-            ? "w-0 opacity-0"
-            : "w-full opacity-100"
-            }`}
+          className={`overflow-hidden ${isMobile ? "" : "transition-[width,opacity] duration-200 ease-in-out"} ${
+            isSidebarCollapsed || isZenMode ? "w-0 opacity-0" : "w-full opacity-100"
+          }`}
         >
           {renderGistList()}
         </div>
 
         {/* Gist editor */}
-        <div
-          className={
-            isMobile ? (isSidebarCollapsed || isZenMode ? "" : "hidden") : ""
-          }
-        >
+        <div className={isMobile ? (isSidebarCollapsed || isZenMode ? "" : "hidden") : ""}>
           <GistEditor
             ref={editorRef}
             content={gistContent}
             originalContent={originalContent}
             gistId={selectedGist?.id}
             gist={selectedGist}
-            description={
-              selectedGist?.description?.replace(/\s*\[Archived\]$/, "") || ""
-            }
+            description={selectedGist?.description?.replace(/\s*\[Archived\]$/, "") || ""}
             selectedFile={selectedFile}
             onSelectGist={(gistId) => {
               const gist = gists.find((g) => g.id === gistId);
@@ -1736,9 +1556,7 @@ const Index = () => {
             onDelete={handleGistDelete}
             onRenameFile={handleRenameFile}
             showDiff={
-              showDiffs ||
-              (hasPendingAiEdit && showPendingAiDiffs) ||
-              selectedRevisionId !== null
+              showDiffs || (hasPendingAiEdit && showPendingAiDiffs) || selectedRevisionId !== null
             }
             showFrontmatter={showFrontmatter}
             showLineNumbers={showLineNumbers}
@@ -1756,11 +1574,7 @@ const Index = () => {
             onContentChange={handleContentChange}
             isReadOnly={isReadOnly}
             currentUser={user?.login}
-            isStarred={
-              selectedGist
-                ? starredGists.some((g) => g.id === selectedGist.id)
-                : false
-            }
+            isStarred={selectedGist ? starredGists.some((g) => g.id === selectedGist.id) : false}
             onStarToggle={handleStarToggle}
             editorTheme={editorThemes[editorTheme]}
             onAddFile={handleAddFile}
@@ -1786,7 +1600,7 @@ const Index = () => {
                   topic,
                   selectedGist?.description?.replace(/\s*\[Archived\]$/, ""),
                   context,
-                  userComments
+                  userComments,
                 );
 
                 startResearchTask(id, selectedGist?.id, topic);
@@ -1815,10 +1629,7 @@ const Index = () => {
         deleteTag={deleteTag}
       />
 
-      <SpotifyConfigDialog
-        open={showSpotifyDialog}
-        onOpenChange={setShowSpotifyDialog}
-      />
+      <SpotifyConfigDialog open={showSpotifyDialog} onOpenChange={setShowSpotifyDialog} />
 
       <AlertDialog
         open={showClearRecentlyViewedDialog}

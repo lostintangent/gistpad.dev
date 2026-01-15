@@ -42,7 +42,7 @@ function getRelativeTime(date: Date): string {
 function getInitialCollapsedState(
   depth: number,
   isInitiallyCollapsed: boolean,
-  isMobile: boolean
+  isMobile: boolean,
 ): boolean {
   if (depth === 0) return isInitiallyCollapsed;
   return depth >= (isMobile ? MOBILE_COLLAPSE_DEPTH : DESKTOP_COLLAPSE_DEPTH);
@@ -63,7 +63,7 @@ export function CommentItem({
 }: CommentItemProps) {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(
-    getInitialCollapsedState(depth, isInitiallyCollapsed, isMobile)
+    getInitialCollapsedState(depth, isInitiallyCollapsed, isMobile),
   );
 
   const handleToggle = () => {
@@ -129,11 +129,7 @@ export function CommentItem({
   );
 }
 
-function UserLink({
-  user,
-}: {
-  user: { name: string; url: string; avatar?: string };
-}) {
+function UserLink({ user }: { user: { name: string; url: string; avatar?: string } }) {
   return (
     <a
       href={user.url}
@@ -142,11 +138,7 @@ function UserLink({
       className="flex items-center gap-1 hover:text-foreground transition-colors hover:underline"
     >
       {user.avatar ? (
-        <img
-          src={user.avatar}
-          alt={user.name}
-          className="h-4 w-4 rounded-full object-cover"
-        />
+        <img src={user.avatar} alt={user.name} className="h-4 w-4 rounded-full object-cover" />
       ) : (
         <User className="h-3 w-3" />
       )}

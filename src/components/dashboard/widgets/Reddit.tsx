@@ -5,13 +5,7 @@ import { decodeHtmlEntities } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { getLinkPreview } from "link-preview-js";
 import { Image, MessageSquare, TrendingUp, TriangleAlert } from "lucide-react";
-import {
-  Comment,
-  MediaItem,
-  WidgetBadge,
-  WidgetDefinition,
-  WidgetProps,
-} from "../types";
+import { Comment, MediaItem, WidgetBadge, WidgetDefinition, WidgetProps } from "../types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -52,7 +46,7 @@ async function fetchData(config?: Record<string, string>): Promise<RedditData> {
   const endpoint = `https://www.reddit.com/r/${subreddit}/${sortBy}.json?limit=${postCount}`;
   const response = await fetch(
     // `https://corsproxy.io/?url=${encodeURIComponent(endpoint)}`
-    endpoint
+    endpoint,
   );
 
   if (!response.ok) {
@@ -85,10 +79,7 @@ async function fetchData(config?: Record<string, string>): Promise<RedditData> {
         if (vid) {
           videoUrl = decodeHtmlEntities(vid);
         }
-      } else if (
-        source.secure_media?.oembed?.html ||
-        source.media?.oembed?.html
-      ) {
+      } else if (source.secure_media?.oembed?.html || source.media?.oembed?.html) {
         // External videos (e.g. YouTube, Vimeo)
         const oembed = source.secure_media?.oembed || source.media?.oembed;
         const html = oembed.html as string;
@@ -106,9 +97,7 @@ async function fetchData(config?: Record<string, string>): Promise<RedditData> {
         galleryImages = source.gallery_data.items
           .map((item: any) => {
             const media = source.media_metadata[item.media_id];
-            const url =
-              media?.s?.u ||
-              (media?.p?.length ? media.p[media.p.length - 1].u : null);
+            const url = media?.s?.u || (media?.p?.length ? media.p[media.p.length - 1].u : null);
             return url ? decodeHtmlEntities(url) : null;
           })
           .filter((url: string | null) => url !== null) as string[];
@@ -158,15 +147,13 @@ async function fetchData(config?: Record<string, string>): Promise<RedditData> {
         embed: embedUrl,
         gallery: galleryImages.length > 0 ? galleryImages : undefined,
       };
-    })
+    }),
   );
 
   return { posts };
 }
 
-async function fetchBadge(
-  config?: Record<string, string>
-): Promise<WidgetBadge | undefined> {
+async function fetchBadge(config?: Record<string, string>): Promise<WidgetBadge | undefined> {
   const subreddit = config?.subreddit;
   if (!subreddit) {
     return;
@@ -175,7 +162,7 @@ async function fetchBadge(
   const endpoint = `https://www.reddit.com/r/${subreddit}/about.json`;
   const response = await fetch(
     //`https://corsproxy.io/?url=${encodeURIComponent(endpoint)}`
-    endpoint
+    endpoint,
   );
 
   if (!response.ok) {
@@ -183,8 +170,7 @@ async function fetchBadge(
   }
 
   const data = await response.json();
-  const activeUsers =
-    data.data?.active_user_count ?? data.data?.accounts_active ?? 0;
+  const activeUsers = data.data?.active_user_count ?? data.data?.accounts_active ?? 0;
 
   return { count: activeUsers, color: "#22c55e" };
 }
@@ -193,7 +179,7 @@ async function fetchRedditComments(permalink: string, sort: string = "top"): Pro
   const endpoint = `https://www.reddit.com${permalink}.json?sort=${sort.toLowerCase()}`;
   const response = await fetch(
     // `https://corsproxy.io/?url=${encodeURIComponent(endpoint)}`
-    endpoint
+    endpoint,
   );
   const data = await response.json();
   const comments = data[1].data.children
@@ -202,15 +188,11 @@ async function fetchRedditComments(permalink: string, sort: string = "top"): Pro
   return comments;
 }
 
-function mapComment(
-  data: any,
-  parentPermalink?: string,
-  depth: number = 0
-): Comment {
+function mapComment(data: any, parentPermalink?: string, depth: number = 0): Comment {
   const replies = data.replies?.data?.children
     ? data.replies.data.children
-      .filter((c: any) => c.kind === "t1")
-      .map((c: any) => mapComment(c.data, data.permalink, depth + 1))
+        .filter((c: any) => c.kind === "t1")
+        .map((c: any) => mapComment(c.data, data.permalink, depth + 1))
     : [];
 
   // Build the comment URL
@@ -224,7 +206,7 @@ function mapComment(
   const processedText = processRedditImages(data.body || "", {
     useHtmlImages: true,
     depth,
-    mediaMetadata: data.media_metadata
+    mediaMetadata: data.media_metadata,
   });
 
   // Extract user avatar
@@ -232,9 +214,7 @@ function mapComment(
 
   // Check for author flair image (custom emoji/avatar)
   if (data.author_flair_richtext && data.author_flair_richtext.length > 0) {
-    const flairWithImage = data.author_flair_richtext.find(
-      (flair: any) => flair.u
-    );
+    const flairWithImage = data.author_flair_richtext.find((flair: any) => flair.u);
     if (flairWithImage?.u) {
       avatarUrl = flairWithImage.u;
     }
@@ -266,7 +246,7 @@ function processRedditImages(
     useHtmlImages?: boolean;
     depth?: number;
     mediaMetadata?: any;
-  }
+  },
 ): string {
   let processedText = text;
   const { useHtmlImages = false, depth = 0, mediaMetadata } = options || {};
@@ -281,7 +261,7 @@ function processRedditImages(
           return `![gif](${media.s.gif})`;
         }
         return match;
-      }
+      },
     );
   }
 
@@ -290,9 +270,9 @@ function processRedditImages(
     /https:\/\/i\.redd\.it\/[^\s)]+\.(jpg|jpeg|png|gif|webp)/gi,
     (match: string) => {
       const cleanUrl = decodeHtmlEntities(match);
-      const isGif = match.toLowerCase().endsWith('.gif');
+      const isGif = match.toLowerCase().endsWith(".gif");
       return isGif ? `![gif](${cleanUrl})` : `![image](${cleanUrl})`;
-    }
+    },
   );
 
   // Detect and convert preview.redd.it URLs
@@ -308,7 +288,7 @@ function processRedditImages(
         // For descriptions: use markdown
         return `![image](${cleanUrl})`;
       }
-    }
+    },
   );
 
   // Detect imgur URLs and convert to markdown images
@@ -317,7 +297,7 @@ function processRedditImages(
     (match: string) => {
       const cleanUrl = decodeHtmlEntities(match);
       return `![image](${cleanUrl})`;
-    }
+    },
   );
 
   return processedText;
@@ -354,7 +334,6 @@ export function RedditWidget({
   openCommentsDialog,
   displayMediaDialog,
 }: WidgetProps<RedditData>) {
-
   if (isLoading) {
     const postCount = config?.postCount ? parseInt(config.postCount) : 5;
     return (
@@ -377,8 +356,9 @@ export function RedditWidget({
       {data.posts.map((post, index) => (
         <div
           key={post.id}
-          className={`group ${index !== data.posts.length - 1 ? "border-b border-border pb-4" : ""
-            }`}
+          className={`group ${
+            index !== data.posts.length - 1 ? "border-b border-border pb-4" : ""
+          }`}
         >
           <a
             href={`https://reddit.com${post.permalink}`}
@@ -454,9 +434,9 @@ export function RedditWidget({
                     e.stopPropagation();
                     const media: MediaItem[] = post.gallery
                       ? post.gallery.map((url) => ({
-                        type: "image" as const,
-                        url,
-                      }))
+                          type: "image" as const,
+                          url,
+                        }))
                       : [{ type: "image" as const, url: post.thumbnail }];
                     displayMediaDialog(media.length === 1 ? media[0] : media);
                   }}
@@ -505,13 +485,14 @@ export function RedditWidget({
                       e.preventDefault();
                       e.stopPropagation();
 
-                      const commentSort = config?.commentSort ? config.commentSort.toLowerCase() : "top";
+                      const commentSort = config?.commentSort
+                        ? config.commentSort.toLowerCase()
+                        : "top";
                       openCommentsDialog({
                         title: post.title,
                         text: post.selftext ? processRedditImages(post.selftext) : undefined,
                         queryKey: ["reddit-comments", post.id, commentSort],
-                        fetchComments: () =>
-                          fetchRedditComments(post.permalink, commentSort),
+                        fetchComments: () => fetchRedditComments(post.permalink, commentSort),
                       });
                     }}
                     className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -525,7 +506,6 @@ export function RedditWidget({
                   </span>
                 </div>
               </div>
-
             </div>
           </a>
         </div>
@@ -562,7 +542,6 @@ export default {
   component: RedditWidget,
   emptyStateMessage: "No posts available",
   checkEmpty: (data) => !data || !data.posts || data.posts.length === 0,
-  getExternalUrl: (config) =>
-    `https://reddit.com/r/${config?.subreddit || "all"}`,
+  getExternalUrl: (config) => `https://reddit.com/r/${config?.subreddit || "all"}`,
   //getBadge: fetchBadge, Reddit seemed to disable active user counts?
 } as WidgetDefinition<RedditData>;

@@ -51,10 +51,7 @@ export function SubList({
   const selectedGistRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    localStorage.setItem(
-      `gistpad-${sectionKey}-collapsed`,
-      JSON.stringify(isCollapsed)
-    );
+    localStorage.setItem(`gistpad-${sectionKey}-collapsed`, JSON.stringify(isCollapsed));
   }, [isCollapsed, sectionKey]);
 
   // Auto-expand section when a gist it "owns" is selected
@@ -90,11 +87,7 @@ export function SubList({
           <div className="text-sm font-medium text-muted-foreground flex items-center gap-1">
             {icon}
             <span>
-              {title} (
-              {filter
-                ? `${filteredGists.length} of ${gists.length}`
-                : gists.length}
-              )
+              {title} ({filter ? `${filteredGists.length} of ${gists.length}` : gists.length})
             </span>
           </div>
         </div>
@@ -102,12 +95,13 @@ export function SubList({
 
       {/* Scrollable list area */}
       <div
-        className={`transition-[height,opacity] duration-200 ease-in-out overflow-hidden ${isCollapsed
+        className={`transition-[height,opacity] duration-200 ease-in-out overflow-hidden ${
+          isCollapsed
             ? "h-0 opacity-0"
             : filteredGists.length === 1
               ? "h-[80px] opacity-100"
               : "h-[150px] opacity-100"
-          }`}
+        }`}
       >
         <ScrollArea className="h-full [&>div>div]:block!">
           <div className="p-2 space-y-1">
@@ -124,44 +118,31 @@ export function SubList({
                 >
                   <button
                     onClick={() => onSelectGist(gist)}
-                    className={`flex-1 text-left p-3 rounded-lg transition-colors max-w-[calc(100%-3rem)] group ${isFileSelected(gist.id)
+                    className={`flex-1 text-left p-3 rounded-lg transition-colors max-w-[calc(100%-3rem)] group ${
+                      isFileSelected(gist.id)
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted"
-                      }`}
+                    }`}
                   >
                     {showAvatar ? (
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage
-                            src={gist.owner?.avatar_url}
-                            alt={gist.owner?.login}
-                          />
-                          <AvatarFallback>
-                            {gist.owner?.login?.[0]?.toUpperCase()}
-                          </AvatarFallback>
+                          <AvatarImage src={gist.owner?.avatar_url} alt={gist.owner?.login} />
+                          <AvatarFallback>{gist.owner?.login?.[0]?.toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="max-w-[calc(100%-2.1rem)]">
                           <h3 className="font-medium">
-                            <ScrollableText>
-                              {getGistDisplayName(gist)}
-                            </ScrollableText>
+                            <ScrollableText>{getGistDisplayName(gist)}</ScrollableText>
                           </h3>
                           <ScrollableText>
                             <div className="text-sm text-muted-foreground flex items-center space-x-2">
                               <span>
-                                {formatDistanceToNow(
-                                  new Date(gist.updated_at),
-                                  {
-                                    addSuffix: true,
-                                  }
-                                )}
+                                {formatDistanceToNow(new Date(gist.updated_at), {
+                                  addSuffix: true,
+                                })}
                               </span>
                               {showPublicBadge && gist.public && (
-                                <Badge
-                                  variant="secondary"
-                                  className="mt-[3px]"
-                                  title="Public gist"
-                                >
+                                <Badge variant="secondary" className="mt-[3px]" title="Public gist">
                                   <Globe className="h-3.5 w-3.5" />
                                 </Badge>
                               )}
@@ -188,20 +169,14 @@ export function SubList({
                     ) : (
                       <>
                         <h3 className="font-medium">
-                          <ScrollableText>
-                            {getGistDisplayName(gist)}
-                          </ScrollableText>
+                          <ScrollableText>{getGistDisplayName(gist)}</ScrollableText>
                         </h3>
                         <div className="text-sm text-muted-foreground truncate flex items-center gap-2">
                           {formatDistanceToNow(new Date(gist.updated_at), {
                             addSuffix: true,
                           })}
                           {showPublicBadge && gist.public && (
-                            <Badge
-                              variant="secondary"
-                              className="mt-[3px]"
-                              title="Public gist"
-                            >
+                            <Badge variant="secondary" className="mt-[3px]" title="Public gist">
                               <Globe className="h-3.5 w-3.5" />
                             </Badge>
                           )}

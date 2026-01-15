@@ -2,20 +2,20 @@ import { Gist } from "@/lib/github";
 import { createOpenAIClient, getModelProperties } from "./openai";
 
 export async function analyzeStyle(gists: Gist[]): Promise<string> {
-    const openai = createOpenAIClient();
+  const openai = createOpenAIClient();
 
-    // Build array of gist contents
-    const gistContents = gists.map((gist) => ({
-        description: gist.description,
-        files: Object.entries(gist.files).map(([filename, file]) => ({
-            filename,
-            content: file.content,
-        })),
-    }));
+  // Build array of gist contents
+  const gistContents = gists.map((gist) => ({
+    description: gist.description,
+    files: Object.entries(gist.files).map(([filename, file]) => ({
+      filename,
+      content: file.content,
+    })),
+  }));
 
-    const response = await openai.responses.create({
-        ...getModelProperties("research"),
-        instructions: `You are an expert writing style analyst. Your task is to analyze the contents of several markdown documents and identify common patterns, styles, and conventions that appear consistently across them. 
+  const response = await openai.responses.create({
+    ...getModelProperties("research"),
+    instructions: `You are an expert writing style analyst. Your task is to analyze the contents of several markdown documents and identify common patterns, styles, and conventions that appear consistently across them. 
 
 Your analysis should focus on elements like:
 
@@ -34,8 +34,8 @@ Addtionally, when generating the instructions, make sure to follow these guideli
 * Don't include sections that aren't directly relevant to the writing style of the provided documents. If you don't have anything to say about a specific topic, then don't include it in the instructions.
 * When multiple gists are provided, make sure to analyze the commonalities and differences between them, and provide instructions that are relevant to all of them. Don't just analyze each gist in isolation.
 `,
-        input: JSON.stringify(gistContents),
-    });
+    input: JSON.stringify(gistContents),
+  });
 
-    return response.output_text;
+  return response.output_text;
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
-/* 
+/*
 This hook listens for viewport changes to determine
 whether the current device is mobile or not.
 */
@@ -34,8 +34,7 @@ export function useIsMobile() {
       return () => mediaQuery.removeEventListener("change", handleChange);
     } else {
       // Support older browsers that still expose addListener/removeListener
-      const legacyHandler = (event: MediaQueryListEvent) =>
-        handleChange(event);
+      const legacyHandler = (event: MediaQueryListEvent) => handleChange(event);
       mediaQuery.addListener(legacyHandler);
       return () => mediaQuery.removeListener(legacyHandler);
     }

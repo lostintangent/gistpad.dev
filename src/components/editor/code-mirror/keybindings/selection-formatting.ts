@@ -26,7 +26,12 @@ const formatters = {
 
 type Formatter = keyof typeof formatters;
 
-export function formatSelection(view: EditorView, formatter: Formatter, replacedText?: string, additionalParams?: any): boolean {
+export function formatSelection(
+  view: EditorView,
+  formatter: Formatter,
+  replacedText?: string,
+  additionalParams?: any,
+): boolean {
   const { from, to } = view.state.selection.main;
   if (from === to) return false;
 
@@ -45,16 +50,13 @@ export function formatSelection(view: EditorView, formatter: Formatter, replaced
         anchor: from,
         head: from + formattedText.length,
       },
-    })
+    }),
   );
 
   return true;
 }
 
-const createSelectionFormattingBinding = (
-  key: string,
-  formatter: Formatter
-): KeyBinding => {
+const createSelectionFormattingBinding = (key: string, formatter: Formatter): KeyBinding => {
   return {
     key,
     run: (view) => formatSelection(view, formatter),
@@ -68,5 +70,5 @@ export const selectionFormatting = () =>
       createSelectionFormattingBinding("Mod-i", "italic"),
       createSelectionFormattingBinding("Mod-b", "bold"),
       createSelectionFormattingBinding("Mod-u", "underline"),
-    ])
+    ]),
   );

@@ -52,13 +52,7 @@ import {
   Telescope,
   X,
 } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FollowUpButton } from "./FollowUpButton";
 
 type ModeType = "ask" | "edit" | "discuss" | "research" | "talk" | "auto";
@@ -126,7 +120,7 @@ export const ActionBar = ({
     reviewModel: string,
     editModel: string,
     researchModel: string,
-    showReasoningSummaries: boolean
+    showReasoningSummaries: boolean,
   ) => void;
   gists?: Gist[];
   gistFiles?: string[];
@@ -157,17 +151,16 @@ export const ActionBar = ({
   const [lastSubmittedCommand, setLastSubmittedCommand] = useState<string>("");
   const [currentMode, setCurrentMode] = useState<ModeType>(() => "auto");
   const [isConfigureDialogOpen, setIsConfigureDialogOpen] = useState(false);
-  const [isGlobalConfigureDialogOpen, setIsGlobalConfigureDialogOpen] =
-    useState(false);
+  const [isGlobalConfigureDialogOpen, setIsGlobalConfigureDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isAnalyzeDialogOpen, setIsAnalyzeDialogOpen] = useState(false);
 
   const isMobile = useIsMobile();
 
   const [showCompletionList, setShowCompletionList] = useState(false);
-  const [completionListType, setCompletionListType] = useState<
-    "command" | "gist" | "file" | null
-  >(null);
+  const [completionListType, setCompletionListType] = useState<"command" | "gist" | "file" | null>(
+    null,
+  );
   const [completionListFilter, setCompletionListFilter] = useState("");
   const [selectedCompletionIndex, setSelectedCompletionIndex] = useState(0);
 
@@ -176,9 +169,7 @@ export const ActionBar = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const aiResponseRef = useRef<HTMLDivElement>(null);
-  const [textareaHeight, setTextareaHeight] = useState<number | undefined>(
-    undefined
-  );
+  const [textareaHeight, setTextareaHeight] = useState<number | undefined>(undefined);
 
   const HIGHLIGHT_REGEX = /([@#])\[([^\]]+)]/g;
 
@@ -204,7 +195,7 @@ export const ActionBar = ({
       // delineate the reference and adjacent text.
       const highlightedText = `${symbol}<span class="invisible">[</span>${contents}<span class="invisible">]</span>`;
       parts.push(
-        `<span class="text-blue-100 bg-blue-700 rounded pointer-events-none select-none">${escapeHtml(highlightedText)}</span>`
+        `<span class="text-blue-100 bg-blue-700 rounded pointer-events-none select-none">${escapeHtml(highlightedText)}</span>`,
       );
       refs.push({ start: index, end: index + fullMatch.length });
       lastIndex = index + fullMatch.length;
@@ -216,13 +207,12 @@ export const ActionBar = ({
 
   const { html: highlightedCommandText, refs: references } = useMemo(
     () => parseAndRender(commandText),
-    [commandText, parseAndRender]
+    [commandText, parseAndRender],
   );
 
   const getModeIcon = () => {
     const baseStyles = "h-4 w-4";
-    const pulseClass =
-      isVoiceActive && whoIsSpeaking === "assistant" ? "animate-pulse" : "";
+    const pulseClass = isVoiceActive && whoIsSpeaking === "assistant" ? "animate-pulse" : "";
     if (currentMode === "talk") {
       return isVoiceActive ? (
         isMicMuted ? (
@@ -256,34 +246,25 @@ export const ActionBar = ({
     let commands: Command[] = [];
 
     // If we're in discuss mode and there are discussion commands, use those instead
-    if (
-      currentMode === "discuss" ||
-      currentMode === "ask" ||
-      currentMode === "auto"
-    ) {
-      const overridesGlobalSettings =
-        frontMatter?.discuss?.overridesGlobalSettings === true;
+    if (currentMode === "discuss" || currentMode === "ask" || currentMode === "auto") {
+      const overridesGlobalSettings = frontMatter?.discuss?.overridesGlobalSettings === true;
       if (!overridesGlobalSettings && globalFrontMatter.discuss?.commands) {
-        commands = Object.entries(globalFrontMatter.discuss.commands).map(
-          ([name, value]) => ({
-            name,
-            description: value,
-            prompt: value,
-            isGlobal: true,
-          })
-        ) as Command[];
+        commands = Object.entries(globalFrontMatter.discuss.commands).map(([name, value]) => ({
+          name,
+          description: value,
+          prompt: value,
+          isGlobal: true,
+        })) as Command[];
       }
 
       // Add document-specific discuss commands if available
       if (frontMatter?.discuss?.commands) {
-        const docCommands = Object.entries(frontMatter.discuss.commands).map(
-          ([name, value]) => ({
-            name,
-            description: value,
-            prompt: value,
-            isGlobal: false,
-          })
-        ) as Command[];
+        const docCommands = Object.entries(frontMatter.discuss.commands).map(([name, value]) => ({
+          name,
+          description: value,
+          prompt: value,
+          isGlobal: false,
+        })) as Command[];
 
         // Merge commands, giving precedence to document commands
         const existingNames = new Set(commands.map((cmd) => cmd.name));
@@ -298,46 +279,16 @@ export const ActionBar = ({
       return commands;
     }
 
-    const overridesGlobalSettings =
-      frontMatter?.edit?.overridesGlobalSettings === true;
+    const overridesGlobalSettings = frontMatter?.edit?.overridesGlobalSettings === true;
     if (!overridesGlobalSettings && globalFrontMatter.edit?.commands) {
       if (typeof globalFrontMatter.edit.commands === "object") {
-        commands = Object.entries(globalFrontMatter.edit.commands).map(
-          ([name, value]) => {
-            if (typeof value === "string") {
-              return {
-                name,
-                description: value,
-                prompt: value,
-                isGlobal: true,
-              } as Command;
-            }
-            // Type check the command object
-            const cmdObj = value as Command;
-            return {
-              name,
-              description: cmdObj.description || "",
-              prompt: cmdObj.prompt,
-              isGlobal: true,
-            } as Command;
-          }
-        );
-      }
-    }
-
-    // Then add document-specific edit commands if available
-    if (
-      frontMatter?.edit?.commands &&
-      typeof frontMatter.edit.commands === "object"
-    ) {
-      const docCommands = Object.entries(frontMatter.edit.commands).map(
-        ([name, value]) => {
+        commands = Object.entries(globalFrontMatter.edit.commands).map(([name, value]) => {
           if (typeof value === "string") {
             return {
               name,
               description: value,
               prompt: value,
-              isGlobal: false,
+              isGlobal: true,
             } as Command;
           }
           // Type check the command object
@@ -346,10 +297,32 @@ export const ActionBar = ({
             name,
             description: cmdObj.description || "",
             prompt: cmdObj.prompt,
+            isGlobal: true,
+          } as Command;
+        });
+      }
+    }
+
+    // Then add document-specific edit commands if available
+    if (frontMatter?.edit?.commands && typeof frontMatter.edit.commands === "object") {
+      const docCommands = Object.entries(frontMatter.edit.commands).map(([name, value]) => {
+        if (typeof value === "string") {
+          return {
+            name,
+            description: value,
+            prompt: value,
             isGlobal: false,
           } as Command;
         }
-      );
+        // Type check the command object
+        const cmdObj = value as Command;
+        return {
+          name,
+          description: cmdObj.description || "",
+          prompt: cmdObj.prompt,
+          isGlobal: false,
+        } as Command;
+      });
 
       // Merge commands, giving precedence to document commands
       const existingNames = new Set(commands.map((cmd) => cmd.name));
@@ -368,36 +341,24 @@ export const ActionBar = ({
   // the user types in the input field.
   const sortedGists = useMemo(() => {
     return [...gists].sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
     );
   }, [gists]);
 
   const filterCompletionItems = useMemo(() => {
     if (completionListType === "gist") {
       const searchTerm = completionListFilter.toLowerCase();
-      return sortedGists.filter((g) =>
-        getGistDisplayName(g).toLowerCase().includes(searchTerm)
-      );
+      return sortedGists.filter((g) => getGistDisplayName(g).toLowerCase().includes(searchTerm));
     } else if (completionListType === "file") {
       const searchTerm = completionListFilter.toLowerCase();
       return gistFiles.filter((f) => f.toLowerCase().includes(searchTerm));
     }
 
-    if (!completionListFilter || !completionListFilter.startsWith("/"))
-      return commands;
+    if (!completionListFilter || !completionListFilter.startsWith("/")) return commands;
 
     const searchTerm = completionListFilter.slice(1).toLowerCase();
-    return commands.filter(
-      (cmd) => !searchTerm || cmd.name.toLowerCase().startsWith(searchTerm)
-    );
-  }, [
-    completionListType,
-    commands,
-    completionListFilter,
-    sortedGists,
-    gistFiles,
-  ]);
+    return commands.filter((cmd) => !searchTerm || cmd.name.toLowerCase().startsWith(searchTerm));
+  }, [completionListType, commands, completionListFilter, sortedGists, gistFiles]);
 
   const renderCommandName = useCallback(
     (name: string) => {
@@ -429,16 +390,14 @@ export const ActionBar = ({
         </span>
       );
     },
-    [completionListFilter, completionListType]
+    [completionListFilter, completionListType],
   );
 
   // Update the list/filter whenever
   // the user types in the input field.
   useEffect(() => {
     const textarea = inputRef.current;
-    const cursorPos = textarea
-      ? textarea.selectionStart || 0
-      : commandText.length;
+    const cursorPos = textarea ? textarea.selectionStart || 0 : commandText.length;
     const beforeCursor = commandText.slice(0, cursorPos);
 
     const slashMatch = beforeCursor.match(/\/[^\s]*$/);
@@ -507,10 +466,7 @@ export const ActionBar = ({
       return;
     }
 
-    const lineHeight = parseInt(
-      window.getComputedStyle(textarea).lineHeight,
-      10
-    );
+    const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight, 10);
 
     const maxHeight = lineHeight * 3 + 8; // 3 lines + padding
     const calculatedHeight = Math.min(maxHeight, textarea.scrollHeight);
@@ -530,11 +486,7 @@ export const ActionBar = ({
 
   // Shared function to submit a command
   const submitCommand = useCallback(
-    async (
-      commandContent: string,
-      mode?: ModeType,
-      persistCommand: boolean = true
-    ) => {
+    async (commandContent: string, mode?: ModeType, persistCommand: boolean = true) => {
       if (persistCommand) {
         setLastSubmittedCommand(commandContent);
       }
@@ -543,15 +495,11 @@ export const ActionBar = ({
       // Check for slash commands first, before attempting to classify the action
       if (commandContent.startsWith("/")) {
         const commandName = commandContent.split(" ")[0];
-        const selectedCommand = commands.find(
-          (cmd) => cmd.name === commandName.substring(1)
-        );
+        const selectedCommand = commands.find((cmd) => cmd.name === commandName.substring(1));
 
         if (selectedCommand && selectedCommand.prompt) {
           // Get the text after the command
-          const userInput = commandContent
-            .substring(commandName.length + 1)
-            .trim();
+          const userInput = commandContent.substring(commandName.length + 1).trim();
           // Construct the full prompt using the command's prompt template and user input
           const fullPrompt = `${selectedCommand.prompt}${userInput ? `: ${userInput}` : ""}`;
 
@@ -576,18 +524,14 @@ export const ActionBar = ({
               : undefined;
 
           // Detect the user's intent based on their request and current context
-          const result = await classifyAction(
-            commandContent,
-            hasSelectedGist,
-            suspectedAction
-          );
+          const result = await classifyAction(commandContent, hasSelectedGist, suspectedAction);
           effectiveMode = result as ModeType;
         }
       }
 
       onSubmitCommand(commandContent, effectiveMode);
     },
-    [commands, currentMode, onSubmitCommand, hasPendingAiEdit, hasSelectedGist]
+    [commands, currentMode, onSubmitCommand, hasPendingAiEdit, hasSelectedGist],
   );
 
   useEffect(() => {
@@ -620,20 +564,12 @@ export const ActionBar = ({
     setShowCompletionList(false);
   };
 
-  const replaceMatch = (
-    match: RegExpMatchArray | null,
-    replacement: string
-  ) => {
+  const replaceMatch = (match: RegExpMatchArray | null, replacement: string) => {
     if (!match) return;
     const textarea = inputRef.current;
-    const cursorPos = textarea
-      ? textarea.selectionStart || 0
-      : commandText.length;
+    const cursorPos = textarea ? textarea.selectionStart || 0 : commandText.length;
     const startIdx = cursorPos - match[0].length;
-    const newText =
-      commandText.slice(0, startIdx) +
-      replacement +
-      commandText.slice(cursorPos);
+    const newText = commandText.slice(0, startIdx) + replacement + commandText.slice(cursorPos);
     setCommandText(newText);
     setShowCompletionList(false);
     focusEndOfInput();
@@ -641,9 +577,7 @@ export const ActionBar = ({
 
   const handleGistSelect = (gist: Gist) => {
     const textarea = inputRef.current;
-    const cursorPos = textarea
-      ? textarea.selectionStart || 0
-      : commandText.length;
+    const cursorPos = textarea ? textarea.selectionStart || 0 : commandText.length;
 
     const beforeCursor = commandText.slice(0, cursorPos);
     const match = beforeCursor.match(/@([^\s]*)$/);
@@ -654,9 +588,7 @@ export const ActionBar = ({
 
   const handleFileSelect = (filename: string) => {
     const textarea = inputRef.current;
-    const cursorPos = textarea
-      ? textarea.selectionStart || 0
-      : commandText.length;
+    const cursorPos = textarea ? textarea.selectionStart || 0 : commandText.length;
 
     const beforeCursor = commandText.slice(0, cursorPos);
     const match = beforeCursor.match(/#([^\s]*)$/);
@@ -692,22 +624,19 @@ export const ActionBar = ({
         switch (e.key) {
           case "ArrowDown":
             e.preventDefault();
-            setSelectedCompletionIndex(
-              (prev) => (prev + 1) % filterCompletionItems.length
-            );
+            setSelectedCompletionIndex((prev) => (prev + 1) % filterCompletionItems.length);
             break;
           case "ArrowUp":
             e.preventDefault();
             setSelectedCompletionIndex((prev) =>
-              prev - 1 < 0 ? filterCompletionItems.length - 1 : prev - 1
+              prev - 1 < 0 ? filterCompletionItems.length - 1 : prev - 1,
             );
             break;
           case "Enter":
           case "Tab": {
             e.preventDefault();
             const selectedItem =
-              filterCompletionItems[selectedCompletionIndex] ||
-              filterCompletionItems[0];
+              filterCompletionItems[selectedCompletionIndex] || filterCompletionItems[0];
             if (completionListType === "command") {
               handleCommandSelect(selectedItem as Command);
             } else if (completionListType === "gist") {
@@ -752,8 +681,7 @@ export const ActionBar = ({
           const ref = references.find((r) => r.end === pos);
           if (ref) {
             e.preventDefault();
-            const newText =
-              commandText.slice(0, ref.start) + commandText.slice(ref.end);
+            const newText = commandText.slice(0, ref.start) + commandText.slice(ref.end);
             setCommandText(newText);
             setTimeout(() => {
               textarea.setSelectionRange(ref.start, ref.start);
@@ -765,8 +693,7 @@ export const ActionBar = ({
           const ref = references.find((r) => r.start === pos);
           if (ref) {
             e.preventDefault();
-            const newText =
-              commandText.slice(0, ref.start) + commandText.slice(ref.end);
+            const newText = commandText.slice(0, ref.start) + commandText.slice(ref.end);
             setCommandText(newText);
             setTimeout(() => {
               textarea.setSelectionRange(ref.start, ref.start);
@@ -805,15 +732,12 @@ export const ActionBar = ({
       completionListType,
       commandText,
       references,
-    ]
+    ],
   );
 
   // Automatically scroll to bottom of AI response when it changes
   useEffect(() => {
-    if (
-      (aiResponse !== null || aiFollowUp?.question !== null) &&
-      aiResponseRef.current
-    ) {
+    if ((aiResponse !== null || aiFollowUp?.question !== null) && aiResponseRef.current) {
       aiResponseRef.current.scrollTop = aiResponseRef.current.scrollHeight;
     }
   }, [aiResponse, aiFollowUp?.question]);
@@ -824,8 +748,11 @@ export const ActionBar = ({
   // to center the action bar vs. placing it at the bottom.
   const isCentered = !hasSelectedGist && aiResponse === null;
 
-  const showEditPanel =
-    (hasPendingAiEdit || isAiEditInProgress) && !isPreviewMode;
+  const showEditPanel = (hasPendingAiEdit || isAiEditInProgress) && !isPreviewMode;
+
+  if (!isAiEnabled) {
+    return null;
+  }
 
   return (
     <div
@@ -838,13 +765,13 @@ export const ActionBar = ({
         zIndex: 50,
         ...(isCentered
           ? {
-            bottom: "50%",
-            transform: "translate(-50%, 20px)",
-          }
+              bottom: "50%",
+              transform: "translate(-50%, 20px)",
+            }
           : {
-            bottom: "20px",
-            transform: "translateX(-50%)",
-          }),
+              bottom: "20px",
+              transform: "translateX(-50%)",
+            }),
       }}
     >
       {/* Ask response UI */}
@@ -872,10 +799,8 @@ export const ActionBar = ({
                       {!isMobile &&
                         (isExpanded ||
                           aiResponseRef.current?.scrollHeight >
-                          aiResponseRef.current?.clientHeight) && (
-                          <DropdownMenuItem
-                            onClick={() => setIsExpanded((v) => !v)}
-                          >
+                            aiResponseRef.current?.clientHeight) && (
+                          <DropdownMenuItem onClick={() => setIsExpanded((v) => !v)}>
                             {isExpanded ? (
                               <>
                                 <Minimize className="h-4 w-4 mr-2" /> Collapse
@@ -888,17 +813,12 @@ export const ActionBar = ({
                           </DropdownMenuItem>
                         )}
                       <DropdownMenuItem
-                        onClick={() =>
-                          aiResponse &&
-                          navigator.clipboard.writeText(aiResponse)
-                        }
+                        onClick={() => aiResponse && navigator.clipboard.writeText(aiResponse)}
                       >
                         <Clipboard className="h-4 w-4 mr-2" /> Copy contents
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => submitCommand("Try again", "ask", false)}
-                      >
+                      <DropdownMenuItem onClick={() => submitCommand("Try again", "ask", false)}>
                         <RotateCcw className="h-4 w-4 mr-2" /> Try again
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -930,11 +850,7 @@ export const ActionBar = ({
                 <>
                   {/* Markdown content */}
                   <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:scroll-m-20 prose-p:leading-relaxed prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted/50">
-                    <MarkdownPreview
-                      gists={gists}
-                      onSelectGist={onSelectGist}
-                      isReadonly={true}
-                    >
+                    <MarkdownPreview gists={gists} onSelectGist={onSelectGist} isReadonly={true}>
                       {aiResponse}
                     </MarkdownPreview>
                   </div>
@@ -964,12 +880,8 @@ export const ActionBar = ({
               ) : (
                 aiEditStats && (
                   <div className="text-sm whitespace-nowrap flex items-center gap-2">
-                    <span className="text-green-400">
-                      +{aiEditStats.additions}
-                    </span>
-                    <span className="text-red-400">
-                      -{aiEditStats.deletions}
-                    </span>
+                    <span className="text-green-400">+{aiEditStats.additions}</span>
+                    <span className="text-red-400">-{aiEditStats.deletions}</span>
                   </div>
                 )
               )}
@@ -982,7 +894,6 @@ export const ActionBar = ({
                 pressed={showPendingAiDiffs}
                 onPressedChange={onTogglePendingAiDiffs}
                 disabled={isAiEditInProgress}
-
               >
                 <Diff className="h-2 w-2" />
               </Toggle>
@@ -1031,10 +942,7 @@ export const ActionBar = ({
               <DropdownMenuContent align="start" className="mb-1">
                 {isVoiceActive ? (
                   <>
-                    <DropdownMenuItem
-                      onClick={muteMicrophone}
-                      disabled={!isAiEnabled}
-                    >
+                    <DropdownMenuItem onClick={muteMicrophone} disabled={!isAiEnabled}>
                       {isMicMuted ? (
                         <>
                           <MicOff className="h-4 w-4 mr-2" /> Unmute microphone
@@ -1052,39 +960,28 @@ export const ActionBar = ({
                       }}
                       disabled={!isAiEnabled}
                     >
-                      <MessageSquare className="h-4 w-4 mr-2" /> End
-                      conversation
+                      <MessageSquare className="h-4 w-4 mr-2" /> End conversation
                     </DropdownMenuItem>
                   </>
                 ) : (
                   <>
                     {(hasSelectedGist
                       ? ([
-                        [Lightbulb, "Auto"],
-                        [Mic, "Talk", startVoiceConversation],
-                        [],
-                        [MessageCircleQuestion, "Ask"],
-                        [Pencil, "Edit"],
-                        [], // Seperator
-                        [ClipboardList, "discuss", null, "Review"],
-                        [Telescope, "Research"],
-                      ] as [
-                        React.ElementType,
-                        string,
-                        (() => void)?,
-                        string?,
-                      ][])
+                          [Lightbulb, "Auto"],
+                          [Mic, "Talk", startVoiceConversation],
+                          [],
+                          [MessageCircleQuestion, "Ask"],
+                          [Pencil, "Edit"],
+                          [], // Seperator
+                          [ClipboardList, "discuss", null, "Review"],
+                          [Telescope, "Research"],
+                        ] as [React.ElementType, string, (() => void)?, string?][])
                       : ([
-                        [Lightbulb, "Auto"],
-                        [],
-                        [MessageCircleQuestion, "Ask"],
-                        [Telescope, "Research"],
-                      ] as [
-                        React.ElementType,
-                        string,
-                        (() => void)?,
-                        string?,
-                      ][])
+                          [Lightbulb, "Auto"],
+                          [],
+                          [MessageCircleQuestion, "Ask"],
+                          [Telescope, "Research"],
+                        ] as [React.ElementType, string, (() => void)?, string?][])
                     ).map(([Icon, mode, onClick, label], index) =>
                       Icon ? (
                         <DropdownMenuItem
@@ -1107,7 +1004,7 @@ export const ActionBar = ({
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuSeparator key={index} />
-                      )
+                      ),
                     )}
                   </>
                 )}
@@ -1122,42 +1019,28 @@ export const ActionBar = ({
                         {getGlobalFrontmatter && updateGlobalFrontMatter && (
                           <DropdownMenuItem
                             onClick={() =>
-                              setTimeout(
-                                () => setIsGlobalConfigureDialogOpen(true),
-                                200
-                              )
+                              setTimeout(() => setIsGlobalConfigureDialogOpen(true), 200)
                             }
                           >
                             <Globe className="h-4 w-4 mr-2" /> Global settings
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
-                          onClick={() =>
-                            setTimeout(
-                              () => setIsConfigureDialogOpen(true),
-                              200
-                            )
-                          }
+                          onClick={() => setTimeout(() => setIsConfigureDialogOpen(true), 200)}
                         >
-                          <FileText className="h-4 w-4 mr-2" /> Document
-                          settings
+                          <FileText className="h-4 w-4 mr-2" /> Document settings
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() =>
-                            setTimeout(() => setIsSettingsDialogOpen(true), 200)
-                          }
+                          onClick={() => setTimeout(() => setIsSettingsDialogOpen(true), 200)}
                         >
                           <Settings2 className="h-4 w-4 mr-2" /> Model settings
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() =>
-                            setTimeout(() => setIsAnalyzeDialogOpen(true), 200)
-                          }
+                          onClick={() => setTimeout(() => setIsAnalyzeDialogOpen(true), 200)}
                           disabled={gists.length === 0}
                         >
-                          <BookOpen className="h-4 w-4 mr-2" /> Analyze writing
-                          style
+                          <BookOpen className="h-4 w-4 mr-2" /> Analyze writing style
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
@@ -1180,11 +1063,7 @@ export const ActionBar = ({
                   <CommandList className="max-h-[300px] overflow-y-auto">
                     {filterCompletionItems.map((item, index) => (
                       <CommandItem
-                        key={
-                          completionListType === "command"
-                            ? (item as Command).name
-                            : index
-                        }
+                        key={completionListType === "command" ? (item as Command).name : index}
                         onSelect={() => {
                           if (completionListType === "command") {
                             handleCommandSelect(item as Command);
@@ -1195,10 +1074,11 @@ export const ActionBar = ({
                           }
                         }}
                         onMouseEnter={() => setSelectedCompletionIndex(index)}
-                        className={`flex items-start gap-2 cursor-pointer px-2 py-1.5 ${index === selectedCompletionIndex
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent"
-                          }
+                        className={`flex items-start gap-2 cursor-pointer px-2 py-1.5 ${
+                          index === selectedCompletionIndex
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-accent"
+                        }
                         `}
                       >
                         {completionListType === "command" ? (
@@ -1280,7 +1160,7 @@ export const ActionBar = ({
             variant="ghost"
             onClick={
               isCommandInProgress
-                ? cancelCommand || (() => { })
+                ? cancelCommand || (() => {})
                 : isAiEnabled
                   ? handleSendText
                   : () => setIsSettingsDialogOpen(true)
@@ -1290,10 +1170,9 @@ export const ActionBar = ({
                 ? !cancelCommand
                 : isAiEnabled && !commandText.trim() && commands.length === 0
             }
-            className={`rounded h-auto p-1! ${isCommandInProgress && cancelCommand
-              ? "hover:text-white"
-              : "hover:bg-muted"
-              }`}
+            className={`rounded h-auto p-1! ${
+              isCommandInProgress && cancelCommand ? "hover:text-white" : "hover:bg-muted"
+            }`}
           >
             {isCommandInProgress ? (
               cancelCommand ? (

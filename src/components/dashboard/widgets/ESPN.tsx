@@ -36,9 +36,7 @@ async function fetchData(config?: Record<string, string>): Promise<ESPNNewsData>
   };
   const { path } = sportMap[sport] || sportMap["NFL"];
 
-  const response = await fetch(
-    `https://site.api.espn.com/apis/site/v2/sports/${path}/news`
-  );
+  const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/news`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch ESPN news");
@@ -95,16 +93,15 @@ export function ESPNNewsWidget({
       {data.articles.map((article, index) => {
         // Find the first header image
         const headerImage = article.images?.find(
-          (img) => img.url && (img.width === 608 || img.width === 1296)
+          (img) => img.url && (img.width === 608 || img.width === 1296),
         );
 
         return (
           <div
             key={article.id}
-            className={`group ${index !== data.articles.length - 1
-              ? "border-b border-border pb-4"
-              : ""
-              }`}
+            className={`group ${
+              index !== data.articles.length - 1 ? "border-b border-border pb-4" : ""
+            }`}
           >
             <a
               href={article.links.web.href}
@@ -115,7 +112,7 @@ export function ESPNNewsWidget({
               <div className="flex gap-3">
                 {/* Image */}
                 {headerImage ? (
-                  <div 
+                  <div
                     className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted cursor-pointer"
                     onClick={(e) => {
                       e.preventDefault();
@@ -154,13 +151,11 @@ export function ESPNNewsWidget({
                     )}
                   </div>
                 </div>
-
               </div>
             </a>
           </div>
         );
       })}
-
     </div>
   );
 }
@@ -170,7 +165,7 @@ export default {
   fetchData,
   config: [
     { id: "sport", name: "Sport", options: ["NFL", "Baseball", "Basketball"] },
-    { id: "postCount", name: "Post count", default: 10, minValue: 1, maxValue: 20 }
+    { id: "postCount", name: "Post count", default: 10, minValue: 1, maxValue: 20 },
   ],
   component: ESPNNewsWidget,
   emptyStateMessage: "No sports news available",

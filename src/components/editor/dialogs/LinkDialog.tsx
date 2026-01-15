@@ -19,12 +19,7 @@ interface LinkDialogProps {
 
 const URL_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?].*)?$/;
 
-export function LinkDialog({
-  isOpen,
-  onClose,
-  onInsert,
-  initialText,
-}: LinkDialogProps) {
+export function LinkDialog({ isOpen, onClose, onInsert, initialText }: LinkDialogProps) {
   const [text, setText] = useState(initialText);
   const [url, setUrl] = useState("");
 

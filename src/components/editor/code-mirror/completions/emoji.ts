@@ -1,8 +1,4 @@
-import {
-  Completion,
-  CompletionContext,
-  CompletionResult,
-} from "@codemirror/autocomplete";
+import { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 import emojiData from "@emoji-mart/data/sets/15/native.json";
 
 interface EmojiData {
@@ -17,18 +13,14 @@ interface EmojiData {
   };
 }
 
-const emojis = Object.entries((emojiData as EmojiData).emojis).map(
-  ([id, emoji]) => ({
-    id,
-    name: emoji.name,
-    keywords: emoji.keywords || [],
-    native: emoji.skins[0]?.native || "",
-  })
-);
+const emojis = Object.entries((emojiData as EmojiData).emojis).map(([id, emoji]) => ({
+  id,
+  name: emoji.name,
+  keywords: emoji.keywords || [],
+  native: emoji.skins[0]?.native || "",
+}));
 
-export function emojiCompletions(
-  context: CompletionContext
-): CompletionResult | null {
+export function emojiCompletions(context: CompletionContext): CompletionResult | null {
   const emojiWord = context.matchBefore(/(?<=^|[\s([]):[^:\s]*$/);
   if (!emojiWord) return null;
 
@@ -43,7 +35,7 @@ export function emojiCompletions(
       (emoji) =>
         !query ||
         emoji.id.includes(query.toLowerCase()) ||
-        emoji.keywords.some((keyword) => keyword.includes(query.toLowerCase()))
+        emoji.keywords.some((keyword) => keyword.includes(query.toLowerCase())),
     )
     .map((emoji) => ({
       label: `${emoji.native} :${emoji.id}:`,

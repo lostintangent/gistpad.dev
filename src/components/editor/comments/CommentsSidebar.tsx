@@ -105,10 +105,7 @@ export default function CommentsSidebar({
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger
-              value="ai"
-              className="relative flex items-center gap-2"
-            >
+            <TabsTrigger value="ai" className="relative flex items-center gap-2">
               AI Comments
               {isAiReviewInProgress || aiCommentBeingApplied !== null ? (
                 <Loader2

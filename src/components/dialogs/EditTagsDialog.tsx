@@ -38,8 +38,7 @@ const EditTagsDialog = ({
   renameTag,
   deleteTag,
 }: EditTagsDialogProps) => {
-  const [edits, setEdits] =
-    useState<Record<string, { name: string; color: string }>>(tags);
+  const [edits, setEdits] = useState<Record<string, { name: string; color: string }>>(tags);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     tagId: string;
@@ -129,9 +128,7 @@ const EditTagsDialog = ({
   };
 
   // Calculate count of non-empty tags
-  const nonEmptyTagsCount = Object.values(tags).filter((tag) =>
-    tag.name.trim()
-  ).length;
+  const nonEmptyTagsCount = Object.values(tags).filter((tag) => tag.name.trim()).length;
 
   return (
     <>
@@ -190,16 +187,14 @@ const EditTagsDialog = ({
 
       <AlertDialog
         open={deleteConfirmation.isOpen}
-        onOpenChange={(open) =>
-          setDeleteConfirmation((prev) => ({ ...prev, isOpen: open }))
-        }
+        onOpenChange={(open) => setDeleteConfirmation((prev) => ({ ...prev, isOpen: open }))}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete tag</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the "{deleteConfirmation.tagName}"
-              tag? This will also remove the tag from all associated gists.
+              Are you sure you want to delete the "{deleteConfirmation.tagName}" tag? This will also
+              remove the tag from all associated gists.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

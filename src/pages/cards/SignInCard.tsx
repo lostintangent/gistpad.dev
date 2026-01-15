@@ -11,4 +11,4 @@ export default function SignInCard({ onSignIn }: { onSignIn: () => Promise<void>
       </Button>
     </FullScreenCard>
   );
-};
+}

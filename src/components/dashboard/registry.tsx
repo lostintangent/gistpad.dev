@@ -32,34 +32,42 @@ export function getAllWidgetTypes(): { type: string; name: string }[] {
   }));
 }
 
-export function getDefaultWidgets(): { id: string; type: string; name: string; collapsed: boolean; config?: Record<string, string> }[] {
+export function getDefaultWidgets(): {
+  id: string;
+  type: string;
+  name: string;
+  collapsed: boolean;
+  config?: Record<string, string>;
+}[] {
   const defaultWidgetTypes = ["weather", "hackernews"];
 
-  return defaultWidgetTypes.map(type => {
-    const widgetDef = widgetRegistry[type];
-    if (!widgetDef) return null;
+  return defaultWidgetTypes
+    .map((type) => {
+      const widgetDef = widgetRegistry[type];
+      if (!widgetDef) return null;
 
-    // Create default config from widget's config options with default values
-    let defaultConfig: Record<string, string> | undefined;
-    if (widgetDef.config) {
-      defaultConfig = {};
-      widgetDef.config.forEach((opt) => {
-        if (opt.default !== undefined) {
-          defaultConfig![opt.id] = String(opt.default);
+      // Create default config from widget's config options with default values
+      let defaultConfig: Record<string, string> | undefined;
+      if (widgetDef.config) {
+        defaultConfig = {};
+        widgetDef.config.forEach((opt) => {
+          if (opt.default !== undefined) {
+            defaultConfig![opt.id] = String(opt.default);
+          }
+        });
+        // Only set config if there are default values
+        if (Object.keys(defaultConfig).length === 0) {
+          defaultConfig = undefined;
         }
-      });
-      // Only set config if there are default values
-      if (Object.keys(defaultConfig).length === 0) {
-        defaultConfig = undefined;
       }
-    }
 
-    return {
-      id: type, // Using type as initial ID for default widgets
-      type,
-      name: widgetDef.name,
-      collapsed: false,
-      config: defaultConfig,
-    };
-  }).filter((w): w is NonNullable<typeof w> => w !== null);
+      return {
+        id: type, // Using type as initial ID for default widgets
+        type,
+        name: widgetDef.name,
+        collapsed: false,
+        config: defaultConfig,
+      };
+    })
+    .filter((w): w is NonNullable<typeof w> => w !== null);
 }

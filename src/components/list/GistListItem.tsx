@@ -12,11 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResearchTask } from "@/hooks/useUserSession";
 import { Gist } from "@/lib/github";
 import { isDateBasedGist } from "@/lib/utils";
@@ -45,11 +41,7 @@ interface GistBadgeProps {
 }
 
 const GistBadge = ({ children }: GistBadgeProps) => {
-  return (
-    <Badge variant="secondary">
-      {children}
-    </Badge>
-  );
+  return <Badge variant="secondary">{children}</Badge>;
 };
 
 interface GistListItemProps {
@@ -92,14 +84,11 @@ export function GistListItem({
   hasUnsavedChanges = false,
 }: GistListItemProps) {
   const isAiCommandInProgress = useAtomValue(isAiCommandInProgressAtom);
-  const hasInProgressResearchTask = researchTasks.some(
-    (t) => t.gistId === gist.id && !t.content
-  );
-  const hasInProgressAiTask =
-    hasInProgressResearchTask || (isAiCommandInProgress && isSelected);
+  const hasInProgressResearchTask = researchTasks.some((t) => t.gistId === gist.id && !t.content);
+  const hasInProgressAiTask = hasInProgressResearchTask || (isAiCommandInProgress && isSelected);
 
   const hasUnseenTask = researchTasks.some(
-    (t) => t.gistId === gist.id && t.content && !t.hasBeenSeen
+    (t) => t.gistId === gist.id && t.content && !t.hasBeenSeen,
   );
   const showBlueDot = hasUnseenTask || (hasUnsavedChanges && isSelected);
 
@@ -109,16 +98,10 @@ export function GistListItem({
   } else {
     const firstFile = Object.keys(gist.files)[0]?.replace(".md", "");
     if (!firstFile) {
-      gistTitle = (
-        <span className="italic text-muted-foreground">
-          Empty
-        </span>
-      );
+      gistTitle = <span className="italic text-muted-foreground">Empty</span>;
     } else if (firstFile === "README") {
       gistTitle = (
-        <span
-          className={`italic${hasInProgressAiTask ? "" : " text-muted-foreground"}`}
-        >
+        <span className={`italic${hasInProgressAiTask ? "" : " text-muted-foreground"}`}>
           Untitled
         </span>
       );
@@ -131,8 +114,9 @@ export function GistListItem({
     <div className="flex items-center gap-2" ref={selectedRef}>
       <button
         onClick={(e) => onSelectGist(gist, e.metaKey || e.ctrlKey)}
-        className={`flex-1 text-left p-3 rounded-lg transition-colors max-w-[calc(100%-3rem)] group ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-          }`}
+        className={`flex-1 text-left p-3 rounded-lg transition-colors max-w-[calc(100%-3rem)] group ${
+          isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+        }`}
       >
         <h3 className="font-medium flex items-center gap-1">
           {isPinned && (
@@ -162,9 +146,7 @@ export function GistListItem({
 
         <ScrollableText>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
-            {showBlueDot && (
-              <span className="bg-blue-500 rounded-full w-2 h-2" />
-            )}
+            {showBlueDot && <span className="bg-blue-500 rounded-full w-2 h-2" />}
             {formatDistanceToNow(gist.updated_at, {
               addSuffix: true,
             })}
@@ -200,11 +182,7 @@ export function GistListItem({
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="shrink-0 h-8 w-8 p-0"
-          >
+          <Button variant="ghost" size="sm" className="shrink-0 h-8 w-8 p-0">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -223,9 +201,7 @@ export function GistListItem({
                 {Object.entries(tags).map(([id, tag]) => (
                   <DropdownMenuItem
                     key={id}
-                    onClick={() =>
-                      onToggleTag?.(gist.id, id, !tagIds.includes(id))
-                    }
+                    onClick={() => onToggleTag?.(gist.id, id, !tagIds.includes(id))}
                     className="cursor-pointer"
                   >
                     {tagIds.includes(id) && <Check className="h-4 w-4 mr-2" />}
@@ -243,11 +219,7 @@ export function GistListItem({
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() =>
-              navigator.clipboard.writeText(
-                `${window.location.origin}/#/${gist.id}`
-              )
-            }
+            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/#/${gist.id}`)}
           >
             <Link className="h-4 w-4 mr-2" />
             Copy URL

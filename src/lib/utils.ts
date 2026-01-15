@@ -81,8 +81,7 @@ export function detectDateFormat(filenames: string[]): DateFormat | null {
             year = parseInt(m[1]);
             month = parseInt(m[2]);
             const ymDate = new Date(year, month - 1, 1);
-            matched =
-              ymDate.getFullYear() === year && ymDate.getMonth() === month - 1;
+            matched = ymDate.getFullYear() === year && ymDate.getMonth() === month - 1;
             break;
           case "YYYY-MM-DD":
             year = parseInt(m[1]);
@@ -127,9 +126,7 @@ export function detectDateFormat(filenames: string[]): DateFormat | null {
 // TODO: Refactor all of this date logic. I'm only merging this in because
 // it's what AI wrote, and I want to dogfood it to see if it's useful.
 
-export function groupFilesByDate(
-  filenames: string[]
-): {
+export function groupFilesByDate(filenames: string[]): {
   groups: Record<string, Record<string, string[]>>;
   otherFiles: string[];
 } | null {
@@ -193,10 +190,7 @@ export function groupFilesByDate(
   return { groups, otherFiles };
 }
 
-export function generateDateFilename(
-  format: DateFormat,
-  date: Date = new Date()
-): string {
+export function generateDateFilename(format: DateFormat, date: Date = new Date()): string {
   let fmt: string;
   switch (format) {
     case "YYYY":
@@ -216,9 +210,7 @@ export function generateDateFilename(
   return `${formatDate(date, fmt)}`;
 }
 
-export function isDateBasedGist(gist: {
-  files: Record<string, { filename: string }>;
-}): boolean {
+export function isDateBasedGist(gist: { files: Record<string, { filename: string }> }): boolean {
   const filenames = Object.keys(gist.files).filter((f) => f.endsWith(".md"));
   return detectDateFormat(filenames) !== null;
 }
@@ -280,7 +272,7 @@ export function getMostRecentDatedFilename(filenames: string[]): string | null {
 export function evaluateMathExpression(
   expr: string,
   previousResult: string | null = null,
-  variables: Map<string, string> = new Map()
+  variables: Map<string, string> = new Map(),
 ): string | null {
   if (previousResult !== null) {
     expr = expr.replace(/_/g, previousResult);
@@ -298,23 +290,26 @@ export function evaluateMathExpression(
   let containsMagnitude = false;
 
   // Replace numbers that may include commas, a leading $, and/or trailing k or M
-  const normalized = expr.replace(/\$?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)([km])?/gi, (match, num, suffix) => {
-    if (match.startsWith("$")) {
-      containsDollar = true;
-    }
-    if (suffix) {
-      containsMagnitude = true;
-    }
+  const normalized = expr.replace(
+    /\$?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)([km])?/gi,
+    (match, num, suffix) => {
+      if (match.startsWith("$")) {
+        containsDollar = true;
+      }
+      if (suffix) {
+        containsMagnitude = true;
+      }
 
-    const n = parseFloat(num.replace(/,/g, ""));
-    if (isNaN(n)) {
-      return match;
-    }
+      const n = parseFloat(num.replace(/,/g, ""));
+      if (isNaN(n)) {
+        return match;
+      }
 
-    const multiplier =
-      suffix?.toLowerCase() === "k" ? 1000 : suffix?.toLowerCase() === "m" ? 1_000_000 : 1;
-    return (n * multiplier).toString();
-  });
+      const multiplier =
+        suffix?.toLowerCase() === "k" ? 1000 : suffix?.toLowerCase() === "m" ? 1_000_000 : 1;
+      return (n * multiplier).toString();
+    },
+  );
 
   // Only allow numbers, operators and parentheses after normalization
   if (!/^[-+*/().\d\s]+$/.test(normalized)) {
@@ -343,7 +338,8 @@ export function evaluateMathExpression(
 
 export function extractVariableAssignments(text: string): Map<string, string> {
   const assignments = new Map<string, string>();
-  const lineOnlyAssignment = /^(?:\s*[-*]\s+)?(?:[^:]+:=\s*\$?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[km]?\s*)+$/i;
+  const lineOnlyAssignment =
+    /^(?:\s*[-*]\s+)?(?:[^:]+:=\s*\$?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[km]?\s*)+$/i;
   if (!lineOnlyAssignment.test(text.trim())) {
     return assignments;
   }

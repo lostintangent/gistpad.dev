@@ -1,8 +1,8 @@
 import {
-    AdditionalReference,
-    createOpenAIClient,
-    getModelProperties,
-    referencesAsContext,
+  AdditionalReference,
+  createOpenAIClient,
+  getModelProperties,
+  referencesAsContext,
 } from "../openai";
 import { process_patch } from "./apply-patch";
 
@@ -81,75 +81,75 @@ CRITICAL: Don't delete lines that aren't actually being changed. Simply referenc
 CRITICAL: Context lines that precede or follow the change must not be marked with a minus or plus sign. They should simply be included as-is, without any modification.
 CRITICAL: When referencing a context line that isn't changing, don't also mark it as being added. Otherwise you'll end up with a patch that tries to add the same line twice, which will cause the patch to fail. Instead, just include the line as-is in the context.`;
 
-const fixInvalidPatchPrompt = "The patch you generated was invalid, and failed to be applied. Please fix the following error and generate another patch for the previous request:\n\n";
+const fixInvalidPatchPrompt =
+  "The patch you generated was invalid, and failed to be applied. Please fix the following error and generate another patch for the previous request:\n\n";
 
 export default async function editContent(
-    content: string,
-    prompt: string,
-    description?: string,
-    instructions?: string,
-    additionalReferences?: AdditionalReference[],
-    onPatchApplied?: (patched: string) => void,
-    abortSignal?: AbortSignal | null,
-    previousResponseId?: string
+  content: string,
+  prompt: string,
+  description?: string,
+  instructions?: string,
+  additionalReferences?: AdditionalReference[],
+  onPatchApplied?: (patched: string) => void,
+  abortSignal?: AbortSignal | null,
+  previousResponseId?: string,
 ): Promise<string | undefined> {
-    const openai = createOpenAIClient();
+  const openai = createOpenAIClient();
 
-    const documentContext = `<document title="${description || "Untitled"}">\n${content}\n</document>`;
-    const referencesContext = referencesAsContext(additionalReferences);
-    const instructionsContext = instructions
-        ? `<additional_instructions>${instructions}</additional_instructions>`
-        : null;
+  const documentContext = `<document title="${description || "Untitled"}">\n${content}\n</document>`;
+  const referencesContext = referencesAsContext(additionalReferences);
+  const instructionsContext = instructions
+    ? `<additional_instructions>${instructions}</additional_instructions>`
+    : null;
 
-    const input = [
-        `<request>${prompt}</request>`,
-        documentContext,
-        instructionsContext,
-        referencesContext,
-    ]
-        .filter(Boolean)
-        .join("\n\n");
+  const input = [
+    `<request>${prompt}</request>`,
+    documentContext,
+    instructionsContext,
+    referencesContext,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
+  const response = await openai.responses.create(
+    {
+      instructions: systemPrompt,
+      input,
+      ...getModelProperties("edit"),
+      previous_response_id: previousResponseId,
+    },
+    { signal: abortSignal },
+  );
 
-    const response = await openai.responses.create(
-        {
-            instructions: systemPrompt,
-            input,
-            ...getModelProperties("edit"),
-            previous_response_id: previousResponseId,
-        },
-        { signal: abortSignal }
+  try {
+    const patch = response.output_text;
+    console.log("Applying patch:", patch);
+
+    process_patch(
+      patch,
+      () => content,
+      (_, c) => (content = c),
+      () => {},
     );
-
-    try {
-        const patch = response.output_text;
-        console.log("Applying patch:", patch);
-
-        process_patch(
-            patch,
-            () => content,
-            (_, c) => (content = c),
-            () => { }
-        );
-        onPatchApplied?.(content);
-        return response.id;
-    } catch (error) {
-        // Only attempt to retry an invalid patch once.
-        if (prompt.startsWith(fixInvalidPatchPrompt)) {
-            console.error("Patch application failed:", error);
-            return undefined;
-        }
-
-        console.log("Retrying with fixed patch due to error:", error);
-        return editContent(
-            content,
-            `${fixInvalidPatchPrompt}${error}`,
-            description,
-            instructions,
-            additionalReferences,
-            onPatchApplied,
-            abortSignal,
-            response.id
-        );
+    onPatchApplied?.(content);
+    return response.id;
+  } catch (error) {
+    // Only attempt to retry an invalid patch once.
+    if (prompt.startsWith(fixInvalidPatchPrompt)) {
+      console.error("Patch application failed:", error);
+      return undefined;
     }
+
+    console.log("Retrying with fixed patch due to error:", error);
+    return editContent(
+      content,
+      `${fixInvalidPatchPrompt}${error}`,
+      description,
+      instructions,
+      additionalReferences,
+      onPatchApplied,
+      abortSignal,
+      response.id,
+    );
+  }
 }

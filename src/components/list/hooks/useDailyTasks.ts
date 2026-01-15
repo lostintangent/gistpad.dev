@@ -26,7 +26,7 @@ export function useDailyTasks(dailyNotes: Gist | null) {
       // Check if any files exist and have content
       const filesExist = Object.keys(dailyNotes.files).length > 0;
       const anyMissingContent = Object.values(dailyNotes.files).some(
-        (file) => file.content === undefined
+        (file) => file.content === undefined,
       );
 
       // If files are missing content, fetch the full gist
@@ -38,17 +38,14 @@ export function useDailyTasks(dailyNotes: Gist | null) {
           const fullGist = await getGistById(dailyNotes.id);
 
           // Update the React Query cache with the complete gist
-          queryClient.setQueryData(
-            ["gists"],
-            (oldData: GistData | undefined) => {
-              if (!oldData) return oldData;
+          queryClient.setQueryData(["gists"], (oldData: GistData | undefined) => {
+            if (!oldData) return oldData;
 
-              return {
-                ...oldData,
-                dailyNotes: fullGist,
-              };
-            }
-          );
+            return {
+              ...oldData,
+              dailyNotes: fullGist,
+            };
+          });
 
           // Process the updated gist with contents
           processGistStats(fullGist);
@@ -98,10 +95,8 @@ export function useDailyTasks(dailyNotes: Gist | null) {
           date = parse(filenameWithoutExt, "yyyy-MM-dd", new Date());
 
           // Check if it's a past date with incomplete tasks
-          const hasUncompletedTasks =
-            totalTaskMatches.length > completedTaskMatches.length;
-          isPastDueWithTasks =
-            !isToday(date) && date < today && hasUncompletedTasks;
+          const hasUncompletedTasks = totalTaskMatches.length > completedTaskMatches.length;
+          isPastDueWithTasks = !isToday(date) && date < today && hasUncompletedTasks;
         } catch (e) {
           // If filename doesn't match expected date format, just continue
           console.warn(`Could not parse date from filename: ${file.filename}`);

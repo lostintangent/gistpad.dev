@@ -34,15 +34,10 @@ const voiceValues = [
   { label: "verse", info: "Bright and inquisitive" },
 ];
 
-export function frontmatterCompletions(
-  context: CompletionContext
-): CompletionResult | null {
+export function frontmatterCompletions(context: CompletionContext): CompletionResult | null {
   const line = context.state.doc.lineAt(context.pos);
   const docStart = line.number <= 50;
-  const hasFrontmatterStart = context.state.doc
-    .slice(0, 100)
-    .toString()
-    .startsWith("---");
+  const hasFrontmatterStart = context.state.doc.slice(0, 100).toString().startsWith("---");
 
   if (!docStart || !hasFrontmatterStart) return null;
 
@@ -65,26 +60,29 @@ export function frontmatterCompletions(
   }
 
   // Check if we're in a nested property context
-  const isEditProperty = /^\s*edit\s*:\s*$/.test(beforeCursor) ||
-    /^\s{2}(\w*)$/.test(beforeCursor) &&
-    context.state.doc
-      .lineAt(line.number - 1)
-      .text.trim()
-      .startsWith("edit:");
+  const isEditProperty =
+    /^\s*edit\s*:\s*$/.test(beforeCursor) ||
+    (/^\s{2}(\w*)$/.test(beforeCursor) &&
+      context.state.doc
+        .lineAt(line.number - 1)
+        .text.trim()
+        .startsWith("edit:"));
 
-  const isDiscussProperty = /^\s*discuss\s*:\s*$/.test(beforeCursor) ||
-    /^\s{2}(\w*)$/.test(beforeCursor) &&
-    context.state.doc
-      .lineAt(line.number - 1)
-      .text.trim()
-      .startsWith("discuss:");
+  const isDiscussProperty =
+    /^\s*discuss\s*:\s*$/.test(beforeCursor) ||
+    (/^\s{2}(\w*)$/.test(beforeCursor) &&
+      context.state.doc
+        .lineAt(line.number - 1)
+        .text.trim()
+        .startsWith("discuss:"));
 
-  const isTalkProperty = /^\s*talk\s*:\s*$/.test(beforeCursor) ||
-    /^\s{2}(\w*)$/.test(beforeCursor) &&
-    context.state.doc
-      .lineAt(line.number - 1)
-      .text.trim()
-      .startsWith("talk:");
+  const isTalkProperty =
+    /^\s*talk\s*:\s*$/.test(beforeCursor) ||
+    (/^\s{2}(\w*)$/.test(beforeCursor) &&
+      context.state.doc
+        .lineAt(line.number - 1)
+        .text.trim()
+        .startsWith("talk:"));
 
   // Handle nested property completions
   if (isEditProperty || isDiscussProperty || isTalkProperty) {
@@ -115,7 +113,7 @@ export function frontmatterCompletions(
 
     // Filter out properties that are already defined in the section
     const availableProperties = propertyOptions.filter(
-      (prop) => !section || !(prop.label in section)
+      (prop) => !section || !(prop.label in section),
     );
 
     return {
@@ -138,7 +136,7 @@ export function frontmatterCompletions(
 
   // Filter out properties that are already defined in the frontmatter
   const availableProperties = frontmatterProperties.filter(
-    (prop) => !frontMatter || !(prop.label in frontMatter)
+    (prop) => !frontMatter || !(prop.label in frontMatter),
   );
 
   return {

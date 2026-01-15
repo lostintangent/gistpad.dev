@@ -15,8 +15,8 @@ export function ImageDialog({ imageUrl, onClose }: ImageDialogProps) {
         }
       }}
     >
-      <DialogContent 
-        className="p-0 border-none bg-transparent flex items-center justify-center cursor-pointer" 
+      <DialogContent
+        className="p-0 border-none bg-transparent flex items-center justify-center cursor-pointer"
         showCloseButton={false}
       >
         <img

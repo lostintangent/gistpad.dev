@@ -81,7 +81,7 @@ const actionTriggerWords = {
 export async function classifyAction(
   request: string,
   hasGistSelected: boolean = true,
-  suspectedAction?: string
+  suspectedAction?: string,
 ): Promise<string> {
   // Determine which actions are available based
   // on whether the user currently has a gist opened.

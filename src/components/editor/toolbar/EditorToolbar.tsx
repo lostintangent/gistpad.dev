@@ -17,16 +17,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { GistRevision, isDailyNote, type Gist } from "@/lib/github";
 import { groupFilesByDate, isDateBasedGist } from "@/lib/utils";
 import { useAtom } from "jotai";
-import {
-  Calendar,
-  Check,
-  ChevronDown,
-  FileText,
-  Pencil,
-  Plus,
-  Star,
-  X,
-} from "lucide-react";
+import { Calendar, Check, ChevronDown, FileText, Pencil, Plus, Star, X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import DesktopToolbar from "./DesktopToolbar";
 import MobileToolbar from "./MobileToolbar";
@@ -120,9 +111,7 @@ export default ({
   onViewFullscreen,
   onToggleZenMode,
 }: EditorToolbarProps) => {
-  const [currentDescription, setCurrentDescription] = useState(
-    description || ""
-  );
+  const [currentDescription, setCurrentDescription] = useState(description || "");
 
   const [currentFilename, setCurrentFilename] = useState("");
 
@@ -137,9 +126,7 @@ export default ({
 
   const fileCount = gistId && gist ? Object.keys(gist.files).length : 0;
   const filteredFiles = gistId
-    ? Object.keys(gist?.files || {}).filter((filename) =>
-      filename.endsWith(".md")
-    )
+    ? Object.keys(gist?.files || {}).filter((filename) => filename.endsWith(".md"))
     : [];
 
   const isDailyNoteGist = gist && isDailyNote(gist);
@@ -169,7 +156,7 @@ export default ({
         setIsEditingFilename(false);
       }
     },
-    [currentFilename, selectedFile, gistId, onRenameFile, gist]
+    [currentFilename, selectedFile, gistId, onRenameFile, gist],
   );
 
   return (
@@ -213,20 +200,15 @@ export default ({
         ) : (
           gistId && (
             <div className="flex items-center gap-1">
-              {(!isReadOnly || fileCount > 1) &&
-                !isDailyNoteGist &&
-                !isEditingFilename ? (
+              {(!isReadOnly || fileCount > 1) && !isDailyNoteGist && !isEditingFilename ? (
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-2 p-1!"
-                    >
+                    <Button variant="ghost" size="sm" className="h-8 gap-2 p-1!">
                       <ChevronDown className="h-4 w-4" />
                       <h2
-                        className={`text-lg font-semibold flex gap-2 items-center${isMobile ? " max-w-[220px] truncate" : ""
-                          }`}
+                        className={`text-lg font-semibold flex gap-2 items-center${
+                          isMobile ? " max-w-[220px] truncate" : ""
+                        }`}
                       >
                         {selectedFile === "README.md" ? (
                           <ScrollableText>
@@ -244,9 +226,7 @@ export default ({
                           </ScrollableText>
                         ) : (
                           <>
-                            {isDateBasedGist(gist) && (
-                              <Calendar className="h-4 w-4" />
-                            )}
+                            {isDateBasedGist(gist) && <Calendar className="h-4 w-4" />}
                             <ScrollableText>
                               <span className={commandTitleClass}>
                                 {selectedFile.replace(/\.md$/, "")}
@@ -269,9 +249,7 @@ export default ({
                               <DropdownMenuSubTrigger
                                 className={
                                   groups[year] &&
-                                    Object.values(groups[year])
-                                      .flat()
-                                      .includes(selectedFile)
+                                  Object.values(groups[year]).flat().includes(selectedFile)
                                     ? "data-[state=closed]:bg-primary data-[state=closed]:text-primary-foreground"
                                     : ""
                                 }
@@ -285,9 +263,7 @@ export default ({
                                     <DropdownMenuSub key={month}>
                                       <DropdownMenuSubTrigger
                                         className={
-                                          groups[year][month].includes(
-                                            selectedFile
-                                          )
+                                          groups[year][month].includes(selectedFile)
                                             ? "data-[state=closed]:bg-primary data-[state=closed]:text-primary-foreground"
                                             : ""
                                         }
@@ -296,7 +272,7 @@ export default ({
                                         {new Date(
                                           Number(year),
                                           Number(month) - 1,
-                                          1
+                                          1,
                                         ).toLocaleString(undefined, {
                                           month: "long",
                                         })}
@@ -305,15 +281,11 @@ export default ({
                                         {groups[year][month].map((filename) => (
                                           <DropdownMenuItem
                                             key={filename}
-                                            onClick={() =>
-                                              onSelectFile?.(filename)
-                                            }
+                                            onClick={() => onSelectFile?.(filename)}
                                             className={`gap-2${filename === selectedFile ? " bg-primary text-primary-foreground" : ""}`}
                                           >
                                             <Calendar className="h-4 w-4" />
-                                            {new Date(
-                                              filename.replace(".md", "")
-                                            ).getUTCDate()}
+                                            {new Date(filename.replace(".md", "")).getUTCDate()}
                                           </DropdownMenuItem>
                                         ))}
                                       </DropdownMenuSubContent>
@@ -388,9 +360,7 @@ export default ({
                     </ScrollableText>
                   ) : (
                     <ScrollableText>
-                      <span className={commandTitleClass}>
-                        {selectedFile.replace(/\.md$/, "")}
-                      </span>
+                      <span className={commandTitleClass}>{selectedFile.replace(/\.md$/, "")}</span>
                     </ScrollableText>
                   )}
                 </h2>
@@ -406,10 +376,9 @@ export default ({
                     className="h-6 w-6"
                   >
                     <Star
-                      className={`h-4 w-4 ${isStarred
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-yellow-400"
-                        }`}
+                      className={`h-4 w-4 ${
+                        isStarred ? "fill-yellow-400 text-yellow-400" : "text-yellow-400"
+                      }`}
                     />
                   </Button>
                 ) : (
@@ -456,9 +425,7 @@ export default ({
                           if (selectedFile === "README.md") {
                             setIsEditingDescription(true);
                           } else {
-                            setCurrentFilename(
-                              selectedFile.replace(/\.md$/, "")
-                            );
+                            setCurrentFilename(selectedFile.replace(/\.md$/, ""));
                             setIsEditingFilename(true);
                           }
                         }}

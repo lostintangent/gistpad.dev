@@ -1,10 +1,6 @@
 import { MarkdownPreview } from "@/components/preview/MarkdownPreview";
 import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CircleChevronRight, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -51,7 +47,7 @@ export function AiLoadingMessage({
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
 
   const [currentLoadingMessage, setCurrentLoadingMessage] = useState(
-    messages[Math.floor(Math.random() * messages.length)]
+    messages[Math.floor(Math.random() * messages.length)],
   );
 
   useEffect(() => {
@@ -106,15 +102,9 @@ export function AiLoadingMessage({
                 )}
               </button>
             </PopoverTrigger>
-            <PopoverContent
-              className="max-w-xs italic"
-              autoFocus={false}
-              side="top"
-            >
+            <PopoverContent className="max-w-xs italic" autoFocus={false} side="top">
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <MarkdownPreview isReadonly={true}>
-                  {loadingDetails}
-                </MarkdownPreview>
+                <MarkdownPreview isReadonly={true}>{loadingDetails}</MarkdownPreview>
               </div>
             </PopoverContent>
           </Popover>
@@ -128,18 +118,11 @@ export function AiLoadingMessage({
                 View details
                 {isWebSearching && <Globe className="w-3 h-3" />}
               </Badge>
-
             </button>
           </PopoverTrigger>
-          <PopoverContent
-            className="max-w-xs italic"
-            autoFocus={false}
-            side="bottom"
-          >
+          <PopoverContent className="max-w-xs italic" autoFocus={false} side="bottom">
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <MarkdownPreview isReadonly={true}>
-                {loadingDetails}
-              </MarkdownPreview>
+              <MarkdownPreview isReadonly={true}>{loadingDetails}</MarkdownPreview>
             </div>
           </PopoverContent>
         </Popover>

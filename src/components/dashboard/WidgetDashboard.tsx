@@ -52,16 +52,12 @@ interface CommentsDialogConfig {
 
 export function WidgetDashboard() {
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editModeTriggeredByLongPress, setEditModeTriggeredByLongPress] =
-    useState(false);
-  const [editingConfigWidgets, setEditingConfigWidgets] = useState<Set<string>>(
-    new Set()
+  const [editModeTriggeredByLongPress, setEditModeTriggeredByLongPress] = useState(false);
+  const [editingConfigWidgets, setEditingConfigWidgets] = useState<Set<string>>(new Set());
+  const [commentsDialog, setCommentsDialog] = useState<CommentsDialogConfig | null>(null);
+  const [mediaDialogItem, setMediaDialogItem] = useState<string | MediaItem | MediaItem[] | null>(
+    null,
   );
-  const [commentsDialog, setCommentsDialog] =
-    useState<CommentsDialogConfig | null>(null);
-  const [mediaDialogItem, setMediaDialogItem] = useState<
-    string | MediaItem | MediaItem[] | null
-  >(null);
   const [availableCollapsed, setAvailableCollapsed] = useState(false);
   const widgetRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -79,9 +75,7 @@ export function WidgetDashboard() {
         // Map saved widgets back to widget components with collapsed state
         return savedWidgets
           .map((savedWidget) => {
-            const widget = allWidgetTypes.find(
-              (w) => w.type === savedWidget.type
-            );
+            const widget = allWidgetTypes.find((w) => w.type === savedWidget.type);
             if (!widget) return null;
             return {
               id: savedWidget.id,
@@ -178,8 +172,7 @@ export function WidgetDashboard() {
     const [removed] = newWidgets.splice(draggedIndex, 1);
 
     // Adjust drop index if dragging from before the drop position
-    const adjustedDropIndex =
-      draggedIndex < dragOverIndex ? dragOverIndex - 1 : dragOverIndex;
+    const adjustedDropIndex = draggedIndex < dragOverIndex ? dragOverIndex - 1 : dragOverIndex;
     newWidgets.splice(adjustedDropIndex, 0, removed);
 
     setWidgets(newWidgets);
@@ -191,10 +184,7 @@ export function WidgetDashboard() {
     setWidgets(widgets.filter((w) => w.id !== widgetId));
   };
 
-  const handleAddWidget = (
-    widgetType: string,
-    position: "top" | "bottom" = "bottom"
-  ) => {
+  const handleAddWidget = (widgetType: string, position: "top" | "bottom" = "bottom") => {
     const allWidgetTypes = getAllWidgetTypes();
     const widgetToAdd = allWidgetTypes.find((w) => w.type === widgetType);
     if (widgetToAdd) {
@@ -222,9 +212,7 @@ export function WidgetDashboard() {
         collapsed: false,
         config: defaultConfig,
       };
-      setWidgets(
-        position === "top" ? [newWidget, ...widgets] : [...widgets, newWidget]
-      );
+      setWidgets(position === "top" ? [newWidget, ...widgets] : [...widgets, newWidget]);
       setTimeout(() => {
         if (position === "top") {
           widgetListRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -244,23 +232,14 @@ export function WidgetDashboard() {
       if (index === -1) return prev;
       const newWidgets = [...prev];
       const targetIndex =
-        direction === "up"
-          ? Math.max(0, index - 1)
-          : Math.min(prev.length - 1, index + 1);
-      [newWidgets[index], newWidgets[targetIndex]] = [
-        newWidgets[targetIndex],
-        newWidgets[index],
-      ];
+        direction === "up" ? Math.max(0, index - 1) : Math.min(prev.length - 1, index + 1);
+      [newWidgets[index], newWidgets[targetIndex]] = [newWidgets[targetIndex], newWidgets[index]];
       return newWidgets;
     });
   };
 
   const handleToggleCollapsed = (widgetId: string) => {
-    setWidgets(
-      widgets.map((w) =>
-        w.id === widgetId ? { ...w, collapsed: !w.collapsed } : w
-      )
-    );
+    setWidgets(widgets.map((w) => (w.id === widgetId ? { ...w, collapsed: !w.collapsed } : w)));
   };
 
   // Get available widgets (not currently displayed)
@@ -270,9 +249,7 @@ export function WidgetDashboard() {
       const exists = widgets.some((w) => w.type === widget.type);
       // If widget has config, it can be added multiple times (configurable widgets)
       // If no config or only has default values, only allow one instance
-      const hasNonDefaultConfig = widgetDef?.config?.some(
-        (opt) => opt.default === undefined
-      );
+      const hasNonDefaultConfig = widgetDef?.config?.some((opt) => opt.default === undefined);
       return hasNonDefaultConfig ? true : !exists;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -298,17 +275,14 @@ export function WidgetDashboard() {
       const containerRect = widgetListRef.current.getBoundingClientRect();
       const widgetRect = widgetElement.getBoundingClientRect();
       const scrollTop = widgetListRef.current.scrollTop;
-      const targetScroll =
-        scrollTop + (widgetRect.top - containerRect.top) - 12;
+      const targetScroll = scrollTop + (widgetRect.top - containerRect.top) - 12;
 
       // Check if scrolling is needed
-      const isScrollable =
-        widgetListRef.current.scrollHeight > widgetListRef.current.clientHeight;
+      const isScrollable = widgetListRef.current.scrollHeight > widgetListRef.current.clientHeight;
       const isAlreadyAtTarget = Math.abs(scrollTop - targetScroll) < 1;
 
       // Clamp target scroll to valid range
-      const maxScroll =
-        widgetListRef.current.scrollHeight - widgetListRef.current.clientHeight;
+      const maxScroll = widgetListRef.current.scrollHeight - widgetListRef.current.clientHeight;
       const clampedTarget = Math.max(0, Math.min(targetScroll, maxScroll));
       const willActuallyScroll = Math.abs(scrollTop - clampedTarget) > 1;
 
@@ -316,11 +290,9 @@ export function WidgetDashboard() {
         // No scrolling needed, just highlight the widget visually
         focusWidget(widgetElement);
       } else {
-        widgetListRef.current.addEventListener(
-          "scrollend",
-          () => focusWidget(widgetElement),
-          { once: true }
-        );
+        widgetListRef.current.addEventListener("scrollend", () => focusWidget(widgetElement), {
+          once: true,
+        });
 
         widgetListRef.current.scrollTo({
           top: targetScroll,
@@ -335,16 +307,10 @@ export function WidgetDashboard() {
     if (!widgetDef) return widget.name;
 
     // Use the first config option without a default value for the title
-    const titleConfigOption = widgetDef.config?.find(
-      (opt) => opt.default === undefined
-    );
+    const titleConfigOption = widgetDef.config?.find((opt) => opt.default === undefined);
     const topConfigValue =
-      titleConfigOption?.id && widget.config
-        ? widget.config[titleConfigOption.id]
-        : undefined;
-    return topConfigValue
-      ? `${widgetDef.name} (${topConfigValue})`
-      : widgetDef.name;
+      titleConfigOption?.id && widget.config ? widget.config[titleConfigOption.id] : undefined;
+    return topConfigValue ? `${widgetDef.name} (${topConfigValue})` : widgetDef.name;
   };
 
   return (
@@ -386,19 +352,11 @@ export function WidgetDashboard() {
               </SheetTitle>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    title="Jump to widget"
-                  >
+                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Jump to widget">
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="max-h-80 overflow-y-auto"
-                >
+                <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
                   {widgets.length === 0 ? (
                     <div className="px-2 py-1.5 text-sm text-muted-foreground">
                       No widgets added
@@ -411,9 +369,7 @@ export function WidgetDashboard() {
                           onClick={() => scrollToWidget(widget.id)}
                           className="cursor-pointer"
                         >
-                          <span className="mr-2 text-muted-foreground">
-                            {index + 1}.
-                          </span>
+                          <span className="mr-2 text-muted-foreground">{index + 1}.</span>
                           {getWidgetDisplayTitle(widget)}
                         </DropdownMenuItem>
                       );
@@ -438,24 +394,20 @@ export function WidgetDashboard() {
                           const widgetDef = getWidget(widget.type);
                           // Only require config for options without default values
                           const configOptionsWithoutDefaults =
-                            widgetDef?.config?.filter(
-                              (opt) => opt.default === undefined
-                            ) || [];
-                          const requiresConfig =
-                            configOptionsWithoutDefaults.length > 0;
+                            widgetDef?.config?.filter((opt) => opt.default === undefined) || [];
+                          const requiresConfig = configOptionsWithoutDefaults.length > 0;
 
                           // Check if all required config options have values
-                          const hasRequiredConfig =
-                            configOptionsWithoutDefaults.every(
-                              (opt) =>
-                                widget.config &&
-                                widget.config[opt.id] &&
-                                widget.config[opt.id].trim() !== ""
-                            );
+                          const hasRequiredConfig = configOptionsWithoutDefaults.every(
+                            (opt) =>
+                              widget.config &&
+                              widget.config[opt.id] &&
+                              widget.config[opt.id].trim() !== "",
+                          );
 
                           // Keep widget if it doesn't require config OR if it has all required config
                           return !requiresConfig || hasRequiredConfig;
-                        })
+                        }),
                       );
                       setIsEditMode(false);
                     }}
@@ -481,12 +433,7 @@ export function WidgetDashboard() {
               )}
               <div className="h-4 w-px bg-border" />
               <SheetClose asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Close dashboard"
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8" title="Close dashboard">
                   <PanelLeftOpen className="h-4 w-4" />
                 </Button>
               </SheetClose>
@@ -502,9 +449,7 @@ export function WidgetDashboard() {
             e.preventDefault();
 
             // Get all widget elements
-            const widgetElements = Array.from(
-              e.currentTarget.querySelectorAll("[data-widget]")
-            );
+            const widgetElements = Array.from(e.currentTarget.querySelectorAll("[data-widget]"));
             const mouseY = e.clientY;
 
             // Check if mouse is above the first widget
@@ -518,9 +463,7 @@ export function WidgetDashboard() {
               }
 
               // Check if mouse is below the last widget
-              const lastWidget = widgetElements[
-                widgetElements.length - 1
-              ] as HTMLElement;
+              const lastWidget = widgetElements[widgetElements.length - 1] as HTMLElement;
               const lastWidgetRect = lastWidget.getBoundingClientRect();
 
               if (mouseY > lastWidgetRect.bottom) {
@@ -563,8 +506,9 @@ export function WidgetDashboard() {
                   onDragEnd={handleDragEnd}
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDrop={handleDrop}
-                  className={`${isEditMode ? "cursor-move" : ""} ${isDragging ? "opacity-30" : ""
-                    } first:mt-3 rounded-lg transition-all`}
+                  className={`${isEditMode ? "cursor-move" : ""} ${
+                    isDragging ? "opacity-30" : ""
+                  } first:mt-3 rounded-lg transition-all`}
                 >
                   <Widget
                     title={getWidgetDisplayTitle(widget)}
@@ -599,7 +543,7 @@ export function WidgetDashboard() {
 
                         // Compare only non-optional config values
                         return nonOptionalConfigKeys.every(
-                          (key) => w.config?.[key] === config[key]
+                          (key) => w.config?.[key] === config[key],
                         );
                       });
 
@@ -608,9 +552,7 @@ export function WidgetDashboard() {
                       }
 
                       setWidgets((prev) =>
-                        prev.map((w) =>
-                          w.id === widget.id ? { ...w, config } : w
-                        )
+                        prev.map((w) => (w.id === widget.id ? { ...w, config } : w)),
                       );
                       // Remove from editing set when saved
                       setEditingConfigWidgets((prev) => {
@@ -687,9 +629,7 @@ export function WidgetDashboard() {
         {isEditMode && availableWidgets.length > 0 && (
           <div className="border-t p-3 bg-background sticky bottom-0">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                Add widget to dashboard
-              </h4>
+              <h4 className="text-sm font-medium text-muted-foreground">Add widget to dashboard</h4>
               <Button
                 variant="ghost"
                 size="icon"
@@ -736,19 +676,12 @@ export function WidgetDashboard() {
       </SheetContent>
 
       {commentsDialog && (
-        <CommentsDialog
-          isOpen={true}
-          onClose={() => setCommentsDialog(null)}
-          {...commentsDialog}
-        />
+        <CommentsDialog isOpen={true} onClose={() => setCommentsDialog(null)} {...commentsDialog} />
       )}
 
-      {mediaDialogItem &&
-        <MediaDialog
-          media={mediaDialogItem}
-          onClose={() => setMediaDialogItem(null)}
-        />
-      }
+      {mediaDialogItem && (
+        <MediaDialog media={mediaDialogItem} onClose={() => setMediaDialogItem(null)} />
+      )}
     </Sheet>
   );
 }

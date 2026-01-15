@@ -26,11 +26,7 @@ function formatCount(count: number): string {
 interface WidgetProps<T> {
   title: string;
   fetcher: (config?: Record<string, string>) => Promise<T>;
-  children: (
-    data: T | undefined,
-    isLoading: boolean,
-    config?: Record<string, string>
-  ) => ReactNode;
+  children: (data: T | undefined, isLoading: boolean, config?: Record<string, string>) => ReactNode;
   staleTime?: number;
   onRemove?: () => void;
   collapsed?: boolean;
@@ -49,9 +45,7 @@ interface WidgetProps<T> {
   emptyStateMessage?: string | null; // null means return null, undefined means default behavior
   checkEmpty?: (data: T | undefined) => boolean;
   getExternalUrl?: (config?: Record<string, string>) => string;
-  getBadge?: (
-    config?: Record<string, string>
-  ) => Promise<WidgetBadge | undefined>;
+  getBadge?: (config?: Record<string, string>) => Promise<WidgetBadge | undefined>;
 }
 
 export function Widget<T>({
@@ -79,7 +73,10 @@ export function Widget<T>({
   getBadge,
 }: WidgetProps<T>) {
   // Transform title once for both keys (lowercase, spaces to hyphens)
-  const titleKey = title.toLowerCase().replace(/\s+/g, "-").replace(/[\(\)]/g, "");
+  const titleKey = title
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[\(\)]/g, "");
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInEditMode, setIsInEditMode] = useState(false);
@@ -141,9 +138,7 @@ export function Widget<T>({
 
   // Use external control if provided, otherwise use internal state
   const isEditingConfig =
-    externalIsEditingConfig !== undefined
-      ? externalIsEditingConfig
-      : internalIsEditingConfig;
+    externalIsEditingConfig !== undefined ? externalIsEditingConfig : internalIsEditingConfig;
   const setIsEditingConfig = (value: boolean) => {
     if (onEditConfigChange) {
       onEditConfigChange(value);
@@ -151,24 +146,22 @@ export function Widget<T>({
       setInternalIsEditingConfig(value);
     }
   };
-  const [pendingConfig, setPendingConfig] = useState<Record<string, string>>(
-    () => {
-      const initial: Record<string, string> = {};
-      if (config && Object.keys(config).length > 0) {
-        // If config exists, use it as initial values
-        return { ...config };
-      }
-      // Otherwise use defaults
-      configOptions?.forEach((opt) => {
-        if (opt.default !== undefined) {
-          initial[opt.id] = String(opt.default);
-        } else {
-          initial[opt.id] = opt.options?.[0] || "";
-        }
-      });
-      return initial;
+  const [pendingConfig, setPendingConfig] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    if (config && Object.keys(config).length > 0) {
+      // If config exists, use it as initial values
+      return { ...config };
     }
-  );
+    // Otherwise use defaults
+    configOptions?.forEach((opt) => {
+      if (opt.default !== undefined) {
+        initial[opt.id] = String(opt.default);
+      } else {
+        initial[opt.id] = opt.options?.[0] || "";
+      }
+    });
+    return initial;
+  });
   const [configError, setConfigError] = useState<string | null>(null);
 
   // Only require config for options without default values
@@ -178,7 +171,7 @@ export function Widget<T>({
 
   // Check if all required config options have values
   const hasRequiredConfig = configOptionsWithoutDefaults.every(
-    (opt) => config && config[opt.id] && config[opt.id].trim() !== ""
+    (opt) => config && config[opt.id] && config[opt.id].trim() !== "",
   );
 
   const hasConfig = !!config && Object.keys(config).length > 0;
@@ -245,18 +238,10 @@ export function Widget<T>({
       return null; // Return null (don't render anything)
     }
     if (emptyStateMessage) {
-      return (
-        <div className="text-muted-foreground text-sm">
-          {emptyStateMessage}
-        </div>
-      );
+      return <div className="text-muted-foreground text-sm">{emptyStateMessage}</div>;
     }
     // Default empty state message
-    return (
-      <div className="text-muted-foreground text-sm">
-        No data available
-      </div>
-    );
+    return <div className="text-muted-foreground text-sm">No data available</div>;
   };
 
   return (
@@ -279,14 +264,9 @@ export function Widget<T>({
         >
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold">{title}</h3>
-            {badge &&
-              typeof badge.count === "number" &&
-              !isInEditMode && (
-                <TagBadge
-                  tag={formatCount(badge.count)}
-                  color={badge.color}
-                />
-              )}
+            {badge && typeof badge.count === "number" && !isInEditMode && (
+              <TagBadge tag={formatCount(badge.count)} color={badge.color} />
+            )}
           </div>
           {isInEditMode ? (
             <div className="flex items-center">
@@ -372,9 +352,7 @@ export function Widget<T>({
                 }}
                 className="hover:bg-muted rounded p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title={`Refresh ${title.toLowerCase()}`}
-                disabled={
-                  combinedIsLoading || (requiresConfig && !hasRequiredConfig)
-                }
+                disabled={combinedIsLoading || (requiresConfig && !hasRequiredConfig)}
               >
                 <RefreshCw
                   className={`h-3.5 w-3.5 ${combinedIsLoading || isRefetching ? "animate-spin" : ""}`}
@@ -395,9 +373,7 @@ export function Widget<T>({
 
                 // Validate required fields
                 const missingRequired = configOptionsWithoutDefaults.find(
-                  (opt) =>
-                    !pendingConfig[opt.id] ||
-                    pendingConfig[opt.id].trim() === ""
+                  (opt) => !pendingConfig[opt.id] || pendingConfig[opt.id].trim() === "",
                 );
 
                 if (missingRequired) {
@@ -422,13 +398,19 @@ export function Widget<T>({
             >
               {configOptions?.map((opt) => {
                 // Check if this is a boolean-like setting
-                const isBooleanLike = opt.id.toLowerCase().startsWith("show") ||
+                const isBooleanLike =
+                  opt.id.toLowerCase().startsWith("show") ||
                   opt.id.toLowerCase().startsWith("display") ||
                   opt.id.toLowerCase().startsWith("has") ||
                   opt.id.toLowerCase().startsWith("is");
 
                 return (
-                  <div key={opt.id} className={isBooleanLike ? "flex items-center gap-2" : "flex items-center gap-3"}>
+                  <div
+                    key={opt.id}
+                    className={
+                      isBooleanLike ? "flex items-center gap-2" : "flex items-center gap-3"
+                    }
+                  >
                     {isBooleanLike ? (
                       // Checkbox with label side by side
                       <>
@@ -448,7 +430,6 @@ export function Widget<T>({
                             setPendingConfig((prev) => ({ ...prev, [opt.id]: String(checked) }))
                           }
                         />
-
                       </>
                     ) : (
                       // Regular label for non-checkbox fields
@@ -457,15 +438,12 @@ export function Widget<T>({
                         className="text-sm font-medium min-w-24 shrink-0"
                       >
                         {opt.name}
-                        {opt.default === undefined && (
-                          <span className="text-red-500 ml-1">*</span>
+                        {opt.default === undefined && <span className="text-red-500 ml-1">*</span>}
+                        {opt.minValue !== undefined && opt.maxValue !== undefined && (
+                          <span className="text-muted-foreground ml-1">
+                            ({pendingConfig[opt.id] || opt.default})
+                          </span>
                         )}
-                        {opt.minValue !== undefined &&
-                          opt.maxValue !== undefined && (
-                            <span className="text-muted-foreground ml-1">
-                              ({pendingConfig[opt.id] || opt.default})
-                            </span>
-                          )}
                       </Label>
                     )}
                     {isBooleanLike ? null : opt.options ? (
@@ -475,10 +453,7 @@ export function Widget<T>({
                           setPendingConfig((prev) => ({ ...prev, [opt.id]: v }))
                         }
                       >
-                        <SelectTrigger
-                          id={`${titleKey}-${opt.id}`}
-                          className="flex-1"
-                        >
+                        <SelectTrigger id={`${titleKey}-${opt.id}`} className="flex-1">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
@@ -489,8 +464,7 @@ export function Widget<T>({
                           ))}
                         </SelectContent>
                       </Select>
-                    ) : opt.minValue !== undefined ||
-                      opt.maxValue !== undefined ? (
+                    ) : opt.minValue !== undefined || opt.maxValue !== undefined ? (
                       <Slider
                         id={`${titleKey}-${opt.id}`}
                         min={opt.minValue || 1}
@@ -498,9 +472,7 @@ export function Widget<T>({
                         step={1}
                         value={[
                           parseInt(pendingConfig[opt.id]) ||
-                          (typeof opt.default === "number"
-                            ? opt.default
-                            : opt.minValue),
+                            (typeof opt.default === "number" ? opt.default : opt.minValue),
                         ]}
                         onValueChange={(values) =>
                           setPendingConfig((prev) => ({
@@ -526,9 +498,7 @@ export function Widget<T>({
                   </div>
                 );
               })}
-              {configError && (
-                <p className="text-sm text-destructive">{configError}</p>
-              )}
+              {configError && <p className="text-sm text-destructive">{configError}</p>}
               <div className="flex justify-end gap-2">
                 {isEditingConfig && (
                   <Button
@@ -559,11 +529,9 @@ export function Widget<T>({
           ) : (
             children(data, combinedIsLoading, config)
           )}
-          {isInEditMode &&
-            !isEditingConfig &&
-            (!requiresConfig || hasRequiredConfig) && (
-              <div className="absolute inset-0 bg-background/50 backdrop-blur-[0.5px] rounded-b-lg" />
-            )}
+          {isInEditMode && !isEditingConfig && (!requiresConfig || hasRequiredConfig) && (
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-[0.5px] rounded-b-lg" />
+          )}
         </div>
       )}
     </div>

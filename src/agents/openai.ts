@@ -36,16 +36,14 @@ export interface AgentContext {
   additionalReferences?: AdditionalReference[];
 }
 
-export function referencesAsContext(
-  references?: AdditionalReference[]
-): string {
+export function referencesAsContext(references?: AdditionalReference[]): string {
   if (!references || references.length === 0) {
     return "";
   }
 
   const refs = references.map(
     (r) =>
-      `\n<reference>\n<title>${r.title}</title>\n<content>\n${r.content}\n</content>\n</reference>`
+      `\n<reference>\n<title>${r.title}</title>\n<content>\n${r.content}\n</content>\n</reference>`,
   );
 
   return `\n<additional_references>${refs.join("\n")}\n</additional_references>`;
@@ -97,7 +95,7 @@ export function userCommentsAsContext(comments?: GistComment[]): string {
     (comment) => `
     <note>
         ${comment.body}
-    </note>`
+    </note>`,
   );
 
   return `
@@ -111,10 +109,7 @@ ${notes.join("\n")}
 </user_notes>`;
 }
 
-export function buildAgentInput(
-  prompt: string,
-  context: AgentContext = {}
-): string {
+export function buildAgentInput(prompt: string, context: AgentContext = {}): string {
   const documentContext =
     context.content?.trim().length > 0
       ? `<current_document${context.description ? ` title="${context.description}"` : ""}>\n${context.content}\n</current_document>`
@@ -164,7 +159,7 @@ export async function generateDalleImage(prompt: string): Promise<ArrayBuffer> {
 
 export async function* generateTitle(
   prompt: string,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
 ): AsyncGenerator<string> {
   const openai = createOpenAIClient();
 
@@ -175,7 +170,7 @@ export async function* generateTitle(
         "Generate a concise title that summarizes the objective, request, and context in the user's message. Respond with nothing but the title, and prepend it with an emoji.",
       input: prompt,
     },
-    { signal: abortSignal }
+    { signal: abortSignal },
   );
 
   for await (const event of stream) {
@@ -188,7 +183,7 @@ export async function* generateTitle(
 export function makeCancellable<T>(
   run: Promise<T>,
   stream: ResponseStream<T>,
-  responseId: string
+  responseId: string,
 ): CancellablePromise<T> {
   (run as any).cancel = async () => {
     stream.abort();
@@ -209,9 +204,7 @@ export async function cancelResponse(responseId: string): Promise<void> {
   }
 }
 
-export function toAsyncIterable<T>(
-  stream: ReadableStream<T>
-): AsyncIterableIterator<T> {
+export function toAsyncIterable<T>(stream: ReadableStream<T>): AsyncIterableIterator<T> {
   if ((stream as any)[Symbol.asyncIterator]) return stream as any;
 
   const reader = stream.getReader();

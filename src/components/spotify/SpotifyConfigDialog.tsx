@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,49 +6,49 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useEffect, useState } from "react"
-import { deleteSpotifyPlaylistUrl, getSpotifyPlaylistUrl, setSpotifyPlaylistUrl } from "./utils"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useEffect, useState } from "react";
+import { deleteSpotifyPlaylistUrl, getSpotifyPlaylistUrl, setSpotifyPlaylistUrl } from "./utils";
 
 interface SpotifyConfigDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function SpotifyConfigDialog({ open, onOpenChange }: SpotifyConfigDialogProps) {
-  const [playlistUrl, setPlaylistUrl] = useState("")
+  const [playlistUrl, setPlaylistUrl] = useState("");
 
   // Load saved URL when dialog opens
   useEffect(() => {
     if (open) {
-      const savedUrl = getSpotifyPlaylistUrl()
-      setPlaylistUrl(savedUrl)
+      const savedUrl = getSpotifyPlaylistUrl();
+      setPlaylistUrl(savedUrl);
     }
-  }, [open])
+  }, [open]);
 
   const handleSave = () => {
     if (playlistUrl.trim()) {
       // Save the URL
-      setSpotifyPlaylistUrl(playlistUrl)
+      setSpotifyPlaylistUrl(playlistUrl);
     } else {
       // Clear the URL
-      deleteSpotifyPlaylistUrl()
+      deleteSpotifyPlaylistUrl();
     }
 
     // Notify SpotifyPlayer of the change
-    window.dispatchEvent(new CustomEvent('spotify-playlist-updated'))
+    window.dispatchEvent(new CustomEvent("spotify-playlist-updated"));
 
-    onOpenChange(false)
-  }
+    onOpenChange(false);
+  };
 
   const handleCancel = () => {
     // Reset to saved value
-    const savedUrl = getSpotifyPlaylistUrl()
-    setPlaylistUrl(savedUrl)
-    onOpenChange(false)
-  }
+    const savedUrl = getSpotifyPlaylistUrl();
+    setPlaylistUrl(savedUrl);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,11 +78,9 @@ export function SpotifyConfigDialog({ open, onOpenChange }: SpotifyConfigDialogP
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            Save
-          </Button>
+          <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -90,7 +90,7 @@ async function fetchData(): Promise<WeatherData> {
 
   // Fetch weather data from Open-Meteo API
   const response = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&hourly=temperature_2m,precipitation_probability&temperature_unit=fahrenheit&timezone=auto`
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&hourly=temperature_2m,precipitation_probability&temperature_unit=fahrenheit&timezone=auto`,
   );
 
   if (!response.ok) {
@@ -101,7 +101,7 @@ async function fetchData(): Promise<WeatherData> {
 
   // Get location name from reverse geocoding
   const geoResponse = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
   );
   const geoData = await geoResponse.json();
 
@@ -139,9 +139,7 @@ async function fetchData(): Promise<WeatherData> {
 
   // Build hourly forecast for the next 12 hours
   const now = new Date();
-  const startIndex = data.hourly.time.findIndex(
-    (t: string) => new Date(t) >= now
-  );
+  const startIndex = data.hourly.time.findIndex((t: string) => new Date(t) >= now);
   const hourly: HourlyForecast[] = [];
   for (let i = 0; i < 12; i++) {
     const idx = startIndex + i;
@@ -170,8 +168,7 @@ async function fetchData(): Promise<WeatherData> {
 
   return {
     temperature: Math.round(data.current_weather.temperature),
-    description:
-      weatherDescriptions[data.current_weather.weathercode] || "Unknown",
+    description: weatherDescriptions[data.current_weather.weathercode] || "Unknown",
     location: [city, state, country].filter(Boolean).join(", "),
     weatherCode: data.current_weather.weathercode,
     dailyHigh: Math.round(data.daily.temperature_2m_max[0]),
@@ -193,14 +190,8 @@ async function fetchData(): Promise<WeatherData> {
   };
 }
 
-export function WeatherWidget({
-  data,
-  isLoading,
-  config,
-}: WidgetProps<WeatherData>) {
-  const [currentView, setCurrentView] = useState<
-    "summary" | "hourly1" | "hourly2"
-  >("summary");
+export function WeatherWidget({ data, isLoading, config }: WidgetProps<WeatherData>) {
+  const [currentView, setCurrentView] = useState<"summary" | "hourly1" | "hourly2">("summary");
 
   if (isLoading) {
     return (
@@ -237,9 +228,7 @@ export function WeatherWidget({
 
   return (
     <div className="relative w-full overflow-hidden">
-      <div
-        className={`flex transition-transform duration-300 ${getTransformClass()}`}
-      >
+      <div className={`flex transition-transform duration-300 ${getTransformClass()}`}>
         {/* Main view */}
         <div className="flex items-center gap-4 w-full flex-shrink-0">
           <div className="w-16 h-16 flex items-center justify-center">
@@ -276,9 +265,7 @@ export function WeatherWidget({
                 </>
               )}
             </p>
-            <p className="text-sm text-muted-foreground italic">
-              {data.location}
-            </p>
+            <p className="text-sm text-muted-foreground italic">{data.location}</p>
           </div>
         </div>
 

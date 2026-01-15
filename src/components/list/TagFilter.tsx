@@ -1,9 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
 
@@ -43,11 +39,7 @@ export const TagFilter = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
-        <Toggle
-          pressed={selected.length > 0}
-          size="sm"
-          className="h-8 w-8 p-0 relative"
-        >
+        <Toggle pressed={selected.length > 0} size="sm" className="h-8 w-8 p-0 relative">
           <Tag className="h-4 w-4" />
           {selected.length > 0 && (
             <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
@@ -58,10 +50,7 @@ export const TagFilter = ({
       </PopoverTrigger>
       <PopoverContent className="w-39 space-y-1 p-2.5 z-100">
         {Object.entries(tags).map(([id, tag]) => (
-          <label
-            key={id}
-            className="flex items-center gap-2 py-1 cursor-pointer"
-          >
+          <label key={id} className="flex items-center gap-2 py-1 cursor-pointer">
             <Checkbox
               id={`filter-${id}`}
               checked={selected.includes(id)}

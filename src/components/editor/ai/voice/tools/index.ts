@@ -15,44 +15,44 @@ import reviewContentTool from "./review-content";
 import toggleCommentSidebarTool from "./toggle-comment-sidebar";
 
 const tools = [
-    endConversationTool,
-    muteMicrophoneTool,
-    openGistFileTool,
-    openUrlTool,
-    createGistTool,
-    changeViewModeTool,
-    editGistTool,
-    generateImageTool,
-    addGistFileTool,
-    deleteGistTool,
-    reviewContentTool,
-    performResearchTool,
-    saveGistTool,
-    toggleCommentSidebarTool,
+  endConversationTool,
+  muteMicrophoneTool,
+  openGistFileTool,
+  openUrlTool,
+  createGistTool,
+  changeViewModeTool,
+  editGistTool,
+  generateImageTool,
+  addGistFileTool,
+  deleteGistTool,
+  reviewContentTool,
+  performResearchTool,
+  saveGistTool,
+  toggleCommentSidebarTool,
 ];
 
 export function getToolHandlers() {
-    const handlers: Record<string, Tool["handler"]> = {};
-    tools.forEach((tool) => {
-        handlers[tool.definition.name] = tool.handler;
-    });
-    return handlers;
+  const handlers: Record<string, Tool["handler"]> = {};
+  tools.forEach((tool) => {
+    handlers[tool.definition.name] = tool.handler;
+  });
+  return handlers;
 }
 
 export function getBaseTools() {
-    return tools
-        .filter((tool) => !tool.isEditTool)
-        .map((tool) => ({
-            ...tool.definition,
-            type: "function",
-        }));
+  return tools
+    .filter((tool) => !tool.isEditTool)
+    .map((tool) => ({
+      ...tool.definition,
+      type: "function",
+    }));
 }
 
 export function getEditTools() {
-    return tools
-        .filter((tool) => tool.isEditTool)
-        .map((tool) => ({
-            ...tool.definition,
-            type: "function",
-        }));
+  return tools
+    .filter((tool) => tool.isEditTool)
+    .map((tool) => ({
+      ...tool.definition,
+      type: "function",
+    }));
 }

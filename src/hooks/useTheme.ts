@@ -45,9 +45,7 @@ This hook does three things:
 */
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() =>
-    prefersDarkMode() ? "dark" : "light"
-  );
+  const [theme, setTheme] = useState<Theme>(() => (prefersDarkMode() ? "dark" : "light"));
 
   useEffect(() => {
     if (typeof window === "undefined") return;

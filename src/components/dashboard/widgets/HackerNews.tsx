@@ -26,7 +26,7 @@ function cleanHackerNewsText(text?: string): string | undefined {
   // them so that they always show the full URL.
   decoded = decoded.replace(
     /<a href="([^"]*)"[^>]*>([^<]+)<\/a>/g,
-    (_, href) => `[${href}](${href})`
+    (_, href) => `[${href}](${href})`,
   );
 
   return decoded;
@@ -51,13 +51,9 @@ function getDomain(url?: string): string | undefined {
   }
 }
 
-export async function fetchData(
-  config?: Record<string, string>
-): Promise<Story[]> {
+export async function fetchData(config?: Record<string, string>): Promise<Story[]> {
   // Get top story IDs
-  const topStoriesResponse = await fetch(
-    "https://hacker-news.firebaseio.com/v0/topstories.json"
-  );
+  const topStoriesResponse = await fetch("https://hacker-news.firebaseio.com/v0/topstories.json");
   const topStoryIds = await topStoriesResponse.json();
 
   // Use post count from config, default to 10
@@ -72,9 +68,7 @@ export async function fetchData(
     const batchIds = topStoryIds.slice(index, index + batchSize);
 
     const storyPromises = batchIds.map(async (id: number) => {
-      const response = await fetch(
-        `https://hacker-news.firebaseio.com/v0/item/${id}.json`
-      );
+      const response = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
       return response.json();
     });
 
@@ -91,21 +85,15 @@ export async function fetchData(
   return stories.slice(0, postCount);
 }
 
-export async function fetchHackerNewsComments(
-  storyId: number
-): Promise<Comment[]> {
+export async function fetchHackerNewsComments(storyId: number): Promise<Comment[]> {
   const fetchComment = async (id: number): Promise<Comment | null> => {
-    const response = await fetch(
-      `https://hacker-news.firebaseio.com/v0/item/${id}.json`
-    );
+    const response = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
     const data = await response.json();
     if (!data || data.deleted || data.dead) return null;
 
     let replies: Comment[] = [];
     if (data.kids && data.kids.length > 0) {
-      const repliesData = await Promise.all(
-        data.kids.map((kid: number) => fetchComment(kid))
-      );
+      const repliesData = await Promise.all(data.kids.map((kid: number) => fetchComment(kid)));
       replies = repliesData.filter(Boolean) as Comment[];
     }
 
@@ -122,15 +110,11 @@ export async function fetchHackerNewsComments(
     };
   };
 
-  const storyResponse = await fetch(
-    `https://hacker-news.firebaseio.com/v0/item/${storyId}.json`
-  );
+  const storyResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`);
   const story = await storyResponse.json();
   if (!story.kids || story.kids.length === 0) return [];
 
-  const comments = await Promise.all(
-    story.kids.map((id: number) => fetchComment(id))
-  );
+  const comments = await Promise.all(story.kids.map((id: number) => fetchComment(id)));
   return comments.filter(Boolean) as Comment[];
 }
 
@@ -147,9 +131,7 @@ export function HackerNewsWidget({
         {[...Array(postCount)].map((_, index) => (
           <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
             <div className="flex gap-2">
-              <span className="text-sm text-muted-foreground mt-0.5">
-                {index + 1}.
-              </span>
+              <span className="text-sm text-muted-foreground mt-0.5">{index + 1}.</span>
               <div className="flex-1 space-y-3 mt-1">
                 <Skeleton className="h-9 w-full" />
                 <div className="flex gap-3">
@@ -170,15 +152,10 @@ export function HackerNewsWidget({
       {data.map((story, index) => (
         <div key={story.id} className="border-b pb-2 last:border-0 last:pb-0">
           <div className="flex gap-2">
-            <span className="text-sm text-muted-foreground mt-0.5">
-              {index + 1}.
-            </span>
+            <span className="text-sm text-muted-foreground mt-0.5">{index + 1}.</span>
             <div className="flex-1">
               <a
-                href={
-                  story.url ||
-                  `https://news.ycombinator.com/item?id=${story.id}`
-                }
+                href={story.url || `https://news.ycombinator.com/item?id=${story.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium hover:underline"
@@ -186,9 +163,7 @@ export function HackerNewsWidget({
                 {story.title}
               </a>
               {story.url && (
-                <span className="text-xs text-muted-foreground ml-1">
-                  ({getDomain(story.url)})
-                </span>
+                <span className="text-xs text-muted-foreground ml-1">({getDomain(story.url)})</span>
               )}
               <div className="flex gap-3 text-xs text-muted-foreground mt-1 mb-2">
                 {story.descendants !== undefined && (

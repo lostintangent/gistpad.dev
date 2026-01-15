@@ -93,16 +93,15 @@ export function useUserSession() {
   const [showStarredGists, setShowStarredGists] = useState(true);
   const [showFormattingToolbar, setShowFormattingToolbar] = useState(true);
 
-  const [recentlyViewedGistFiles, setRecentlyViewedGistFiles] = useState<
-    RecentlyViewedGistFile[]
-  >([]);
+  const [recentlyViewedGistFiles, setRecentlyViewedGistFiles] = useState<RecentlyViewedGistFile[]>(
+    [],
+  );
   const [showInlineComments, setShowInlineComments] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [pinnedGists, setPinnedGists] = useState<string[]>([]);
   const [tags, setTags] = useState<Record<string, TagData>>({});
   const [gistTags, setGistTags] = useState<Record<string, string[]>>({});
-  const [globalFrontMatter, setGlobalFrontMatter] =
-    useState<string>(DEFAULT_FRONTMATTER);
+  const [globalFrontMatter, setGlobalFrontMatter] = useState<string>(DEFAULT_FRONTMATTER);
   const [researchTasks, _setResearchTasks] = useState<ResearchTask[]>([]);
 
   const [selectedGist, setSelectedGist] = useAtom(selectedGistAtom);
@@ -129,8 +128,7 @@ export function useUserSession() {
         user_metadata: {
           user_name: devUserName,
           avatar_url:
-            devUserAvatar ||
-            `https://avatars.githubusercontent.com/u/${devUserId || "0"}?v=4`,
+            devUserAvatar || `https://avatars.githubusercontent.com/u/${devUserId || "0"}?v=4`,
           name: devUserName,
           isAutoSaveEnabled: true,
           showDiffs: false,
@@ -162,8 +160,7 @@ export function useUserSession() {
       setUserProfile({
         login: devUserName,
         avatar_url:
-          devUserAvatar ||
-          `https://avatars.githubusercontent.com/u/${devUserId || "0"}?v=4`,
+          devUserAvatar || `https://avatars.githubusercontent.com/u/${devUserId || "0"}?v=4`,
         initial: devUserName[0].toUpperCase(),
       });
 
@@ -185,10 +182,7 @@ export function useUserSession() {
 
       // Store GitHub token from env in localStorage for API calls
       if (import.meta.env.VITE_GITHUB_TOKEN) {
-        window.localStorage.setItem(
-          TOKEN_CACHE_KEY,
-          import.meta.env.VITE_GITHUB_TOKEN
-        );
+        window.localStorage.setItem(TOKEN_CACHE_KEY, import.meta.env.VITE_GITHUB_TOKEN);
       }
 
       return;
@@ -222,27 +216,17 @@ export function useUserSession() {
             setShowFrontmatter(user.user_metadata.showFrontmatter ?? false);
             setShowLineNumbers(user.user_metadata.showLineNumbers ?? false);
             _setEditorTheme(user.user_metadata.editorTheme ?? "GitHub");
-            setIsSpellcheckEnabled(
-              user.user_metadata.isSpellcheckEnabled ?? true
-            );
+            setIsSpellcheckEnabled(user.user_metadata.isSpellcheckEnabled ?? true);
             setPasteImagesAsHtml(user.user_metadata.pasteImagesAsHtml ?? false);
             setShowArchivedGists(user.user_metadata.showArchivedGists ?? true);
             setShowStarredGists(user.user_metadata.showStarredGists ?? true);
-            setShowFormattingToolbar(
-              user.user_metadata.showFormattingToolbar ?? true
-            );
-            setRecentlyViewedGistFiles(
-              user.user_metadata.recentlyViewedGistFiles ?? []
-            );
-            setShowInlineComments(
-              user.user_metadata.showInlineComments ?? true
-            );
+            setShowFormattingToolbar(user.user_metadata.showFormattingToolbar ?? true);
+            setRecentlyViewedGistFiles(user.user_metadata.recentlyViewedGistFiles ?? []);
+            setShowInlineComments(user.user_metadata.showInlineComments ?? true);
             setPinnedGists(user.user_metadata.pinnedGists ?? []);
             setTags(user.user_metadata.tags ?? {});
             setGistTags(user.user_metadata.gistTags ?? {});
-            setGlobalFrontMatter(
-              user.user_metadata.globalFrontMatter ?? DEFAULT_FRONTMATTER
-            );
+            setGlobalFrontMatter(user.user_metadata.globalFrontMatter ?? DEFAULT_FRONTMATTER);
             _setResearchTasks(user.user_metadata.researchTasks ?? []);
           }
 
@@ -288,7 +272,7 @@ export function useUserSession() {
             JSON.stringify({
               url,
               timestamp: Date.now(),
-            })
+            }),
           );
         }
         // If there's no gist ID in URL but we have a selected gist, use that
@@ -308,7 +292,7 @@ export function useUserSession() {
             JSON.stringify({
               url,
               timestamp: Date.now(),
-            })
+            }),
           );
         }
       }
@@ -461,7 +445,7 @@ export function useUserSession() {
     editModel: string,
     reviewModel: string,
     researchModel: string,
-    showReasoningSummaries: boolean
+    showReasoningSummaries: boolean,
   ) {
     if (apiKey) {
       localStorage.setItem("gistpad-openai-key", apiKey);
@@ -503,7 +487,7 @@ export function useUserSession() {
       owner?: { login?: string; id: number };
       files: Record<string, any>;
     },
-    filename: string
+    filename: string,
   ) {
     const gistId = gist.id;
     const ownerLogin = gist.owner?.login || "unknown";
@@ -529,7 +513,7 @@ export function useUserSession() {
     setRecentlyViewedGistFiles((prevFiles) => {
       // Check if this gist file is already in the list
       const existingIndex = prevFiles.findIndex(
-        (item) => item.id === gistId && item.filename === filename
+        (item) => item.id === gistId && item.filename === filename,
       );
 
       let newFiles;
@@ -579,18 +563,12 @@ export function useUserSession() {
   }
 
   function markResearchTaskAsSeen(id: string) {
-    const tasks = researchTasks.map((t) =>
-      t.id === id ? { ...t, hasBeenSeen: true } : t
-    );
+    const tasks = researchTasks.map((t) => (t.id === id ? { ...t, hasBeenSeen: true } : t));
     _setResearchTasks(tasks);
     updateUserMetadata({ researchTasks: tasks });
   }
 
-  function startResearchTask(
-    id: string,
-    gistId: string | undefined,
-    topic: string
-  ) {
+  function startResearchTask(id: string, gistId: string | undefined, topic: string) {
     const newTask: ResearchTask = {
       id,
       topic,
@@ -604,23 +582,18 @@ export function useUserSession() {
     updateUserMetadata({ researchTasks: tasks });
   }
 
-  function completeResearchTask(
-    id: string,
-    title: string,
-    filename: string,
-    content: string
-  ) {
+  function completeResearchTask(id: string, title: string, filename: string, content: string) {
     const tasks = researchTasks.map((t) =>
       t.id === id
         ? {
-          ...t,
-          title,
-          filename,
-          content,
-          completedTime: new Date().toISOString(),
-          hasBeenSeen: false,
-        }
-        : t
+            ...t,
+            title,
+            filename,
+            content,
+            completedTime: new Date().toISOString(),
+            hasBeenSeen: false,
+          }
+        : t,
     );
     _setResearchTasks(tasks);
     updateUserMetadata({ researchTasks: tasks });

@@ -9,16 +9,9 @@ async function fetchData(config?: Record<string, string>): Promise<string> {
     return "";
   }
   let response = "";
-  await askContent(
-    undefined,
-    prompt,
-    undefined,
-    undefined,
-    undefined,
-    (delta) => {
-      response = delta;
-    }
-  );
+  await askContent(undefined, prompt, undefined, undefined, undefined, (delta) => {
+    response = delta;
+  });
   return response;
 }
 
@@ -44,4 +37,3 @@ export default {
   component: AIWidget,
   staleTime: 1000 * 60 * 60 * 24,
 } as WidgetDefinition<string>;
-

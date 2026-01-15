@@ -5,11 +5,7 @@ interface ScrollableTextProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-export function ScrollableText({
-  children,
-  className,
-  ...props
-}: ScrollableTextProps) {
+export function ScrollableText({ children, className, ...props }: ScrollableTextProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const [showRightBlur, setShowRightBlur] = React.useState(false);

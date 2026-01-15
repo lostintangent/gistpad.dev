@@ -13,15 +13,7 @@ import emojiData from "@emoji-mart/data/sets/15/native.json";
 import { useAtomValue } from "jotai";
 import { Check, Copy, Link } from "lucide-react";
 import * as React from "react";
-import {
-  Children,
-  createElement,
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Children, createElement, memo, useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -62,7 +54,7 @@ const emojis = Object.entries((emojiData as any).emojis).reduce(
     acc[id] = (emoji as any).skins[0]?.native || "";
     return acc;
   },
-  {} as Record<string, string>
+  {} as Record<string, string>,
 );
 
 function createComponents(
@@ -76,7 +68,7 @@ function createComponents(
   enableBlockquoteCopying = true,
   gists?: Gist[],
   onSelectGist?: (gistId: string) => void,
-  setOpenMermaidSvg?: React.Dispatch<React.SetStateAction<string | null>>
+  setOpenMermaidSvg?: React.Dispatch<React.SetStateAction<string | null>>,
 ) {
   let previousEquationResult: string | null = null;
   const namedEquationResults: Map<string, string> = new Map();
@@ -87,9 +79,7 @@ function createComponents(
       <span
         className={
           "cursor-pointer select-none text-primary transition-colors duration-200 " +
-          (revealed
-            ? "bg-transparent"
-            : "bg-current border border-current rounded-sm")
+          (revealed ? "bg-transparent" : "bg-current border border-current rounded-sm")
         }
         onClick={() => setRevealed(true)}
       >
@@ -98,9 +88,7 @@ function createComponents(
     );
   };
 
-  const processHiddenText = (
-    nodes: React.ReactNode[]
-  ): React.ReactNode[] => {
+  const processHiddenText = (nodes: React.ReactNode[]): React.ReactNode[] => {
     return nodes.flatMap((child, index) => {
       if (typeof child === "string") {
         const decoded = decodeHtmlEntities(child);
@@ -132,22 +120,13 @@ function createComponents(
           child !== null &&
           "props" in child &&
           (child.props.className === "language-mermaid" ||
-            child.props.className === "language-tldraw")
+            child.props.className === "language-tldraw"),
       );
 
-      return hasMermaidCode ? (
-        children
-      ) : (
-        <pre className="text-wrap">{children}</pre>
-      );
+      return hasMermaidCode ? children : <pre className="text-wrap">{children}</pre>;
     },
     img: ({ src, alt, ...props }) => (
-      <ClampedImage
-        src={src}
-        alt={alt}
-        {...props}
-        onExpandImage={() => setOpenImageUrl(src)}
-      />
+      <ClampedImage src={src} alt={alt} {...props} onExpandImage={() => setOpenImageUrl(src)} />
     ),
     input({ type, ...props }) {
       if (type === "checkbox") {
@@ -162,19 +141,14 @@ function createComponents(
 
       if (!inline) {
         if (match?.[1] === "mermaid") {
-          return (
-            <Mermaid content={content} onExpandDiagram={setOpenMermaidSvg} />
-          );
+          return <Mermaid content={content} onExpandDiagram={setOpenMermaidSvg} />;
         }
         if (match?.[1] === "tldraw") {
           return <TLDraw isReadonly={isReadonly} />;
         }
         if (match?.[1] === "toc") {
           return (
-            <TOC
-              onSelectHeading={onSelectHeading}
-              contentContainerRef={contentContainerRef}
-            />
+            <TOC onSelectHeading={onSelectHeading} contentContainerRef={contentContainerRef} />
           );
         }
       }
@@ -196,9 +170,7 @@ function createComponents(
     },
     p({ children, node, ...props }) {
       // TODO: De-dupe this with the code in the math equations extension for CodeMirror
-      const processChildrenWithMath = (
-        children: React.ReactNode[]
-      ): React.ReactNode[] => {
+      const processChildrenWithMath = (children: React.ReactNode[]): React.ReactNode[] => {
         return children.map((child, index) => {
           if (typeof child === "string") {
             const assignments = extractVariableAssignments(child);
@@ -208,8 +180,7 @@ function createComponents(
               }
 
               const nodes: React.ReactNode[] = [];
-              const regex =
-                /([^:]+):=\s*(\$?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[km]?)/gi;
+              const regex = /([^:]+):=\s*(\$?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[km]?)/gi;
               let lastIndex = 0;
               let match: RegExpExecArray | null;
               while ((match = regex.exec(child))) {
@@ -223,7 +194,7 @@ function createComponents(
                   <span key={`assign-${index}-${nodes.length}`}>
                     <span className="font-bold text-blue-500">{name}: </span>
                     {value}
-                  </span>
+                  </span>,
                 );
 
                 lastIndex = regex.lastIndex;
@@ -235,9 +206,7 @@ function createComponents(
               return <React.Fragment key={index}>{nodes}</React.Fragment>;
             }
 
-            const match = child.match(
-              /^(?:([^:]+):\s*)?(.*?)([-+*/().\d\s,\$a-zA-Z_\-]+)=\s*$/
-            );
+            const match = child.match(/^(?:([^:]+):\s*)?(.*?)([-+*/().\d\s,\$a-zA-Z_\-]+)=\s*$/);
             if (match) {
               const nameCapture = match[1];
               const beforeEq = match[2];
@@ -246,7 +215,7 @@ function createComponents(
               const result = evaluateMathExpression(
                 expr,
                 previousEquationResult,
-                namedEquationResults
+                namedEquationResults,
               );
 
               if (result !== null) {
@@ -255,10 +224,7 @@ function createComponents(
                 if (nameCapture) {
                   const trimmedName = nameCapture.trim();
                   namedEquationResults.set(trimmedName, result);
-                  namedEquationResults.set(
-                    trimmedName.replace(/\s+/g, "-"),
-                    result
-                  );
+                  namedEquationResults.set(trimmedName.replace(/\s+/g, "-"), result);
                 }
 
                 const exprContent = () => {
@@ -277,7 +243,7 @@ function createComponents(
                           className="inline-block text-black rounded px-0.5 py-0 bg-green-500 select-none"
                         >
                           {prevResult}
-                        </span>
+                        </span>,
                       );
                     }
                     if (part) nodes.push(part);
@@ -290,9 +256,7 @@ function createComponents(
                 return (
                   <span key={index}>
                     {nameCapture && (
-                      <span className="font-bold text-blue-500">
-                        {nameCapture}:{" "}
-                      </span>
+                      <span className="font-bold text-blue-500">{nameCapture}: </span>
                     )}
                     {beforeEq}
                     {exprContent()} =
@@ -309,20 +273,14 @@ function createComponents(
       };
 
       const processedChildren = processHiddenText(
-        processChildrenWithMath(Children.toArray(children))
+        processChildrenWithMath(Children.toArray(children)),
       );
 
       return (
         <p {...props}>
           {processBookmarks(
-            processWikilinks(
-              processedChildren,
-              files,
-              onSelectFile,
-              gists,
-              onSelectGist
-            ),
-            onSelectHeading
+            processWikilinks(processedChildren, files, onSelectFile, gists, onSelectGist),
+            onSelectHeading,
           )}
         </p>
       );
@@ -356,14 +314,8 @@ function createComponents(
       return (
         <li {...props}>
           {processBookmarks(
-            processWikilinks(
-              Children.toArray(children),
-              files,
-              onSelectFile,
-              gists,
-              onSelectGist
-            ),
-            onSelectHeading
+            processWikilinks(Children.toArray(children), files, onSelectFile, gists, onSelectGist),
+            onSelectHeading,
           )}
         </li>
       );
@@ -379,11 +331,7 @@ function createComponents(
       }, []);
 
       return (
-        <blockquote
-          {...props}
-          ref={ref}
-          className={cn("relative group", props.className)}
-        >
+        <blockquote {...props} ref={ref} className={cn("relative group", props.className)}>
           {enableBlockquoteCopying && (
             <button
               onClick={handleCopy}
@@ -442,7 +390,7 @@ function createComponents(
             setShowCheck(true);
             setTimeout(() => setShowCheck(false), 3000);
           },
-          [id]
+          [id],
         );
 
         return createElement(
@@ -462,7 +410,7 @@ function createComponents(
             ) : (
               <Link className="h-5 w-5" />
             )}
-          </a>
+          </a>,
         );
       };
     });
@@ -480,8 +428,7 @@ function processEmojis(text: string) {
 function processMentions(text: string) {
   return text.replace(
     /\B(@[a-zA-Z0-9-]+)\b/g,
-    (match, username) =>
-      `[**${match}**](https://github.com/${username.slice(1)})`
+    (match, username) => `[**${match}**](https://github.com/${username.slice(1)})`,
   );
 }
 
@@ -569,7 +516,7 @@ function MarkdownInternal({
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute(
       "d",
-      "M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+      "M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z",
     );
 
     svg.appendChild(path);
@@ -602,70 +549,64 @@ function MarkdownInternal({
   }, []);
 
   // Handle text selection in the markdown content
-  const handleTextSelection = useCallback(
-    () => {
-      if (selectionTimeoutRef.current) {
-        window.clearTimeout(selectionTimeoutRef.current);
-        selectionTimeoutRef.current = null;
-      }
+  const handleTextSelection = useCallback(() => {
+    if (selectionTimeoutRef.current) {
+      window.clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = null;
+    }
 
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed) {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      hideCommentButton();
+      return;
+    }
+
+    const text = selection.toString();
+    if (text.trim().length < 4) {
+      hideCommentButton();
+      return;
+    }
+
+    // Don't show button if selection is not within our container
+    const container = markdownContainerRef.current;
+    let isSelectionInsideContainer = false;
+    const range = selection.getRangeAt(0);
+
+    // Check if the selection is inside our container
+    if (container.contains(range.commonAncestorContainer)) {
+      isSelectionInsideContainer = true;
+    }
+
+    if (!isSelectionInsideContainer) {
+      hideCommentButton();
+      return;
+    }
+
+    // Set button click handler to add comment with selected text
+    if (commentButtonRef.current) {
+      // Remove old event listeners to prevent duplicates
+      const newButton = commentButtonRef.current.cloneNode(true);
+      if (commentButtonRef.current.parentNode) {
+        commentButtonRef.current.parentNode.replaceChild(newButton, commentButtonRef.current);
+      }
+      commentButtonRef.current = newButton as HTMLButtonElement;
+
+      commentButtonRef.current.addEventListener("click", (evt) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        onAddComment(text);
         hideCommentButton();
-        return;
+      });
+    }
+
+    // Throttle updates with a delay to give browser time to paint selection
+    selectionTimeoutRef.current = window.setTimeout(() => {
+      if (selection && !selection.isCollapsed) {
+        showCommentButton(selection);
       }
-
-      const text = selection.toString();
-      if (text.trim().length < 4) {
-        hideCommentButton();
-        return;
-      }
-
-      // Don't show button if selection is not within our container
-      const container = markdownContainerRef.current;
-      let isSelectionInsideContainer = false;
-      const range = selection.getRangeAt(0);
-
-      // Check if the selection is inside our container
-      if (container.contains(range.commonAncestorContainer)) {
-        isSelectionInsideContainer = true;
-      }
-
-      if (!isSelectionInsideContainer) {
-        hideCommentButton();
-        return;
-      }
-
-      // Set button click handler to add comment with selected text
-      if (commentButtonRef.current) {
-        // Remove old event listeners to prevent duplicates
-        const newButton = commentButtonRef.current.cloneNode(true);
-        if (commentButtonRef.current.parentNode) {
-          commentButtonRef.current.parentNode.replaceChild(
-            newButton,
-            commentButtonRef.current
-          );
-        }
-        commentButtonRef.current = newButton as HTMLButtonElement;
-
-        commentButtonRef.current.addEventListener("click", (evt) => {
-          evt.preventDefault();
-          evt.stopPropagation();
-
-          onAddComment(text);
-          hideCommentButton();
-        });
-      }
-
-      // Throttle updates with a delay to give browser time to paint selection
-      selectionTimeoutRef.current = window.setTimeout(() => {
-        if (selection && !selection.isCollapsed) {
-          showCommentButton(selection);
-        }
-      }, THROTTLE_DELAY);
-    },
-    [onAddComment, showCommentButton, hideCommentButton]
-  );
+    }, THROTTLE_DELAY);
+  }, [onAddComment, showCommentButton, hideCommentButton]);
 
   // Process comment quotes and apply annotations to the rendered markdown
   const processCommentQuotes = useCallback(() => {
@@ -691,7 +632,7 @@ function MarkdownInternal({
       const walker = document.createTreeWalker(
         markdownContainerRef.current,
         NodeFilter.SHOW_TEXT,
-        null
+        null,
       );
 
       const matches: Array<{
@@ -708,10 +649,7 @@ function MarkdownInternal({
         const textContent = textNode.textContent || "";
 
         // Escape special regex characters in quotedText
-        const escapedQuotedText = quotedText.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          "\\$&"
-        );
+        const escapedQuotedText = quotedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         // Create a regex with word boundaries
         const regex = new RegExp(`\\b${escapedQuotedText}\\b`, "g");
         let match: RegExpExecArray | null;
@@ -765,18 +703,14 @@ function MarkdownInternal({
             <div className="flex items-center gap-2 mb-2">
               <Avatar className="h-6 w-6">
                 <AvatarImage src={comment.user?.avatar_url} />
-                <AvatarFallback>
-                  {comment.user?.login[0].toUpperCase() ?? "A"}
-                </AvatarFallback>
+                <AvatarFallback>{comment.user?.login[0].toUpperCase() ?? "A"}</AvatarFallback>
               </Avatar>
-              <div className="text-sm font-bold">
-                {comment.user?.login || "Anonymous"}
-              </div>
+              <div className="text-sm font-bold">{comment.user?.login || "Anonymous"}</div>
             </div>
             <div className="mt-1">
               <MarkdownPreview>{bodyWithoutQuote}</MarkdownPreview>
             </div>
-          </>
+          </>,
         );
 
         // Create the highlighted text span
@@ -886,16 +820,13 @@ function MarkdownInternal({
           enableBlockquoteCopying,
           gists,
           onSelectGist,
-          setOpenMermaidSvg
+          setOpenMermaidSvg,
         )}
       >
         {processedChildren}
       </ReactMarkdown>
 
-      <ImageDialog
-        imageUrl={openImageUrl}
-        onClose={() => setOpenImageUrl(null)}
-      />
+      <ImageDialog imageUrl={openImageUrl} onClose={() => setOpenImageUrl(null)} />
 
       <Dialog
         open={openMermaidSvg !== null}
@@ -911,7 +842,6 @@ function MarkdownInternal({
           dangerouslySetInnerHTML={{ __html: openMermaidSvg }}
         />
       </Dialog>
-
     </div>
   );
 }

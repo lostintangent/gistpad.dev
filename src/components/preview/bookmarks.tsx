@@ -9,7 +9,7 @@ export function resetBookmarkCounter() {
 
 export function processBookmarks(
   children: ReactNode[],
-  onSelectHeading?: (heading: string) => void
+  onSelectHeading?: (heading: string) => void,
 ) {
   const segments: React.ReactNode[] = [];
   let currentText = "";
@@ -43,7 +43,7 @@ export function processBookmarks(
             }}
           >
             <Bookmark className="h-4 w-4 inline-block text-blue-500 fill-blue-500" />
-          </a>
+          </a>,
         );
 
         lastIndex = match.index + match[0].length;

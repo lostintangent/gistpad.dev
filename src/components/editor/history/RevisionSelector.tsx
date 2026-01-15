@@ -37,14 +37,9 @@ export default function RevisionSelector({
       .filter(
         (revision) =>
           revision.change_status &&
-          (revision.change_status.additions > 0 ||
-            revision.change_status.deletions > 0)
+          (revision.change_status.additions > 0 || revision.change_status.deletions > 0),
       )
-      .sort(
-        (a, b) =>
-          new Date(b.committed_at).getTime() -
-          new Date(a.committed_at).getTime()
-      )
+      .sort((a, b) => new Date(b.committed_at).getTime() - new Date(a.committed_at).getTime())
       .slice(0, 15);
     return sorted;
   }, [revisions]);
@@ -55,15 +50,11 @@ export default function RevisionSelector({
 
   return (
     <Menu>
-      <Trigger disabled={isLoading || !revisions}>
-        {children}
-      </Trigger>
+      <Trigger disabled={isLoading || !revisions}>{children}</Trigger>
       <Content>
         <DropdownMenuItem
           onClick={() => onSelectRevision(null)}
-          className={
-            !selectedRevisionId ? "bg-primary text-primary-foreground" : ""
-          }
+          className={!selectedRevisionId ? "bg-primary text-primary-foreground" : ""}
         >
           Current version
         </DropdownMenuItem>
@@ -73,9 +64,7 @@ export default function RevisionSelector({
             key={revision.version}
             onClick={() => onSelectRevision(revision.version)}
             className={
-              selectedRevisionId === revision.version
-                ? "bg-primary text-primary-foreground"
-                : ""
+              selectedRevisionId === revision.version ? "bg-primary text-primary-foreground" : ""
             }
           >
             <RevisionLabel revision={revision} gistCreatedAt={gistCreatedAt} />

@@ -24,11 +24,7 @@ interface AnalyzeStyleDialogProps {
   gists: Gist[];
 }
 
-const AnalyzeStyleDialog = ({
-  isOpen,
-  onOpenChange,
-  gists,
-}: AnalyzeStyleDialogProps) => {
+const AnalyzeStyleDialog = ({ isOpen, onOpenChange, gists }: AnalyzeStyleDialogProps) => {
   const isMobile = useIsMobile();
   const [selectedGists, setSelectedGists] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,32 +35,26 @@ const AnalyzeStyleDialog = ({
     setResults(null);
 
     try {
-      let selectedGistObjects = gists.filter((gist) =>
-        selectedGists.includes(gist.id)
-      );
+      let selectedGistObjects = gists.filter((gist) => selectedGists.includes(gist.id));
 
       // Check if any gists need their content loaded
       const gistsToLoad = selectedGistObjects.filter((gist) =>
-        Object.values(gist.files).some((file) => !file.content)
+        Object.values(gist.files).some((file) => !file.content),
       );
 
       // Fetch full content for any gists that need it
       if (gistsToLoad.length > 0) {
-        const loadedGists = await Promise.all(
-          gistsToLoad.map((gist) => getGistById(gist.id))
-        );
+        const loadedGists = await Promise.all(gistsToLoad.map((gist) => getGistById(gist.id)));
 
         // Replace the incomplete gists with their fully loaded versions
         selectedGistObjects = selectedGistObjects.map((gist) =>
           gistsToLoad.find((g) => g.id === gist.id)
             ? loadedGists.find((g) => g.id === gist.id)!
-            : gist
+            : gist,
         );
 
         // Update the main gists array with the fully loaded versions
-        gists = gists.map(
-          (gist) => loadedGists.find((g) => g.id === gist.id) || gist
-        );
+        gists = gists.map((gist) => loadedGists.find((g) => g.id === gist.id) || gist);
       }
       const analysis = await analyzeStyle(selectedGistObjects);
       playAiChime();
@@ -92,9 +82,7 @@ const AnalyzeStyleDialog = ({
           {!isLoading && !results ? (
             <>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Select the gists to analyze:
-                </p>
+                <p className="text-sm text-muted-foreground">Select the gists to analyze:</p>
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="select-all"
@@ -126,9 +114,7 @@ const AnalyzeStyleDialog = ({
                           if (checked) {
                             setSelectedGists((prev) => [...prev, gist.id]);
                           } else {
-                            setSelectedGists((prev) =>
-                              prev.filter((id) => id !== gist.id)
-                            );
+                            setSelectedGists((prev) => prev.filter((id) => id !== gist.id));
                           }
                         }}
                       />
@@ -138,7 +124,8 @@ const AnalyzeStyleDialog = ({
                           className="text-sm font-medium leading-none cursor-pointer truncate"
                         >
                           {gist.description ||
-                            Object.keys(gist.files)[0]?.replace(".md", "") || "Empty"}
+                            Object.keys(gist.files)[0]?.replace(".md", "") ||
+                            "Empty"}
                         </label>
                         {!isMobile && (
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -171,11 +158,7 @@ const AnalyzeStyleDialog = ({
         <DialogFooter>
           {results || isLoading ? (
             <>
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                disabled={isLoading}
-              >
+              <Button variant="outline" onClick={handleReset} disabled={isLoading}>
                 Analyze other gists
               </Button>
               <Button onClick={() => onOpenChange(false)} disabled={isLoading}>
@@ -183,10 +166,7 @@ const AnalyzeStyleDialog = ({
               </Button>
             </>
           ) : (
-            <Button
-              onClick={handleExtract}
-              disabled={selectedGists.length === 0 || isLoading}
-            >
+            <Button onClick={handleExtract} disabled={selectedGists.length === 0 || isLoading}>
               Analyze
             </Button>
           )}

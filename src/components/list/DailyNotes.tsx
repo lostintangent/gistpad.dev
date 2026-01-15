@@ -3,13 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/useMobile";
 import { Gist, TEMPLATE_FILENAME } from "@/lib/github";
-import {
-  Calendar,
-  CheckSquare,
-  ChevronRight,
-  FileText,
-  Trash2,
-} from "lucide-react";
+import { Calendar, CheckSquare, ChevronRight, FileText, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface DailyNotesProps {
@@ -52,10 +46,7 @@ export function DailyNotes({
 
   // Save collapse state to localStorage
   useEffect(() => {
-    localStorage.setItem(
-      "gistpad-daily-collapsed",
-      JSON.stringify(isCollapsed)
-    );
+    localStorage.setItem("gistpad-daily-collapsed", JSON.stringify(isCollapsed));
   }, [isCollapsed]);
 
   // No dailyNotes, don't render anything
@@ -63,30 +54,21 @@ export function DailyNotes({
 
   // Filter out template.md from the list
   const dailyNoteFiles = Object.values(dailyNotes.files).filter(
-    (file) => file.filename !== TEMPLATE_FILENAME
+    (file) => file.filename !== TEMPLATE_FILENAME,
   );
 
   // Calculate overdue task metrics
-  const hasOverdueTasks = dailyTaskStats.some(
-    (stats) => stats.isPastDueWithTasks
-  );
+  const hasOverdueTasks = dailyTaskStats.some((stats) => stats.isPastDueWithTasks);
   const totalOverdueTasks = hasOverdueTasks
     ? dailyTaskStats
-      .filter((stats) => stats.isPastDueWithTasks)
-      .reduce(
-        (total, stats) => total + (stats.totalTasks - stats.completedTasks),
-        0
-      )
+        .filter((stats) => stats.isPastDueWithTasks)
+        .reduce((total, stats) => total + (stats.totalTasks - stats.completedTasks), 0)
     : 0;
 
   // Sort files to match the task stats order (which puts past-due notes first)
   const sortedDailyNoteFiles = [...dailyNoteFiles].sort((a, b) => {
-    const aStats = dailyTaskStats.find(
-      (stats) => stats.filename === a.filename
-    );
-    const bStats = dailyTaskStats.find(
-      (stats) => stats.filename === b.filename
-    );
+    const aStats = dailyTaskStats.find((stats) => stats.filename === a.filename);
+    const bStats = dailyTaskStats.find((stats) => stats.filename === b.filename);
 
     // Put past-due notes first
     if (aStats?.isPastDueWithTasks && !bStats?.isPastDueWithTasks) return -1;
@@ -108,9 +90,7 @@ export function DailyNotes({
 
   // Check if a file is selected
   const isFileSelected = (gistId: string, filename?: string) => {
-    return (
-      gistId === selectedGistId && (filename ? filename === selectedFile : true)
-    );
+    return gistId === selectedGistId && (filename ? filename === selectedFile : true);
   };
 
   if (dailyNoteFiles.length === 0) return null;
@@ -154,12 +134,13 @@ export function DailyNotes({
         )}
       </button>
       <div
-        className={`transition-[height,opacity] duration-200 ease-in-out overflow-hidden ${isCollapsed
+        className={`transition-[height,opacity] duration-200 ease-in-out overflow-hidden ${
+          isCollapsed
             ? "h-0 opacity-0"
             : dailyNoteFiles.length <= 1
               ? "h-[50px] opacity-100"
               : "h-[95px] opacity-100"
-          }`}
+        }`}
       >
         <ScrollArea className="h-full">
           <div className="p-2 space-y-1">
@@ -167,52 +148,51 @@ export function DailyNotes({
               <div key={file.filename} className="flex items-center gap-2">
                 {(() => {
                   const fileStats = dailyTaskStats.find(
-                    (stats) => stats.filename === file.filename
+                    (stats) => stats.filename === file.filename,
                   );
                   const isPastDue = fileStats?.isPastDueWithTasks;
 
                   return (
                     <button
-                      onClick={() =>
-                        handleDailyFileClick(dailyNotes, file.filename)
-                      }
+                      onClick={() => handleDailyFileClick(dailyNotes, file.filename)}
                       className={`flex-1 text-left p-2 rounded-lg transition-colors max-w-[calc(100%-3rem)] 
-                        ${isFileSelected(dailyNotes.id, file.filename)
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
+                        ${
+                          isFileSelected(dailyNotes.id, file.filename)
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted"
                         }`}
                     >
                       <div className="flex justify-between items-center">
                         <h3
-                          className={`font-medium truncate ${isFileSelected(dailyNotes.id, file.filename)
+                          className={`font-medium truncate ${
+                            isFileSelected(dailyNotes.id, file.filename)
                               ? "" // When selected, use default selection color
                               : isPastDue
                                 ? "text-amber-700 dark:text-amber-400"
                                 : ""
-                            }`}
+                          }`}
                         >
                           {file.filename.replace(/\.md$/, "")}
-                          {isPastDue &&
-                            !isFileSelected(dailyNotes.id, file.filename) && (
-                              <span className="ml-2 text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 py-0.5 px-1.5 rounded-full">
-                                overdue
-                              </span>
-                            )}
-                          {isPastDue &&
-                            isFileSelected(dailyNotes.id, file.filename) && (
-                              <span className="ml-2 text-xs bg-primary-foreground/20 text-primary-foreground py-0.5 px-1.5 rounded-full">
-                                overdue
-                              </span>
-                            )}
+                          {isPastDue && !isFileSelected(dailyNotes.id, file.filename) && (
+                            <span className="ml-2 text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 py-0.5 px-1.5 rounded-full">
+                              overdue
+                            </span>
+                          )}
+                          {isPastDue && isFileSelected(dailyNotes.id, file.filename) && (
+                            <span className="ml-2 text-xs bg-primary-foreground/20 text-primary-foreground py-0.5 px-1.5 rounded-full">
+                              overdue
+                            </span>
+                          )}
                         </h3>
                         {fileStats && fileStats.totalTasks > 0 && (
                           <span
-                            className={`text-xs flex items-center gap-1 ${isFileSelected(dailyNotes.id, file.filename)
+                            className={`text-xs flex items-center gap-1 ${
+                              isFileSelected(dailyNotes.id, file.filename)
                                 ? "text-primary-foreground" // Use same color as selected text for better contrast
                                 : isPastDue
                                   ? "text-amber-600 dark:text-amber-400"
                                   : "text-muted-foreground"
-                              }`}
+                            }`}
                           >
                             <CheckSquare className="h-3 w-3" />
                             {fileStats.completedTasks}/{fileStats.totalTasks}

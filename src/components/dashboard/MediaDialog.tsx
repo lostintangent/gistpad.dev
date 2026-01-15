@@ -17,8 +17,7 @@ export function MediaDialog({ media, onClose }: MediaDialogProps) {
   }, [media]);
 
   const mediaArray = useMemo(() => {
-    const item =
-      typeof media === "string" ? { type: "image" as const, url: media } : media;
+    const item = typeof media === "string" ? { type: "image" as const, url: media } : media;
     return Array.isArray(item) ? item : item ? [item] : [];
   }, [media]);
 
@@ -77,16 +76,13 @@ export function MediaDialog({ media, onClose }: MediaDialogProps) {
 
   /* Logic for handling image gallery navigation */
   const handlePrevious = useCallback(
-    () =>
-      setCurrentIndex(
-        (prev) => (prev - 1 + mediaArray.length) % mediaArray.length
-      ),
-    [mediaArray.length]
+    () => setCurrentIndex((prev) => (prev - 1 + mediaArray.length) % mediaArray.length),
+    [mediaArray.length],
   );
 
   const handleNext = useCallback(
     () => setCurrentIndex((prev) => (prev + 1) % mediaArray.length),
-    [mediaArray.length]
+    [mediaArray.length],
   );
 
   useEffect(() => {
@@ -138,9 +134,7 @@ export function MediaDialog({ media, onClose }: MediaDialogProps) {
         className="p-0 border-none bg-transparent flex items-center justify-center"
         showCloseButton={false}
       >
-        <div
-          className="relative max-h-[95vh] max-w-[95vw] flex items-center justify-center"
-        >
+        <div className="relative max-h-[95vh] max-w-[95vw] flex items-center justify-center">
           {currentMedia?.type === "video" ? (
             <>
               {currentMedia.audioUrl && (

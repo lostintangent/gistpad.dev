@@ -86,13 +86,7 @@ const MobileToolbar = ({
           type="single"
           size="sm"
           variant="outline"
-          value={
-            isCommentSidebarOpen
-              ? "comments"
-              : isPreviewMode
-              ? "preview"
-              : "edit"
-          }
+          value={isCommentSidebarOpen ? "comments" : isPreviewMode ? "preview" : "edit"}
           onValueChange={(value) => {
             if (!value) return;
             if (value === "comments") {
@@ -105,18 +99,10 @@ const MobileToolbar = ({
           disabled={!gistId || isLoading}
           className="mr-1"
         >
-          <ToggleGroupItem
-            value="edit"
-            aria-label="Editor mode"
-            title="Show editor"
-          >
+          <ToggleGroupItem value="edit" aria-label="Editor mode" title="Show editor">
             <Pencil className="h-3.5 w-3.5" />
           </ToggleGroupItem>
-          <ToggleGroupItem
-            value="preview"
-            aria-label="Preview mode"
-            title="Show preview"
-          >
+          <ToggleGroupItem value="preview" aria-label="Preview mode" title="Show preview">
             <Eye className="h-3.5 w-3.5" />
           </ToggleGroupItem>
           {isCommentsEnabled && (
@@ -140,11 +126,7 @@ const MobileToolbar = ({
     )}
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!gistId || isLoading}
-        >
+        <Button variant="ghost" size="sm" disabled={!gistId || isLoading}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -170,26 +152,17 @@ const MobileToolbar = ({
           History
         </RevisionSelector>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={!!selectedRevisionId}
-          onClick={() => handleCopyGistUrl()}
-        >
+        <DropdownMenuItem disabled={!!selectedRevisionId} onClick={() => handleCopyGistUrl()}>
           <Link className="h-4 w-4 mr-2" />
           Copy URL
         </DropdownMenuItem>
         {onViewFullscreen && (
-          <DropdownMenuItem
-            disabled={!!selectedRevisionId}
-            onClick={() => onViewFullscreen()}
-          >
+          <DropdownMenuItem disabled={!!selectedRevisionId} onClick={() => onViewFullscreen()}>
             <Fullscreen className="h-4 w-4 mr-2" />
             View Fullscreen
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          disabled={!!selectedRevisionId}
-          onClick={handleOpenInGithub}
-        >
+        <DropdownMenuItem disabled={!!selectedRevisionId} onClick={handleOpenInGithub}>
           <ExternalLink className="h-4 w-4 mr-2" />
           Open in GitHub
         </DropdownMenuItem>

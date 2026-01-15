@@ -12,9 +12,7 @@ export interface ApodData {
 }
 
 async function fetchData(): Promise<ApodData> {
-  const response = await fetch(
-    "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true"
-  );
+  const response = await fetch("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true");
 
   if (!response.ok) {
     throw new Error("Failed to fetch NASA picture of the day");
@@ -23,11 +21,7 @@ async function fetchData(): Promise<ApodData> {
   return response.json();
 }
 
-export function NasaApodWidget({
-  data,
-  isLoading,
-  displayMediaDialog,
-}: WidgetProps<ApodData>) {
+export function NasaApodWidget({ data, isLoading, displayMediaDialog }: WidgetProps<ApodData>) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (isLoading) {
@@ -39,15 +33,14 @@ export function NasaApodWidget({
     );
   }
 
-  const imageUrl =
-    data.media_type === "video" ? data.thumbnail_url || data.url : data.url;
+  const imageUrl = data.media_type === "video" ? data.thumbnail_url || data.url : data.url;
 
   const handleImageClick = () => {
     if (data.media_type === "video") {
       const media: MediaItem = {
         type: "video",
         url: data.url,
-        posterUrl: data.thumbnail_url
+        posterUrl: data.thumbnail_url,
       };
       displayMediaDialog(media);
     } else {
@@ -67,24 +60,18 @@ export function NasaApodWidget({
           />
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`flex items-center justify-between w-full hover:bg-muted/50 rounded-md p-1 mt-2 transition-all ${!isExpanded ? 'mb-[-5px]' : 'mb-0'}`}
+            className={`flex items-center justify-between w-full hover:bg-muted/50 rounded-md p-1 mt-2 transition-all ${!isExpanded ? "mb-[-5px]" : "mb-0"}`}
             title={isExpanded ? "Hide explanation" : "Show explanation"}
           >
             <h3 className="text-lg font-semibold">{data.title}</h3>
             <span className="text-muted-foreground">
-              {isExpanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </span>
           </button>
           <div
             className={`overflow-hidden transition-all duration-300 ${isExpanded ? "max-h-96" : "max-h-0"}`}
           >
-            <p className="text-sm text-muted-foreground mt-1">
-              {data.explanation}
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">{data.explanation}</p>
           </div>
         </>
       ) : (

@@ -1,14 +1,19 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
 
-interface ScrollableContainerProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface ScrollableContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   containerClassName?: string;
   ref?: React.MutableRefObject<HTMLDivElement>;
 }
 
-const ScrollableContainer = (({ children, className, containerClassName, ref, ...props }: ScrollableContainerProps) => {
+const ScrollableContainer = ({
+  children,
+  className,
+  containerClassName,
+  ref,
+  ...props
+}: ScrollableContainerProps) => {
   const [showTopBlur, setShowTopBlur] = React.useState(false);
   const [showBottomBlur, setShowBottomBlur] = React.useState(false);
 
@@ -21,8 +26,7 @@ const ScrollableContainer = (({ children, className, containerClassName, ref, ..
 
       const hasOverflow = content.scrollHeight > container.clientHeight;
       const isScrolledToBottom =
-        container.scrollTop + container.clientHeight >=
-        content.scrollHeight - 1;
+        container.scrollTop + container.clientHeight >= content.scrollHeight - 1;
       const isScrolledFromTop = container.scrollTop > 0;
 
       setShowBottomBlur(hasOverflow && !isScrolledToBottom);
@@ -49,8 +53,7 @@ const ScrollableContainer = (({ children, className, containerClassName, ref, ..
     const container = ref.current;
     if (!container) return;
 
-    const handleScroll = () =>
-      checkOverflow();
+    const handleScroll = () => checkOverflow();
 
     container.addEventListener("scroll", handleScroll);
     return () => {
@@ -78,6 +81,6 @@ const ScrollableContainer = (({ children, className, containerClassName, ref, ..
       )}
     </div>
   );
-});
+};
 
 export default ScrollableContainer;

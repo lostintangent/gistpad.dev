@@ -1,11 +1,6 @@
 import { MarkdownPreview } from "@/components/preview/MarkdownPreview";
 import { ScrollableText } from "@/components/ScrollableText";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -34,10 +29,7 @@ export function CommentsDialog({
   fetchComments,
 }: CommentsDialogProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { isCollapsed, handleToggleCollapse } = useCollapsedComments(
-    queryKey,
-    isOpen
-  );
+  const { isCollapsed, handleToggleCollapse } = useCollapsedComments(queryKey, isOpen);
 
   const {
     data: comments = [],
@@ -61,7 +53,9 @@ export function CommentsDialog({
         <DialogHeader
           className="overflow-hidden cursor-pointer"
           onClick={() => {
-            const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+            const scrollContainer = scrollAreaRef.current?.querySelector(
+              "[data-radix-scroll-area-viewport]",
+            );
             scrollContainer?.scrollTo({ top: 0, behavior: "smooth" });
           }}
         >
@@ -71,10 +65,7 @@ export function CommentsDialog({
               <ScrollableText>{title}</ScrollableText>
             </div>
             <div className="flex items-center gap-2">
-              <RefreshButton
-                onRefresh={() => refetch()}
-                isFetching={isFetching}
-              />
+              <RefreshButton onRefresh={() => refetch()} isFetching={isFetching} />
               <div className="h-4 w-px bg-border" />
               <CloseButton onClose={onClose} />
             </div>
@@ -108,13 +99,7 @@ export function CommentsDialog({
 }
 
 // Sub-components for better organization
-function RefreshButton({
-  onRefresh,
-  isFetching,
-}: {
-  onRefresh: () => void;
-  isFetching: boolean;
-}) {
+function RefreshButton({ onRefresh, isFetching }: { onRefresh: () => void; isFetching: boolean }) {
   return (
     <button
       onClick={onRefresh}
@@ -143,19 +128,19 @@ function DescriptionSection({ text }: { text: string }) {
   const [isClamped, setIsClamped] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const measureRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      setIsClamped(node.scrollHeight > 250);
-    }
-  }, [text]);
+  const measureRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) {
+        setIsClamped(node.scrollHeight > 250);
+      }
+    },
+    [text],
+  );
 
   return (
     <div className="mb-4 p-3 bg-muted rounded-md">
       <div
-        className={cn(
-          "relative",
-          isClamped && !isExpanded && "max-h-[250px] overflow-hidden"
-        )}
+        className={cn("relative", isClamped && !isExpanded && "max-h-[250px] overflow-hidden")}
         onClick={() => {
           if (isClamped && !isExpanded) {
             setIsExpanded(true);
@@ -178,9 +163,7 @@ function DescriptionSection({ text }: { text: string }) {
               }}
             >
               <ChevronDown className="h-3 w-3" />
-              <span className="text-xs font-medium whitespace-nowrap">
-                Expand text
-              </span>
+              <span className="text-xs font-medium whitespace-nowrap">Expand text</span>
             </div>
           </>
         )}
@@ -206,19 +189,11 @@ function LoadingSkeleton() {
 }
 
 function ErrorMessage() {
-  return (
-    <div className="text-red-500 text-sm text-center py-8">
-      Failed to load comments
-    </div>
-  );
+  return <div className="text-red-500 text-sm text-center py-8">Failed to load comments</div>;
 }
 
 function EmptyState() {
-  return (
-    <div className="text-muted-foreground text-center py-8">
-      No comments yet
-    </div>
-  );
+  return <div className="text-muted-foreground text-center py-8">No comments yet</div>;
 }
 
 function CommentsList({

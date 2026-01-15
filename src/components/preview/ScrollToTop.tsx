@@ -48,8 +48,7 @@ export function ScrollToTop({
 
     window.addEventListener("resize", updateLeft);
 
-    const observer =
-      containerRef?.current && new ResizeObserver(updateLeft);
+    const observer = containerRef?.current && new ResizeObserver(updateLeft);
     if (observer && containerRef.current) {
       observer.observe(containerRef.current);
     }

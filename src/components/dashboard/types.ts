@@ -16,19 +16,19 @@ export interface Comment {
 
 export type MediaItem =
   | {
-    type: "image";
-    url: string;
-  }
+      type: "image";
+      url: string;
+    }
   | {
-    type: "video";
-    url: string;
-    posterUrl: string;
-    audioUrl?: string;
-  }
+      type: "video";
+      url: string;
+      posterUrl: string;
+      audioUrl?: string;
+    }
   | {
-    type: "embed";
-    src: string;
-  };
+      type: "embed";
+      src: string;
+    };
 
 export interface WidgetDefinitionConfigSetting {
   id: string;
@@ -53,9 +53,7 @@ export interface WidgetDefinition<T = any> {
   emptyStateMessage?: string | null;
   checkEmpty?: (data: T | undefined) => boolean;
   getExternalUrl?: (config?: Record<string, string>) => string;
-  getBadge?: (
-    config?: Record<string, string>
-  ) => Promise<WidgetBadge | undefined>;
+  getBadge?: (config?: Record<string, string>) => Promise<WidgetBadge | undefined>;
 }
 
 // These are the props that each widget component receives when rendered

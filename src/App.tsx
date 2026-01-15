@@ -24,10 +24,7 @@ const persister = createAsyncStoragePersister({
 });
 
 const App = () => (
-  <PersistQueryClientProvider
-    client={queryClient}
-    persistOptions={{ persister }}
-  >
+  <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
     <TooltipProvider>
       <Toaster />
       <HashRouter>

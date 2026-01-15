@@ -15,17 +15,9 @@ export interface UseVoiceConversationProps {
   isLoading?: boolean;
   gist?: any; // Will need proper typing
   onSelectFile?: (filename: string) => void;
-  onAddFile?: (
-    gistId: string,
-    filename: string,
-    content?: string
-  ) => Promise<void>;
+  onAddFile?: (gistId: string, filename: string, content?: string) => Promise<void>;
   onCreateGist?: (description: string, content?: string) => void;
-  onResearchTopic?: (
-    topic: string,
-    content: string,
-    userComments?: GistComment[]
-  ) => void;
+  onResearchTopic?: (topic: string, content: string, userComments?: GistComment[]) => void;
   onReviewContent?: (request: string) => void;
   onEditContent: (request: string) => Promise<void>;
   isMobile?: boolean;
@@ -62,9 +54,7 @@ export function useVoiceConversation({
 }: UseVoiceConversationProps) {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
-  const [whoIsSpeaking, setWhoIsSpeaking] = useState<
-    null | "user" | "assistant"
-  >(null);
+  const [whoIsSpeaking, setWhoIsSpeaking] = useState<null | "user" | "assistant">(null);
 
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -95,12 +85,7 @@ export function useVoiceConversation({
 
   // Effect to send gist info to voice conversation when switching documents
   useEffect(() => {
-    if (
-      gistId &&
-      isVoiceActive &&
-      dataChannelRef.current?.readyState === "open" &&
-      !isLoading
-    ) {
+    if (gistId && isVoiceActive && dataChannelRef.current?.readyState === "open" && !isLoading) {
       const event = {
         type: "conversation.item.create",
         item: {
@@ -131,14 +116,11 @@ ${content}
   const onCreateGistRef = useRef<typeof onCreateGist>(onCreateGist);
   const onAddFileRef = useRef<typeof onAddFile>(onAddFile);
   const onEditContentRef = useRef<typeof onEditContentRef>(onEditContent);
-  const handleSaveWithForkCheckRef = useRef<typeof handleSaveWithForkCheck>(
-    handleSaveWithForkCheck
-  );
+  const handleSaveWithForkCheckRef =
+    useRef<typeof handleSaveWithForkCheck>(handleSaveWithForkCheck);
   const onResearchTopicRef = useRef<typeof onResearchTopic>(onResearchTopic);
   const onReviewContentRef = useRef<typeof onReviewContent>(onReviewContent);
-  const setCommentSidebarOpenRef = useRef<typeof setCommentSidebarOpen>(
-    setCommentSidebarOpen
-  );
+  const setCommentSidebarOpenRef = useRef<typeof setCommentSidebarOpen>(setCommentSidebarOpen);
 
   useEffect(() => {
     onSelectFileRef.current = onSelectFile;
@@ -168,17 +150,12 @@ ${content}
 
     try {
       // Parse frontmatter from current content
-      const { frontMatter, content: contentWithoutFrontMatter } =
-        parseFrontMatter(content);
+      const { frontMatter, content: contentWithoutFrontMatter } = parseFrontMatter(content);
       const globalFrontmatter = getGlobalFrontMatter?.();
 
-      const persona =
-        frontMatter?.talk?.persona || globalFrontmatter?.talk?.persona;
-      const objective =
-        frontMatter?.talk?.instructions ||
-        globalFrontmatter?.talk?.instructions;
-      const voice =
-        frontMatter?.talk?.voice || globalFrontmatter?.talk?.voice || "alloy";
+      const persona = frontMatter?.talk?.persona || globalFrontmatter?.talk?.persona;
+      const objective = frontMatter?.talk?.instructions || globalFrontmatter?.talk?.instructions;
+      const voice = frontMatter?.talk?.voice || globalFrontmatter?.talk?.voice || "alloy";
 
       // 2. Create a peer connection.
       const pc = new RTCPeerConnection();
@@ -227,7 +204,7 @@ ${content}
               voice,
               tools,
             },
-          })
+          }),
         );
 
         // Send the file contents
@@ -277,14 +254,11 @@ ${Object.keys(gist?.files || {}).map((filename) => "* " + filename.replace(".md"
                 addFile: (filename: string, content?: string) =>
                   onAddFileRef.current(gistId, filename, content),
                 createGist: onCreateGistRef.current,
-                reviewContent: (request: string) =>
-                  onReviewContentRef.current?.(request),
-                performResearch: (topic: string) =>
-                  onResearchTopicRef.current?.(topic, content),
+                reviewContent: (request: string) => onReviewContentRef.current?.(request),
+                performResearch: (topic: string) => onResearchTopicRef.current?.(topic, content),
                 saveGist: handleSaveWithForkCheckRef.current,
                 setEditorMode,
-                setCommentSidebarOpen: (open: boolean) =>
-                  setCommentSidebarOpenRef.current(open),
+                setCommentSidebarOpen: (open: boolean) => setCommentSidebarOpenRef.current(open),
                 deleteGist: setShowDeleteDialog,
                 isMobile,
                 audioStream: audioStreamRef.current,
@@ -299,9 +273,7 @@ ${Object.keys(gist?.files || {}).map((filename) => "* " + filename.replace(".md"
                 const result = await handler(args, toolContext);
 
                 const sucessMessage =
-                  typeof result === "string"
-                    ? result
-                    : (result && result.successMessage) || "";
+                  typeof result === "string" ? result : (result && result.successMessage) || "";
 
                 const requestResponse =
                   typeof result === "object" ? result?.requestResponse : false;
@@ -314,14 +286,14 @@ ${Object.keys(gist?.files || {}).map((filename) => "* " + filename.replace(".md"
                       call_id: eventOutput.call_id,
                       output: `Function call succeeded. ${sucessMessage}`,
                     },
-                  })
+                  }),
                 );
 
                 if (requestResponse) {
                   dataChannelRef.current?.send(
                     JSON.stringify({
                       type: "response.create",
-                    })
+                    }),
                   );
                 }
               }
@@ -345,7 +317,7 @@ ${Object.keys(gist?.files || {}).map((filename) => "* " + filename.replace(".md"
           dc.send(
             JSON.stringify({
               type: "response.create",
-            })
+            }),
           );
         }, 1000);
       });
@@ -410,18 +382,18 @@ ${Object.keys(gist?.files || {}).map((filename) => "* " + filename.replace(".md"
         dataChannelRef.current.send(
           JSON.stringify({
             type: "response.cancel",
-          })
+          }),
         );
 
         dataChannelRef.current.send(JSON.stringify(event));
         dataChannelRef.current.send(
           JSON.stringify({
             type: "response.create",
-          })
+          }),
         );
       }
     },
-    [isVoiceActive]
+    [isVoiceActive],
   );
 
   useEffect(() => {

@@ -3,8 +3,7 @@ import { z } from "zod";
 import { AgentFollowUp, type AdditionalReference } from "../openai";
 import { runStreamingAgent } from "./base";
 
-const MERMAID_PLACEHOLDER =
-  "![Mermaid diagram in progress](/diagram-placeholder.svg)";
+const MERMAID_PLACEHOLDER = "![Mermaid diagram in progress](/diagram-placeholder.svg)";
 
 // Streaming responses can contain an unfinished mermaid diagram at the end
 // of the output. Since only one unfinished diagram can exist at a time,
@@ -52,7 +51,7 @@ export default async function askContent(
   onIsWebSearching?: (isSearching: boolean) => void,
   previousResponseId?: string,
   abortSignal?: AbortSignal,
-  extraTools?: Tool[]
+  extraTools?: Tool[],
 ): Promise<string | null> {
   let title = "";
   return runStreamingAgent({
@@ -78,10 +77,7 @@ export default async function askContent(
         title = `## ${value}`;
         onDelta?.(title);
       } else if (key === "answer") {
-        const answer = (value as string)?.replace(
-          /citeturn\d+(search|view)\d+/g,
-          ""
-        );
+        const answer = (value as string)?.replace(/citeturn\d+(search|view)\d+/g, "");
         const processed = replaceIncompleteMermaid(answer);
         onDelta?.(`${title}\n\n${processed}`);
       }

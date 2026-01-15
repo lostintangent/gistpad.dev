@@ -12,8 +12,8 @@ export const isAiCommandInProgressAtom = atom(false);
 export const embededdedFileHandlersAtom = atom<(() => GistFile)[]>([]);
 
 export const selectedGistFilesAtom = atom((get) => {
-    const gist = get(selectedGistAtom);
-    return gist?.files ? Object.keys(gist.files) : [];
+  const gist = get(selectedGistAtom);
+  return gist?.files ? Object.keys(gist.files) : [];
 });
 
 export type EditorMode = "edit" | "preview" | "split";

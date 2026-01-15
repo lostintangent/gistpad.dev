@@ -15,19 +15,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/useMobile";
-import {
-  getDefaultFile,
-  getGistById,
-  getGistComments,
-  getGistDisplayName,
-} from "@/lib/github";
+import { getDefaultFile, getGistById, getGistComments, getGistDisplayName } from "@/lib/github";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom, useSetAtom } from "jotai";
@@ -40,6 +31,7 @@ import {
   FileText,
   Link,
   Pencil,
+  RefreshCw,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -57,27 +49,37 @@ export default function View() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [selectedHeading, setSelectedHeading] = useState(
-    searchParams.get("heading")
-  );
+  const [selectedHeading, setSelectedHeading] = useState(searchParams.get("heading"));
+
+  const forceRefreshRef = useRef(false);
 
   // TODO: Share the same query client between the editor and share page
-  const { data: gist, isLoading } = useQuery({
+  const { data: gist, isLoading, refetch: refetchGist, isFetching: isFetchingGist } = useQuery({
     queryKey: ["view-gist", gistId],
-    queryFn: () => getGistById(gistId!),
+    queryFn: () => getGistById(gistId!, forceRefreshRef.current),
     enabled: !!gistId,
     staleTime: 1000 * 60 * 2, // 5 minutes
   });
 
-  const { data: comments = [] } = useQuery({
+  const { data: comments = [], refetch: refetchComments, isFetching: isFetchingComments } = useQuery({
     queryKey: ["gist-comments", gistId],
-    queryFn: () => getGistComments(gistId!),
+    queryFn: () => getGistComments(gistId!, forceRefreshRef.current),
     enabled: !!gistId && (gist?.comments ?? 0) > 0,
   });
 
-  const [headings, setHeadings] = useState<
-    { id: string; text: string; level: number }[]
-  >([]);
+  const [isManualRefresh, setIsManualRefresh] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsManualRefresh(true);
+    forceRefreshRef.current = true;
+    await Promise.all([refetchGist(), refetchComments()]);
+    forceRefreshRef.current = false;
+    setIsManualRefresh(false);
+  };
+
+  const isRefreshing = isFetchingGist || isFetchingComments;
+
+  const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
 
   // TODO: Move this into a common utility/hook
   // Extract headings from content when the preview ref or content changes
@@ -85,26 +87,18 @@ export default function View() {
     if (!previewRef.current) return;
 
     // Find all headings within the content container
-    const headingElements = previewRef.current.querySelectorAll(
-      "h1, h2, h3, h4, h5, h6"
-    );
+    const headingElements = previewRef.current.querySelectorAll("h1, h2, h3, h4, h5, h6");
 
     const extractedHeadings = Array.from(headingElements).map((heading) => {
       const id = heading.id;
-      const text =
-        heading.textContent?.replace(
-          /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,
-          ""
-        ) || "";
+      const text = heading.textContent?.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "") || "";
       const level = parseInt(heading.tagName.slice(1));
       return { id, text, level };
     });
 
     const sanitizedHeadings =
       extractedHeadings.length > 0 &&
-        extractedHeadings[extractedHeadings.length - 1].text
-          .trim()
-          .toLowerCase() === "footnotes"
+        extractedHeadings[extractedHeadings.length - 1].text.trim().toLowerCase() === "footnotes"
         ? extractedHeadings.slice(0, -1)
         : extractedHeadings;
 
@@ -122,7 +116,7 @@ export default function View() {
       // Add a slight delay to allow the preview to render
       setTimeout(() => {
         const headingElement = previewRef.current?.querySelector(
-          `[id="${selectedHeading}"]`
+          `[id="${selectedHeading}"]`,
         ) as HTMLElement | null;
         if (headingElement) {
           headingElement.scrollIntoView();
@@ -206,7 +200,7 @@ export default function View() {
   };
 
   const filteredFiles = Object.keys(gist?.files || {}).filter((filename) =>
-    filename.endsWith(".md")
+    filename.endsWith(".md"),
   );
 
   return (
@@ -218,10 +212,7 @@ export default function View() {
             {!isLoading ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger>
-                  <Button
-                    variant="ghost"
-                    className="h-10 gap-2 w-full items-center p-1!"
-                  >
+                  <Button variant="ghost" className="h-10 gap-2 w-full items-center p-1!">
                     <h1 className="text-2xl font-bold flex-1 min-w-0 text-left">
                       <ScrollableText>{gistTitle}</ScrollableText>
                     </h1>
@@ -267,10 +258,7 @@ export default function View() {
                     Copy as HTML
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleBackToApp()}
-                    className="gap-2"
-                  >
+                  <DropdownMenuItem onClick={() => handleBackToApp()} className="gap-2">
                     <Pencil className="h-4 w-4" />
                     Open in editor
                   </DropdownMenuItem>
@@ -298,6 +286,11 @@ export default function View() {
                       </DropdownMenuSub>
                     </>
                   )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
+                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                    Refresh
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -308,12 +301,7 @@ export default function View() {
           </div>
           {!isMobile && (
             <div className="flex gap-2">
-              <Button
-                title="Copy URL"
-                variant="outline"
-                onClick={handleCopyUrl}
-                className="gap-2"
-              >
+              <Button title="Copy URL" variant="outline" onClick={handleCopyUrl} className="gap-2">
                 {copying ? (
                   <Check className="h-4 w-4 text-green-500" />
                 ) : (
@@ -343,13 +331,8 @@ export default function View() {
               className="flex items-center gap-2 hover:text-foreground"
             >
               <Avatar className="h-6 w-6">
-                <AvatarImage
-                  src={gist.owner.avatar_url}
-                  alt={gist.owner.login}
-                />
-                <AvatarFallback>
-                  {gist.owner.login.charAt(0).toUpperCase()}
-                </AvatarFallback>
+                <AvatarImage src={gist.owner.avatar_url} alt={gist.owner.login} />
+                <AvatarFallback>{gist.owner.login.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-medium">{gist.owner.login}</span>
             </a>
@@ -399,7 +382,7 @@ export default function View() {
 
       {/* Content */}
       <Card className="shadow-lg">
-        {isLoading ? (
+        {isLoading || isManualRefresh ? (
           <div className="p-8 space-y-4">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />

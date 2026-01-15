@@ -17,15 +17,17 @@ export default {
         },
         summary: {
           type: "string",
-          description:
-            "A short description (3-5 words) that summarizes the image being generated.",
+          description: "A short description (3-5 words) that summarizes the image being generated.",
         },
       },
       required: ["prompt", "summary"],
     },
   },
   handler: async (args, context) => {
-    const toastId = toast.loading(`Generating image ("${args.summary}")...`, { dismissible: false, duration: Infinity });
+    const toastId = toast.loading(`Generating image ("${args.summary}")...`, {
+      dismissible: false,
+      duration: Infinity,
+    });
 
     const buffer = await generateDalleImage(args.prompt);
     const imageUrl = await uploadImage(context.gistId!, buffer);

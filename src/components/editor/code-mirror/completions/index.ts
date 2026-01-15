@@ -5,11 +5,11 @@ import { frontmatterCompletions } from "./frontmatter";
 import { wikilinkCompletions } from "./wikilink";
 
 export function createEditorCompletions(files: string[], isAiEnabled: boolean = false): Extension {
-    return autocompletion({
-        override: [
-            ...(isAiEnabled ? [frontmatterCompletions] : []),
-            wikilinkCompletions.bind(null, files),
-            emojiCompletions,
-        ],
-    });
+  return autocompletion({
+    override: [
+      ...(isAiEnabled ? [frontmatterCompletions] : []),
+      wikilinkCompletions.bind(null, files),
+      emojiCompletions,
+    ],
+  });
 }

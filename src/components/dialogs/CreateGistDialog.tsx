@@ -25,17 +25,13 @@ interface CreateGistDialogProps {
     description: string,
     content?: string,
     isPublic?: boolean,
-    selectedTags?: string[]
+    selectedTags?: string[],
   ) => void;
   initialContent?: string;
   tags?: Record<string, TagData>;
 }
 
-const CreateGistDialog = ({
-  onSubmit,
-  initialContent,
-  tags = {},
-}: CreateGistDialogProps) => {
+const CreateGistDialog = ({ onSubmit, initialContent, tags = {} }: CreateGistDialogProps) => {
   const [description, setDescription] = useState("");
   const [open, setOpen] = useState(false);
   const longPressTimeout = useRef<NodeJS.Timeout>();
@@ -129,11 +125,7 @@ const CreateGistDialog = ({
                   <Label htmlFor="public-toggle" className="text-sm">
                     Public
                   </Label>
-                  <Switch
-                    id="public-toggle"
-                    checked={isPublic}
-                    onCheckedChange={setIsPublic}
-                  />
+                  <Switch id="public-toggle" checked={isPublic} onCheckedChange={setIsPublic} />
                   {Object.entries(tags).length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -159,12 +151,8 @@ const CreateGistDialog = ({
                               toggleTag(id);
                             }}
                           >
-                            {selectedTags.includes(id) && (
-                              <Check className="h-4 w-4 mr-2" />
-                            )}
-                            {!selectedTags.includes(id) && (
-                              <span className="w-4 mr-2" />
-                            )}
+                            {selectedTags.includes(id) && <Check className="h-4 w-4 mr-2" />}
+                            {!selectedTags.includes(id) && <span className="w-4 mr-2" />}
                             <TagBadge tag={tag.name} color={tag.color} />
                           </DropdownMenuItem>
                         ))}

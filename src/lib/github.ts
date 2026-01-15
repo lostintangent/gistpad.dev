@@ -83,15 +83,19 @@ function parseLinkHeader(header: string | null): { next?: string } {
 function gistFetch(
   urlPath: string,
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
-  body: any = null
+  body: any = null,
+  forceRefresh: boolean = false,
 ): Promise<Response> {
   const token = getGitHubToken();
-  const headers: HeadersInit = {}
+  const headers: HeadersInit = {};
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
   if (body) {
     headers["Content-Type"] = "application/json";
+  }
+  if (forceRefresh) {
+    headers["If-None-Match"] = "";
   }
 
   return fetch(`https://api.github.com/gists${urlPath}`, {
@@ -133,7 +137,7 @@ export function getGistDisplayName(gist: Gist) {
 const DAILY_NOTES_DESCRIPTION = "📆 Daily notes";
 export const TEMPLATE_FILENAME = "template.md";
 export async function fetchUserGists(
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
 ): Promise<{ gists: Gist[]; archivedGists: Gist[]; dailyNotes: Gist | null }> {
   let url = "https://api.github.com/gists?per_page=100";
   const allGists: Gist[] = [];
@@ -157,7 +161,7 @@ export async function fetchUserGists(
         ([_, file]) =>
           file.language === "Markdown" ||
           file.filename.endsWith(".tldraw") ||
-          file.filename.endsWith(".png")
+          file.filename.endsWith(".png"),
       );
     });
 
@@ -172,8 +176,7 @@ export async function fetchUserGists(
   });
 
   const dailyNotes =
-    sortedGists.find((gist) => gist.description === DAILY_NOTES_DESCRIPTION) ||
-    null;
+    sortedGists.find((gist) => gist.description === DAILY_NOTES_DESCRIPTION) || null;
   const filteredGists = dailyNotes
     ? sortedGists.filter((gist) => gist.id !== dailyNotes.id)
     : sortedGists;
@@ -189,8 +192,8 @@ export async function fetchUserGists(
   };
 }
 
-export async function getGistById(gistId: string): Promise<Gist> {
-  const response = await gistFetch(`/${gistId}`);
+export async function getGistById(gistId: string, forceRefresh: boolean = false): Promise<Gist> {
+  const response = await gistFetch(`/${gistId}`, "GET", null, forceRefresh);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch gist`);
@@ -199,10 +202,7 @@ export async function getGistById(gistId: string): Promise<Gist> {
   return response.json();
 }
 
-export async function fetchGistContent(
-  gistId: string,
-  filename?: string
-): Promise<string> {
+export async function fetchGistContent(gistId: string, filename?: string): Promise<string> {
   const response = await gistFetch(`/${gistId}`);
   if (!response.ok) {
     throw new Error("Failed to fetch gist content");
@@ -224,7 +224,7 @@ export async function updateGistContent(
   gistId: string,
   content: string,
   filename: string = "README.md",
-  extraFiles?: GistFile[]
+  extraFiles?: GistFile[],
 ): Promise<Gist> {
   const filesToUpdate: { [key: string]: { content: string } } = {
     [filename]: {
@@ -249,10 +249,7 @@ export async function updateGistContent(
   return response.json();
 }
 
-export async function updateGistDescription(
-  gistId: string,
-  description: string
-): Promise<Gist> {
+export async function updateGistDescription(gistId: string, description: string): Promise<Gist> {
   const response = await gistFetch(`/${gistId}`, "PATCH", {
     description,
   });
@@ -268,7 +265,7 @@ export async function createGist(
   description: string,
   initialContent?: string,
   isPublic: boolean = false,
-  filename: string = "README.md"
+  filename: string = "README.md",
 ): Promise<Gist> {
   const response = await gistFetch("", "POST", {
     description,
@@ -277,8 +274,7 @@ export async function createGist(
       [filename]: {
         // Gist files can't be empty, so we're using an "invisible plus"
         // when there's no content or description.
-        content:
-          initialContent || (description ? `# ${description}\n\n` : EMPTY_CONTENT),
+        content: initialContent || (description ? `# ${description}\n\n` : EMPTY_CONTENT),
       },
     },
   });
@@ -297,10 +293,7 @@ export async function deleteGist(gistId: string): Promise<void> {
   }
 }
 
-export async function deleteGistFile(
-  gistId: string,
-  filename: string
-): Promise<Gist> {
+export async function deleteGistFile(gistId: string, filename: string): Promise<Gist> {
   const response = await gistFetch(`/${gistId}`, "PATCH", {
     files: {
       [filename]: null, // Setting to null deletes the file
@@ -317,7 +310,7 @@ export async function deleteGistFile(
 export async function renameGistFile(
   gistId: string,
   oldFilename: string,
-  newFilename: string
+  newFilename: string,
 ): Promise<Gist> {
   const response = await gistFetch(`/${gistId}`, "PATCH", {
     files: {
@@ -337,7 +330,7 @@ export async function renameGistFile(
 export async function addGistFile(
   gistId: string,
   filename: string,
-  content: string = "# " + filename.replace(/\.md$/, "") + "\n\n"
+  content: string = "# " + filename.replace(/\.md$/, "") + "\n\n",
 ): Promise<Gist> {
   const response = await gistFetch(`/${gistId}`, "PATCH", {
     files: {
@@ -392,8 +385,7 @@ export async function fetchStarredGists(): Promise<Gist[]> {
     const filteredGists = gists.filter((gist: Gist) => {
       const files = Object.entries(gist.files);
       return files.every(
-        ([_, file]) =>
-          file.language === "Markdown" || file.filename.endsWith(".tldraw")
+        ([_, file]) => file.language === "Markdown" || file.filename.endsWith(".tldraw"),
       );
     });
 
@@ -439,9 +431,9 @@ export async function forkGist(gistId: string): Promise<Gist> {
 
 // Comments
 
-export async function getGistComments(gistId: string): Promise<GistComment[]> {
+export async function getGistComments(gistId: string, forceRefresh: boolean = false): Promise<GistComment[]> {
   // TODO: Paginate these. But for now, most gists have less than 100 comments
-  const response = await gistFetch(`/${gistId}/comments?per_page=100`);
+  const response = await gistFetch(`/${gistId}/comments?per_page=100`, "GET", null, forceRefresh);
   if (!response.ok) {
     throw new Error("Failed to fetch gist comments");
   }
@@ -449,10 +441,7 @@ export async function getGistComments(gistId: string): Promise<GistComment[]> {
   return response.json();
 }
 
-export async function createGistComment(
-  gistId: string,
-  body: string
-): Promise<GistComment> {
+export async function createGistComment(gistId: string, body: string): Promise<GistComment> {
   const response = await gistFetch(`/${gistId}/comments`, "POST", { body });
   if (!response.ok) {
     throw new Error("Failed to create comment");
@@ -464,27 +453,17 @@ export async function createGistComment(
 export async function updateGistComment(
   gistId: string,
   commentId: number,
-  body: string
+  body: string,
 ): Promise<GistComment> {
-  const response = await gistFetch(
-    `/${gistId}/comments/${commentId}`,
-    "PATCH",
-    { body }
-  );
+  const response = await gistFetch(`/${gistId}/comments/${commentId}`, "PATCH", { body });
   if (!response.ok) {
     throw new Error("Failed to update comment");
   }
   return response.json();
 }
 
-export async function deleteGistComment(
-  gistId: string,
-  commentId: number
-): Promise<void> {
-  const response = await gistFetch(
-    `/${gistId}/comments/${commentId}`,
-    "DELETE"
-  );
+export async function deleteGistComment(gistId: string, commentId: number): Promise<void> {
+  const response = await gistFetch(`/${gistId}/comments/${commentId}`, "DELETE");
   if (!response.ok) {
     throw new Error("Failed to delete comment");
   }
@@ -492,9 +471,7 @@ export async function deleteGistComment(
 
 // Revisions
 
-export async function getGistRevisions(
-  gistId: string
-): Promise<GistRevision[]> {
+export async function getGistRevisions(gistId: string): Promise<GistRevision[]> {
   const response = await gistFetch(`/${gistId}/commits?per_page=20`);
   if (!response.ok) {
     throw new Error("Failed to fetch gist revisions");
@@ -503,10 +480,7 @@ export async function getGistRevisions(
   return response.json();
 }
 
-export async function getGistRevisionContent(
-  gistId: string,
-  revisionId: string
-): Promise<Gist> {
+export async function getGistRevisionContent(gistId: string, revisionId: string): Promise<Gist> {
   const response = await gistFetch(`/${gistId}/${revisionId}`);
   if (!response.ok) {
     throw new Error("Failed to fetch gist revision");
@@ -522,9 +496,7 @@ export const getTodayNoteFilename = (): string => {
   return `${format(new Date(), "yyyy-MM-dd")}.md`;
 };
 
-export const createOrUpdateDailyNote = async (
-  dailyNotes: Gist | null
-): Promise<Gist> => {
+export const createOrUpdateDailyNote = async (dailyNotes: Gist | null): Promise<Gist> => {
   // Generate the filename based on current date in yyyy-MM-dd format
   const dateStr = format(new Date(), "yyyy-MM-dd");
   const filename = getTodayNoteFilename();
@@ -569,8 +541,7 @@ export const createOrUpdateDailyNote = async (
 
 export async function archiveGist(gist: Gist): Promise<Gist> {
   // Make sure the gist has a description
-  const description =
-    gist.description || Object.keys(gist.files)[0].replace(/\.md$/, "");
+  const description = gist.description || Object.keys(gist.files)[0].replace(/\.md$/, "");
   const newDescription = `${description.trim()} [Archived]`;
   return updateGistDescription(gist.id, newDescription);
 }

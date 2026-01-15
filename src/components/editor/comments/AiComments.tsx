@@ -72,9 +72,7 @@ export default function AiComments({
   isWebSearching = false,
 }: AiCommentsProps) {
   const [showClarifyDialog, setShowClarifyDialog] = useState(false);
-  const [selectedComment, setSelectedComment] = useState<ReviewComment | null>(
-    null
-  );
+  const [selectedComment, setSelectedComment] = useState<ReviewComment | null>(null);
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
   const [regenerateInput, setRegenerateInput] = useState("");
 
@@ -112,9 +110,7 @@ export default function AiComments({
                       Retry
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onSelect={() =>
-                        setTimeout(() => setShowRegenerateDialog(true), 100)
-                      }
+                      onSelect={() => setTimeout(() => setShowRegenerateDialog(true), 100)}
                       disabled={isCommandInProgress}
                     >
                       <MessageSquareReply className="h-4 w-4 mr-2" />
@@ -223,14 +219,12 @@ export default function AiComments({
                 {(comment.insertAfter ?? comment.replaceWith) && (
                   <div>
                     <div className="text-sm text-muted-foreground flex items-center gap-1">
-                      {comment.replaceWith !== null
-                        ? "Replace with"
-                        : "Insert after"}
+                      {comment.replaceWith !== null ? "Replace with" : "Insert after"}
                       <ClipboardCopy
                         className="h-4 w-4 cursor-pointer hover:text-green-500"
                         onClick={() =>
                           navigator.clipboard.writeText(
-                            comment.replaceWith || comment.insertAfter || ""
+                            comment.replaceWith || comment.insertAfter || "",
                           )
                         }
                       />
@@ -269,8 +263,7 @@ export default function AiComments({
             ) : (
               comments.length === 0 && (
                 <div className="text-center text-muted-foreground italic">
-                  Your request didn't result in any comments. Maybe try asking a
-                  different question?
+                  Your request didn't result in any comments. Maybe try asking a different question?
                 </div>
               )
             )}
@@ -290,10 +283,7 @@ export default function AiComments({
         }}
       />
 
-      <Dialog
-        open={showRegenerateDialog}
-        onOpenChange={setShowRegenerateDialog}
-      >
+      <Dialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Regenerate Comments</DialogTitle>

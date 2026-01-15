@@ -17,11 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink, Info, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -32,12 +28,7 @@ interface ModelPickerProps {
   onModelChange: (value: string) => void;
 }
 
-const ModelPicker = ({
-  label,
-  tooltip,
-  model,
-  onModelChange,
-}: ModelPickerProps) => {
+const ModelPicker = ({ label, tooltip, model, onModelChange }: ModelPickerProps) => {
   return (
     <div className="grid gap-2">
       <div className="flex items-center gap-2">
@@ -76,18 +67,12 @@ interface ConfigureAiDialogProps {
     editModel: string,
     reviewModel: string,
     researchModel: string,
-    showReasoningSummaries: boolean
+    showReasoningSummaries: boolean,
   ) => void;
 }
 
-const ConfigureAiDialog = ({
-  isOpen,
-  onOpenChange,
-  onSave,
-}: ConfigureAiDialogProps) => {
-  const [apiKey, setApiKey] = useState(
-    localStorage.getItem("gistpad-openai-key") || ""
-  );
+const ConfigureAiDialog = ({ isOpen, onOpenChange, onSave }: ConfigureAiDialogProps) => {
+  const [apiKey, setApiKey] = useState(localStorage.getItem("gistpad-openai-key") || "");
 
   const [askModel, setAskModel] = useState(getModelSetting("ask"));
   const [editModel, setEditModel] = useState(getModelSetting("edit"));
@@ -95,7 +80,7 @@ const ConfigureAiDialog = ({
   const [researchModel, setResearchModel] = useState(getModelSetting("research"));
 
   const [showReasoningSummaries, setShowReasoningSummaries] = useState(
-    localStorage.getItem("gistpad-show-reasoning-summaries") !== "false"
+    localStorage.getItem("gistpad-show-reasoning-summaries") !== "false",
   );
 
   return (
@@ -110,9 +95,7 @@ const ConfigureAiDialog = ({
               <Label htmlFor="apiKey">OpenAI API Key</Label>
               <ExternalLink
                 className="h-4 w-4 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() =>
-                  window.open("https://platform.openai.com/api-keys", "_blank")
-                }
+                onClick={() => window.open("https://platform.openai.com/api-keys", "_blank")}
               />
             </div>
             <div className="relative">
@@ -168,10 +151,7 @@ const ConfigureAiDialog = ({
               checked={showReasoningSummaries}
               onCheckedChange={(c) => setShowReasoningSummaries(!!c)}
             />
-            <label
-              htmlFor="show-reasoning-summaries"
-              className="text-sm cursor-pointer"
-            >
+            <label htmlFor="show-reasoning-summaries" className="text-sm cursor-pointer">
               Show reasoning summaries?
             </label>
           </div>
@@ -185,7 +165,7 @@ const ConfigureAiDialog = ({
                 editModel,
                 reviewModel,
                 researchModel,
-                showReasoningSummaries
+                showReasoningSummaries,
               );
               onOpenChange(false);
             }}

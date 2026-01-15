@@ -5,20 +5,20 @@ import { AdditionalReference, AgentFollowUp, generateTitle } from "../openai";
 import { runStreamingAgent } from "./base";
 
 export interface ReviewComment {
-    id: number;
-    heading?: string;
-    comment?: string;
-    applyPrompt?: string;
-    referencedText?: string | null;
-    replaceWith?: string | null;
-    insertAfter?: string | null;
-    isExample?: boolean;
+  id: number;
+  heading?: string;
+  comment?: string;
+  applyPrompt?: string;
+  referencedText?: string | null;
+  replaceWith?: string | null;
+  insertAfter?: string | null;
+  isExample?: boolean;
 }
 
 export interface ReviewContentResult {
-    title: string;
-    comments: ReviewComment[];
-    followUp: AgentFollowUp;
+  title: string;
+  comments: ReviewComment[];
+  followUp: AgentFollowUp;
 }
 
 const systemPrompt = `# Objective
@@ -58,110 +58,107 @@ const systemPrompt = `# Objective
 * CRITICAL: Make sure to create distinct/individual comments for each distinct piece of feedback/suggestion you have, even if they are related to the same topic. Do not combine multiple suggestions into a single comment.`;
 
 export async function reviewContent(
-    content: string,
-    prompt: string,
-    description?: string,
-    instructions?: string,
-    userComments?: GistComment[],
-    additionalReferences?: AdditionalReference[],
-    onComments?: (comments: ReviewComment[]) => void,
-    onFollowUp?: (followUp: AgentFollowUp) => void,
-    onTitle?: (title: string) => void,
-    onReasoning?: (summary: string) => void,
-    onIsWebSearching?: (isSearching: boolean) => void,
-    previousResponseId?: string,
-    abortSignal?: AbortSignal,
-    extraTools?: Tool[]
+  content: string,
+  prompt: string,
+  description?: string,
+  instructions?: string,
+  userComments?: GistComment[],
+  additionalReferences?: AdditionalReference[],
+  onComments?: (comments: ReviewComment[]) => void,
+  onFollowUp?: (followUp: AgentFollowUp) => void,
+  onTitle?: (title: string) => void,
+  onReasoning?: (summary: string) => void,
+  onIsWebSearching?: (isSearching: boolean) => void,
+  previousResponseId?: string,
+  abortSignal?: AbortSignal,
+  extraTools?: Tool[],
 ): Promise<string> {
-    let commentId = 1;
-    const comments: ReviewComment[] = [];
-    const titleGenerator = generateTitle(prompt, abortSignal);
-    const titlePromise = (async () => {
-        try {
-            let title = "";
-            for await (const delta of titleGenerator) {
-                title += delta;
-                onTitle?.(title);
-            }
-        } catch (e) {
-            console.error("Failed to generate title:", e);
-        }
-    })();
+  let commentId = 1;
+  const comments: ReviewComment[] = [];
+  const titleGenerator = generateTitle(prompt, abortSignal);
+  const titlePromise = (async () => {
+    try {
+      let title = "";
+      for await (const delta of titleGenerator) {
+        title += delta;
+        onTitle?.(title);
+      }
+    } catch (e) {
+      console.error("Failed to generate title:", e);
+    }
+  })();
 
-    const responseId = await runStreamingAgent({
-        agentType: "review",
-        systemPrompt,
-        outputSchema: z.object({
-            comments: z.array(
-                z.object({
-                    heading: z.string(),
-                    review_comment: z.string(),
-                    apply_prompt: z.string(),
-                    referenced_text: z.union([z.string(), z.null()]),
-                    replace_with: z.union([z.string(), z.null()]),
-                    insert_after: z.union([z.string(), z.null()]),
-                    is_example: z.boolean(),
-                })
-            ),
-            follow_up: z.object({
-                question: z.string(),
-                topic: z.string(),
-            }),
+  const responseId = await runStreamingAgent({
+    agentType: "review",
+    systemPrompt,
+    outputSchema: z.object({
+      comments: z.array(
+        z.object({
+          heading: z.string(),
+          review_comment: z.string(),
+          apply_prompt: z.string(),
+          referenced_text: z.union([z.string(), z.null()]),
+          replace_with: z.union([z.string(), z.null()]),
+          insert_after: z.union([z.string(), z.null()]),
+          is_example: z.boolean(),
         }),
-        prompt,
-        context: {
-            content,
-            description,
-            instructions,
-            userComments,
-            additionalReferences,
-        },
-        onParserValue: ({ key, value, stack }) => {
-            if (stack.length >= 3 && typeof stack[2].key === "number") {
-                const index = stack[2].key as number;
-                if (!comments[index]) {
-                    comments[index] = { id: commentId++ };
-                }
+      ),
+      follow_up: z.object({
+        question: z.string(),
+        topic: z.string(),
+      }),
+    }),
+    prompt,
+    context: {
+      content,
+      description,
+      instructions,
+      userComments,
+      additionalReferences,
+    },
+    onParserValue: ({ key, value, stack }) => {
+      if (stack.length >= 3 && typeof stack[2].key === "number") {
+        const index = stack[2].key as number;
+        if (!comments[index]) {
+          comments[index] = { id: commentId++ };
+        }
 
-                const comment = comments[index];
-                switch (key) {
-                    case "heading":
-                        comment.heading = value;
-                        break;
-                    case "review_comment":
-                        comment.comment = value?.replace(
-                            /citeturn\d+(search|view)\d+/g,
-                            ""
-                        );
-                        break;
-                    case "apply_prompt":
-                        comment.applyPrompt = value;
-                        break;
-                    case "referenced_text":
-                        comment.referencedText = value;
-                        break;
-                    case "replace_with":
-                        comment.replaceWith = value;
-                        break;
-                    case "insert_after":
-                        comment.insertAfter = value;
-                        break;
-                    case "is_example":
-                        comment.isExample = value;
-                        break;
-                }
+        const comment = comments[index];
+        switch (key) {
+          case "heading":
+            comment.heading = value;
+            break;
+          case "review_comment":
+            comment.comment = value?.replace(/citeturn\d+(search|view)\d+/g, "");
+            break;
+          case "apply_prompt":
+            comment.applyPrompt = value;
+            break;
+          case "referenced_text":
+            comment.referencedText = value;
+            break;
+          case "replace_with":
+            comment.replaceWith = value;
+            break;
+          case "insert_after":
+            comment.insertAfter = value;
+            break;
+          case "is_example":
+            comment.isExample = value;
+            break;
+        }
 
-                onComments?.([...comments]);
-            }
-        },
-        onFollowUp,
-        extraTools,
-        onReasoning,
-        onIsWebSearching,
-        previousResponseId,
-        abortSignal,
-    });
+        onComments?.([...comments]);
+      }
+    },
+    onFollowUp,
+    extraTools,
+    onReasoning,
+    onIsWebSearching,
+    previousResponseId,
+    abortSignal,
+  });
 
-    await titlePromise;
-    return responseId;
+  await titlePromise;
+  return responseId;
 }

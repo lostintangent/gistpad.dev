@@ -57,7 +57,7 @@ interface GistListProps {
     description: string,
     content?: string,
     isPublic?: boolean,
-    selectedTags?: string[]
+    selectedTags?: string[],
   ) => Promise<void>;
   onOpenTodaysNote?: () => Promise<void>;
   showArchivedGists?: boolean;
@@ -138,8 +138,7 @@ function GistList({
 
   // Scroll the selected gist into view (desktop only)
   useEffect(() => {
-    if (isLoading || !selectedGistRef.current || !selectedGistId)
-      return;
+    if (isLoading || !selectedGistRef.current || !selectedGistId) return;
 
     selectedGistRef.current.scrollIntoView({
       behavior: "smooth",
@@ -158,23 +157,19 @@ function GistList({
       (gist.description?.toLowerCase().includes(filter.toLowerCase()) ||
         !filter ||
         selectedGistId === gist.id) &&
-      matchesTags(gist.id)
+      matchesTags(gist.id),
   );
 
   // Separate pinned gists from regular gists
-  const pinnedGistsList = filteredGists.filter((gist) =>
-    pinnedGists.includes(gist.id)
-  );
-  const unpinnedGistsList = filteredGists.filter(
-    (gist) => !pinnedGists.includes(gist.id)
-  );
+  const pinnedGistsList = filteredGists.filter((gist) => pinnedGists.includes(gist.id));
+  const unpinnedGistsList = filteredGists.filter((gist) => !pinnedGists.includes(gist.id));
 
   const filteredArchivedGists = archivedGists.filter(
     (gist) =>
       (gist.description?.toLowerCase().includes(filter.toLowerCase()) ||
         !filter ||
         selectedGistId === gist.id) &&
-      matchesTags(gist.id)
+      matchesTags(gist.id),
   );
 
   const filteredStarredGists = starredGists.filter(
@@ -182,7 +177,7 @@ function GistList({
       (gist.description?.toLowerCase().includes(filter.toLowerCase()) ||
         !filter ||
         selectedGistId === gist.id) &&
-      matchesTags(gist.id)
+      matchesTags(gist.id),
   );
 
   // Note: The timeout is due to an odd bug between
@@ -191,11 +186,7 @@ function GistList({
     setTimeout(() => setGistToDelete(gist), 200);
   };
 
-  const handleDeleteDailyFile = async (
-    e: React.MouseEvent,
-    gist: Gist,
-    filename: string
-  ) => {
+  const handleDeleteDailyFile = async (e: React.MouseEvent, gist: Gist, filename: string) => {
     e.stopPropagation();
     setDailyToDelete({ gist, filename });
   };
@@ -216,14 +207,12 @@ function GistList({
   };
 
   const isFileSelected = (gistId: string, filename?: string) => {
-    return (
-      gistId === selectedGistId && (filename ? filename === selectedFile : true)
-    );
+    return gistId === selectedGistId && (filename ? filename === selectedFile : true);
   };
 
   const getMdFileCount = (gist: Gist) => {
     const fileCount = Object.values(gist.files).filter(({ filename }) =>
-      filename.endsWith(".md")
+      filename.endsWith(".md"),
     ).length;
 
     // TODO: Make this more general and add it to the date utils.
@@ -242,7 +231,6 @@ function GistList({
 
   return (
     <Card className="w-full h-full flex flex-col">
-
       {/* Header */}
       <div className="border-b p-3 flex-none bg-muted/30">
         <div className="flex items-center gap-3">
@@ -287,17 +275,10 @@ function GistList({
               disabled={isLoading}
               title="Refresh gists"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
-            {(!isMobile && onToggleCollapse) && (
-              <Button
-                variant="ghost"
-                onClick={onToggleCollapse}
-                size="sm"
-                title="Collapse sidebar"
-              >
+            {!isMobile && onToggleCollapse && (
+              <Button variant="ghost" onClick={onToggleCollapse} size="sm" title="Collapse sidebar">
                 <PanelLeftClose />
               </Button>
             )}
@@ -322,13 +303,9 @@ function GistList({
                   </div>
                 ))}
               </>
-            ) : filteredGists.length === 0 &&
-              !filter &&
-              filterTagIds.length === 0 ? (
+            ) : filteredGists.length === 0 && !filter && filterTagIds.length === 0 ? (
               <div className="p-4">
-                <p className="mb-6 text-center">
-                  You don't appear to have any gists...yet!
-                </p>
+                <p className="mb-6 text-center">You don't appear to have any gists...yet!</p>
                 <div className="flex justify-center gap-2">
                   <Button
                     variant="outline"
@@ -341,8 +318,7 @@ function GistList({
                   <CreateGistDialog onSubmit={onCreateGist} />
                 </div>
               </div>
-            ) : filteredGists.length === 0 &&
-              (filter || filterTagIds.length > 0) ? (
+            ) : filteredGists.length === 0 && (filter || filterTagIds.length > 0) ? (
               <div className="text-center text-muted-foreground italic text-sm mt-4">
                 No gists match your filter
               </div>
@@ -357,11 +333,7 @@ function GistList({
                         gist={gist}
                         isPinned={true}
                         isSelected={isFileSelected(gist.id)}
-                        selectedRef={
-                          gist.id === selectedGistId
-                            ? selectedGistRef
-                            : undefined
-                        }
+                        selectedRef={gist.id === selectedGistId ? selectedGistRef : undefined}
                         onSelectGist={handleSelectGist}
                         onPinToggle={onPinToggle}
                         onDuplicateGist={onDuplicateGist}
@@ -387,9 +359,7 @@ function GistList({
                     gist={gist}
                     isPinned={false}
                     isSelected={isFileSelected(gist.id)}
-                    selectedRef={
-                      gist.id === selectedGistId ? selectedGistRef : undefined
-                    }
+                    selectedRef={gist.id === selectedGistId ? selectedGistRef : undefined}
                     onSelectGist={handleSelectGist}
                     onPinToggle={onPinToggle}
                     onDuplicateGist={onDuplicateGist}
@@ -406,12 +376,11 @@ function GistList({
                   />
                 ))}
 
-                {(filter || filterTagIds.length > 0) &&
-                  filteredGists.length > 0 && (
-                    <div className="text-center text-muted-foreground italic text-sm pt-4">
-                      {`Showing ${filteredGists.length} of ${gists.length} gists`}
-                    </div>
-                  )}
+                {(filter || filterTagIds.length > 0) && filteredGists.length > 0 && (
+                  <div className="text-center text-muted-foreground italic text-sm pt-4">
+                    {`Showing ${filteredGists.length} of ${gists.length} gists`}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -434,9 +403,7 @@ function GistList({
           <SubList
             gists={starredGists}
             filteredGists={filteredStarredGists}
-            icon={
-              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 mr-1" />
-            }
+            icon={<Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 mr-1" />}
             sectionKey="starred"
             renderGistAction={(gist) => (
               <Button
@@ -471,11 +438,7 @@ function GistList({
             renderGistAction={(gist) => (
               <DropdownMenu>
                 <DropdownMenuTrigger>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 h-8 w-8 p-0"
-                  >
+                  <Button variant="ghost" size="sm" className="shrink-0 h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -510,9 +473,7 @@ function GistList({
         isOpen={!!gistToDelete}
         onOpenChange={(open) => !open && setGistToDelete(null)}
         onConfirm={confirmDelete}
-        gistDescription={
-          gistToDelete?.description?.replace(/\s*\[Archived\]$/, "") || ""
-        }
+        gistDescription={gistToDelete?.description?.replace(/\s*\[Archived\]$/, "") || ""}
       />
 
       <DeleteDailyNoteDialog
@@ -521,7 +482,7 @@ function GistList({
         onConfirm={confirmDailyDelete}
         filename={dailyToDelete?.filename.replace(/\.md$/, "") || ""}
       />
-    </Card >
+    </Card>
   );
 }
 

@@ -6,12 +6,9 @@ export interface EventItem {
   html: string;
 }
 
-
 async function fetchData(): Promise<EventItem[]> {
   const endpoint = "https://today.zenquotes.io/api";
-  const response = await fetch(
-    `https://corsproxy.io/?url=${encodeURIComponent(endpoint)}`
-  );
+  const response = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(endpoint)}`);
   if (!response.ok) {
     throw new Error("Failed to fetch events");
   }
@@ -37,15 +34,10 @@ export function OnThisDayWidget({ data, isLoading }: WidgetProps<EventItem[]>) {
           <div
             className="prose dark:prose-invert text-sm"
             dangerouslySetInnerHTML={{
-              __html: event.html.replace(
-                /<a /g,
-                '<a target="_blank" rel="noopener noreferrer" '
-              ),
+              __html: event.html.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" '),
             }}
           />
-          {index < data.length - 1 && (
-            <hr className="mt-3 border-border" />
-          )}
+          {index < data.length - 1 && <hr className="mt-3 border-border" />}
         </div>
       ))}
     </div>

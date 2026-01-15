@@ -2,11 +2,7 @@ import editContent from "@/agents/edit/edit";
 import { AdditionalReference, AgentFollowUp } from "@/agents/openai";
 import askContent from "@/agents/qa/ask";
 import { ReviewComment, reviewContent } from "@/agents/qa/review";
-import {
-  editorModeAtom,
-  isAiCommandInProgressAtom,
-  selectedHeadingAtom,
-} from "@/atoms";
+import { editorModeAtom, isAiCommandInProgressAtom, selectedHeadingAtom } from "@/atoms";
 import { useVoiceConversation } from "@/components/editor/ai/voice/useVoiceConversation";
 import { createEditorCompletions } from "@/components/editor/code-mirror/completions";
 import { assetUrlShortener } from "@/components/editor/code-mirror/decorations/asset-url-shortener";
@@ -15,21 +11,14 @@ import { codeFenceMarker } from "@/components/editor/code-mirror/decorations/cod
 import { commentQuotes } from "@/components/editor/code-mirror/decorations/comment-quotes";
 import { imagePreview } from "@/components/editor/code-mirror/hoverTooltips/image-preview";
 import { createEditorKeybindings } from "@/components/editor/code-mirror/keybindings";
-import {
-  lintTimeField,
-  spellChecker,
-} from "@/components/editor/code-mirror/linters/spell-checker";
+import { lintTimeField, spellChecker } from "@/components/editor/code-mirror/linters/spell-checker";
 import { selectionComment } from "@/components/editor/code-mirror/widgets/selection-comment";
 import CommentsSidebar from "@/components/editor/comments/CommentsSidebar";
 import AddFileDialog from "@/components/editor/dialogs/AddFileDialog";
 import EditorToolbar from "@/components/editor/toolbar/EditorToolbar";
 import { ScrollToTop } from "@/components/preview/ScrollToTop";
 import { Card } from "@/components/ui/card";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   fetchGistContent,
@@ -43,35 +32,18 @@ import {
   type GistComment,
 } from "@/lib/github";
 import { uploadImage } from "@/lib/supabase/client";
-import {
-  detectDateFormat,
-  generateDateFilename,
-  parseFrontMatter,
-  playAiChime,
-} from "@/lib/utils";
+import { detectDateFormat, generateDateFilename, parseFrontMatter, playAiChime } from "@/lib/utils";
 import { redo, undo } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { yamlFrontmatter } from "@codemirror/lang-yaml";
-import {
-  Chunk,
-  getChunks,
-  rejectChunk,
-  unifiedMergeView,
-} from "@codemirror/merge";
+import { Chunk, getChunks, rejectChunk, unifiedMergeView } from "@codemirror/merge";
 import { openSearchPanel } from "@codemirror/search";
 import { Extension, Text } from "@codemirror/state";
 import { EditorView, scrollPastEnd, ViewUpdate } from "@codemirror/view";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CodeMirror, { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { useAtom } from "jotai";
-import {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState
-} from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -109,7 +81,7 @@ export interface GistEditorProps {
     description: string,
     content?: string,
     isPublic?: boolean,
-    selectedTags?: string[]
+    selectedTags?: string[],
   ) => void;
   onUpdateDescription?: (gistId: string, description: string) => Promise<void>;
   onRenameFile?: (oldFilename: string, newFilename: string) => Promise<void>;
@@ -123,7 +95,7 @@ export interface GistEditorProps {
     reviewModel: string,
     editModel: string,
     researchModel: string,
-    showReasoningSummaries: boolean
+    showReasoningSummaries: boolean,
   ) => void;
   gists?: Gist[];
   hasUnsavedChanges?: boolean;
@@ -136,22 +108,14 @@ export interface GistEditorProps {
   onSelectRevision?: (revisionId: string | null) => void;
   onRestoreRevision?: () => void;
   editorTheme?: Extension;
-  onAddFile?: (
-    gistId: string,
-    filename: string,
-    content?: string
-  ) => Promise<void>;
+  onAddFile?: (gistId: string, filename: string, content?: string) => Promise<void>;
   showLineNumbers?: boolean;
   isSpellCheckEnabled?: boolean;
   pasteImagesAsHtml?: boolean;
   showInlineComments?: boolean;
   onViewFullscreen?: () => void;
   onHasPendingAiEdit: (value?: boolean) => void;
-  onResearchTopic?: (
-    request: string,
-    content: string,
-    userComments?: GistComment[]
-  ) => void;
+  onResearchTopic?: (request: string, content: string, userComments?: GistComment[]) => void;
   revisions?: GistRevision[] | null;
   isRevisionsLoading: boolean;
   hasPendingAiEdit?: boolean;
@@ -220,14 +184,10 @@ export default ({
 }: GistEditorProps) => {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isEditingFilename, setIsEditingFilename] = useState(false);
-  const [aiReviewComments, setAiReviewComments] = useState<ReviewComment[]>(
-    []
-  );
-  const [aiReviewFollowUp, setAiReviewFollowUp] =
-    useState<AgentFollowUp | null>(null);
+  const [aiReviewComments, setAiReviewComments] = useState<ReviewComment[]>([]);
+  const [aiReviewFollowUp, setAiReviewFollowUp] = useState<AgentFollowUp | null>(null);
   const [appliedAiComments, setAppliedAiComments] = useState<number[]>([]);
-  const [activeAiRequestRequest, setActiveAiReviewRequest] =
-    useState<string>("");
+  const [activeAiRequestRequest, setActiveAiReviewRequest] = useState<string>("");
   const [aiReviewTitle, setAiReviewTitle] = useState<string | null>(null);
   const [aiResponse, setAiResponse] = useState<string>(null);
   const [showAiResponse, setShowAiResponse] = useState(false);
@@ -237,19 +197,11 @@ export default ({
     ask?: string;
   }>({});
   const [aiFollowUp, setAiFollowUp] = useState<AgentFollowUp | null>(null);
-  const [reasoningSummary, setReasoningSummary] = useState<string | null>(
-    null
-  );
+  const [reasoningSummary, setReasoningSummary] = useState<string | null>(null);
   const [isWebSearching, setIsWebSearching] = useState(false);
-  const [cancelAiCommand, setCancelAiCommand] = useState<
-    (() => Promise<void>) | null
-  >(null);
-  const [reviewReasoningSummary, setReviewReasoningSummary] = useState<
-    string | null
-  >(null);
-  const [selectedCommentsTab, setSelectedCommentsTab] = useState<
-    "user" | "ai" | null
-  >(null);
+  const [cancelAiCommand, setCancelAiCommand] = useState<(() => Promise<void>) | null>(null);
+  const [reviewReasoningSummary, setReviewReasoningSummary] = useState<string | null>(null);
+  const [selectedCommentsTab, setSelectedCommentsTab] = useState<"user" | "ai" | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -266,7 +218,7 @@ export default ({
       Object.keys(gist?.files || {})
         .filter((f) => f !== selectedFile)
         .map((f) => f.replace(/\.md$/, "")),
-    [gist, selectedFile]
+    [gist, selectedFile],
   );
 
   const [selectedHeading, setSelectedHeading] = useAtom(selectedHeadingAtom);
@@ -282,7 +234,7 @@ export default ({
       // Add a slight delay to allow the preview to render
       setTimeout(() => {
         const headingElement = previewRef.current?.querySelector(
-          `[id="${selectedHeading}"]`
+          `[id="${selectedHeading}"]`,
         ) as HTMLElement | null;
         if (headingElement) {
           headingElement.scrollIntoView();
@@ -302,9 +254,7 @@ export default ({
   const [newCommentValue, setNewCommentValue] = useState<string>("");
   const [isCommentSidebarOpen, setIsCommentSidebarOpen] = useState(false);
   const [showAddFileDialog, setShowAddFileDialog] = useState(false);
-  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(
-    null
-  );
+  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
 
   const [editorPanelSize, setEditorPanelSize] = useState<number>(() => {
     const saved = localStorage.getItem("gistpad-editor-width");
@@ -321,10 +271,7 @@ export default ({
   });
 
   useEffect(() => {
-    localStorage.setItem(
-      "gistpad-comments-width",
-      commentPanelSize.toString()
-    );
+    localStorage.setItem("gistpad-comments-width", commentPanelSize.toString());
   }, [commentPanelSize]);
 
   const commentPanelRef = useRef<ImperativePanelHandle>(null);
@@ -364,8 +311,7 @@ export default ({
     }
   }, [isSplitMode, isPreviewMode]);
 
-  const isDeletingFile =
-    selectedFile !== "README.md" && Object.keys(gist?.files || {}).length > 1;
+  const isDeletingFile = selectedFile !== "README.md" && Object.keys(gist?.files || {}).length > 1;
 
   // Only enable comments for non-daily notes
   const isCommentsEnabled = gist && !isDailyNote(gist);
@@ -389,9 +335,7 @@ export default ({
     deletions: number;
     hunks: number;
   } | null>(null);
-  const [dragOverlayState, setDragOverlayState] = useState<
-    "image" | "unsupported" | null
-  >(null);
+  const [dragOverlayState, setDragOverlayState] = useState<"image" | "unsupported" | null>(null);
 
   // Listen for updates to the selection and also
   // track whether undo/redo is enabled after changes.
@@ -404,10 +348,7 @@ export default ({
       setHasSelection(from !== to);
     }
 
-    if (
-      hasPendingAiEdit &&
-      update.transactions.some((tr) => tr.isUserEvent("accept"))
-    ) {
+    if (hasPendingAiEdit && update.transactions.some((tr) => tr.isUserEvent("accept"))) {
       const view = update.view;
 
       setTimeout(() => {
@@ -428,13 +369,13 @@ export default ({
     // therefore, I can't track the undo stack myself.
     const isUndoAvailable = undo({
       state: update.view.state,
-      dispatch: () => { },
+      dispatch: () => {},
     });
     setCanUndo(isUndoAvailable);
 
     const isRedoAvailable = redo({
       state: update.view.state,
-      dispatch: () => { },
+      dispatch: () => {},
     });
     setCanRedo(isRedoAvailable);
   }
@@ -451,11 +392,8 @@ export default ({
       const editorHeight = view.contentHeight;
       const previewHeight = previewRef.current.scrollHeight;
 
-      const scrollRatio =
-        view.scrollDOM.scrollTop /
-        (editorHeight - view.scrollDOM.clientHeight);
-      const previewScrollTop =
-        scrollRatio * (previewHeight - previewRef.current.clientHeight);
+      const scrollRatio = view.scrollDOM.scrollTop / (editorHeight - view.scrollDOM.clientHeight);
+      const previewScrollTop = scrollRatio * (previewHeight - previewRef.current.clientHeight);
 
       previewRef.current.scrollTop = previewScrollTop;
     };
@@ -518,11 +456,10 @@ export default ({
   const getDisplayContent = useCallback(
     (content: string) => {
       if (showFrontmatter) return content;
-      const { content: contentWithoutFrontmatter } =
-        parseFrontMatter(content);
+      const { content: contentWithoutFrontmatter } = parseFrontMatter(content);
       return contentWithoutFrontmatter;
     },
-    [showFrontmatter]
+    [showFrontmatter],
   );
 
   const restoreFrontmatter = (newContent: string) => {
@@ -537,7 +474,7 @@ export default ({
       const valueToSave = restoreFrontmatter(value);
       onContentChange?.(valueToSave);
     },
-    [onContentChange, restoreFrontmatter]
+    [onContentChange, restoreFrontmatter],
   );
 
   const handleSave = useCallback(async () => {
@@ -616,23 +553,12 @@ export default ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [
-    gistId,
-    hasUnsavedChanges,
-    isSaving,
-    isLoading,
-    editorRef,
-    handleSaveWithForkCheck,
-  ]);
+  }, [gistId, hasUnsavedChanges, isSaving, isLoading, editorRef, handleSaveWithForkCheck]);
 
-  const [isAiCommandInProgress, setIsAiCommandInProgress] = useAtom(
-    isAiCommandInProgressAtom
-  );
+  const [isAiCommandInProgress, setIsAiCommandInProgress] = useAtom(isAiCommandInProgressAtom);
   const [isAiReviewInProgress, setIsAiReviewInProgress] = useState(false);
   const [isAiEditInProgress, setIsAiEditInProgress] = useState(false);
-  const [aiCommentBeingApplied, setAiCommentBeingApplied] = useState<
-    number | null
-  >(null);
+  const [aiCommentBeingApplied, setAiCommentBeingApplied] = useState<number | null>(null);
 
   const {
     startVoiceConversation,
@@ -671,23 +597,18 @@ export default ({
 
   const updateFrontmatter = useCallback(
     (newFrontMatter: Record<string, any>) => {
-      const { content: contentWithoutFrontmatter } =
-        parseFrontMatter(content);
+      const { content: contentWithoutFrontmatter } = parseFrontMatter(content);
 
       const frontmatterYaml =
-        Object.keys(newFrontMatter).length > 0
-          ? stringify(newFrontMatter)
-          : "";
-      const frontMatter = frontmatterYaml
-        ? `---\n${frontmatterYaml}---\n\n`
-        : "";
+        Object.keys(newFrontMatter).length > 0 ? stringify(newFrontMatter) : "";
+      const frontMatter = frontmatterYaml ? `---\n${frontmatterYaml}---\n\n` : "";
       const updatedContent = `${frontMatter}${contentWithoutFrontmatter}`;
 
       // If the user doesn't currently have any unsaved changes
       // then let's save the content immediately.
       onContentChange?.(updatedContent, !hasUnsavedChanges);
     },
-    [content, onContentChange, hasUnsavedChanges]
+    [content, onContentChange, hasUnsavedChanges],
   );
 
   const handleCopyGistUrl = (showToast = true) => {
@@ -754,10 +675,7 @@ export default ({
     }
   };
 
-  const handlePaste = async (
-    gistId: string,
-    e: React.ClipboardEvent<HTMLDivElement>
-  ) => {
+  const handlePaste = async (gistId: string, e: React.ClipboardEvent<HTMLDivElement>) => {
     if (!e.clipboardData) return;
 
     const items = Array.from(e.clipboardData.items);
@@ -772,16 +690,11 @@ export default ({
     await insertImageFile(gistId, file);
   };
 
-  const handleDrop = async (
-    gistId: string,
-    e: React.DragEvent<HTMLDivElement>
-  ) => {
+  const handleDrop = async (gistId: string, e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
 
     const items = Array.from(e.dataTransfer.items);
-    const imageItem = items.find(
-      (item) => item.kind === "file" && item.type.startsWith("image/")
-    );
+    const imageItem = items.find((item) => item.kind === "file" && item.type.startsWith("image/"));
     if (!imageItem) return;
 
     const file = imageItem.getAsFile();
@@ -793,9 +706,7 @@ export default ({
   const handleDragOverEditor = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const items = Array.from(e.dataTransfer.items);
-    const imageItem = items.find(
-      (item) => item.kind === "file" && item.type.startsWith("image/")
-    );
+    const imageItem = items.find((item) => item.kind === "file" && item.type.startsWith("image/"));
     const hasFile = items.some((item) => item.kind === "file");
     if (!hasFile) {
       setDragOverlayState(null);
@@ -824,7 +735,7 @@ export default ({
         }
       },
     }),
-    []
+    [],
   );
 
   const computeDiffStats = useCallback((orig: string, updated: string) => {
@@ -843,11 +754,7 @@ export default ({
   }, []);
 
   const handleAiCommand = useCallback(
-    async (
-      command: string | null,
-      mode: string,
-      args?: { isRegen: boolean; input?: string }
-    ) => {
+    async (command: string | null, mode: string, args?: { isRegen: boolean; input?: string }) => {
       // Research commands are async, so we don't need
       // to treat them as being in-progress like other commands.
       if (mode !== "research") {
@@ -868,12 +775,9 @@ export default ({
           if (referenced) {
             try {
               const defaultFile = getDefaultFile(referenced);
-              const content = await fetchGistContent(
-                referenced.id,
-                defaultFile
-              );
+              const content = await fetchGistContent(referenced.id, defaultFile);
               additionalReferences.push({ title, content });
-            } catch { }
+            } catch {}
           }
         }
 
@@ -884,7 +788,7 @@ export default ({
             try {
               const content = await fetchGistContent(gistId, `${title}.md`);
               additionalReferences.push({ title, content });
-            } catch { }
+            } catch {}
           }
         }
 
@@ -923,32 +827,20 @@ export default ({
 
         if (mode === "edit" && frontMatter.edit?.instructions) {
           instructions.push(frontMatter.edit.instructions);
-        } else if (
-          (mode === "discuss" || mode === "ask") &&
-          frontMatter.discuss?.instructions
-        ) {
+        } else if ((mode === "discuss" || mode === "ask") && frontMatter.discuss?.instructions) {
           instructions.push(frontMatter.discuss.instructions);
         }
 
-        return instructions.length > 0
-          ? instructions.join("\n\n---\n\n")
-          : undefined;
+        return instructions.length > 0 ? instructions.join("\n\n---\n\n") : undefined;
       };
 
       const getCommandContext = () => {
         const selection = view?.state.selection.main;
-        const selectionContent = view?.state.sliceDoc(
-          selection.from,
-          selection.to
-        );
+        const selectionContent = view?.state.sliceDoc(selection.from, selection.to);
 
         const hasSelection =
-          view &&
-          selection.from !== selection.to &&
-          selectionContent?.trim().length > 0;
-        const commandContent = hasSelection
-          ? selectionContent
-          : parseFrontMatter(content).content;
+          view && selection.from !== selection.to && selectionContent?.trim().length > 0;
+        const commandContent = hasSelection ? selectionContent : parseFrontMatter(content).content;
         const editRange = hasSelection
           ? { from: selection.from, to: selection.to }
           : { from: 0, to: view?.state.doc.length || 0 };
@@ -974,7 +866,7 @@ export default ({
                     insert: updatedContent,
                   },
                   userEvent: "ai",
-                })
+                }),
               );
             } else {
               handleChange(updatedContent);
@@ -1004,9 +896,7 @@ export default ({
             gistId: z.string(),
           }),
           execute: async ({ gistId }) => {
-            const defaultFile = getDefaultFile(
-              gists.find((g) => g.id === gistId)
-            );
+            const defaultFile = getDefaultFile(gists.find((g) => g.id === gistId));
             return await fetchGistContent(gistId, defaultFile);
           },
         }),
@@ -1065,14 +955,14 @@ export default ({
                 if (view) {
                   const stats = computeDiffStats(
                     getDisplayContent(originalContent || ""),
-                    getDisplayContent(updatedContent || "")
+                    getDisplayContent(updatedContent || ""),
                   );
                   setAiEditStats(stats);
                 }
               }
             },
             abortController.signal,
-            aiResponses.edit
+            aiResponses.edit,
           );
 
           setAiResponses((prev) => ({ ...prev, edit: responseId }));
@@ -1140,7 +1030,7 @@ export default ({
             setIsWebSearching,
             aiResponses.review,
             abortController.signal,
-            extraTools
+            extraTools,
           );
 
           setAiResponses((prev) => ({ ...prev, review: responseId }));
@@ -1182,7 +1072,7 @@ export default ({
             setIsWebSearching,
             aiResponses.ask,
             abortController.signal,
-            extraTools
+            extraTools,
           );
 
           setAiResponses((prev) => ({ ...prev, ask: responseId }));
@@ -1204,7 +1094,7 @@ export default ({
           commandContent,
           userCommentsForResearch && userCommentsForResearch.length > 0
             ? userCommentsForResearch
-            : undefined
+            : undefined,
         );
       }
     },
@@ -1226,23 +1116,22 @@ export default ({
       aiResponses,
       gistId,
       gists,
-    ]
+    ],
   );
 
   var performAiReview = useCallback(
     (topic: string) => handleAiCommand(topic, "discuss"),
-    [handleAiCommand]
+    [handleAiCommand],
   );
 
   var performAiEdit = useCallback(
     (topic: string) => handleAiCommand(topic, "edit"),
-    [handleAiCommand]
+    [handleAiCommand],
   );
 
   const regenerateAiDiscussion = useCallback(
-    (input?: string) =>
-      handleAiCommand(null, "discuss", { isRegen: true, input }),
-    [handleAiCommand]
+    (input?: string) => handleAiCommand(null, "discuss", { isRegen: true, input }),
+    [handleAiCommand],
   );
 
   const acceptAiComment = async (comment: ReviewComment, input?: string) => {
@@ -1275,14 +1164,10 @@ It's important that you don't simply add the comment text to the document, but r
 
   const fileCount = gistId && gist ? Object.keys(gist.files).length : 0;
   const filteredFiles = gistId
-    ? Object.keys(gist?.files || {}).filter((filename) =>
-      filename.endsWith(".md")
-    )
+    ? Object.keys(gist?.files || {}).filter((filename) => filename.endsWith(".md"))
     : [];
   const dateFormat = detectDateFormat(filteredFiles);
-  const suggestedFilename = dateFormat
-    ? generateDateFilename(dateFormat, new Date())
-    : "";
+  const suggestedFilename = dateFormat ? generateDateFilename(dateFormat, new Date()) : "";
   const isDailyNoteGist = gist && isDailyNote(gist);
 
   // TODO: move this logic into the clickable link plugin
@@ -1297,15 +1182,8 @@ It's important that you don't simply add the comment text to the document, but r
       }
     };
 
-    window.addEventListener(
-      "wikilink-click",
-      handleWikilinkClick as EventListener
-    );
-    return () =>
-      window.removeEventListener(
-        "wikilink-click",
-        handleWikilinkClick as EventListener
-      );
+    window.addEventListener("wikilink-click", handleWikilinkClick as EventListener);
+    return () => window.removeEventListener("wikilink-click", handleWikilinkClick as EventListener);
   }, [gist, onSelectFile, toast]);
 
   const handleTaskListItemChange = useCallback(
@@ -1313,21 +1191,18 @@ It's important that you don't simply add the comment text to the document, but r
       // First find the task list item in the content to determine its current state
       const regex = new RegExp(
         `^(\\s*[-+*]\\s+\\[)([\\sxX])(\\]\\s*${itemText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})$`,
-        "gm"
+        "gm",
       );
       const match = regex.exec(content);
 
       if (match) {
         // If we found a match, toggle the state - if it has an x or X, remove it, otherwise add x
         const isCurrentlyChecked = match[2].trim().toLowerCase() === "x";
-        const updatedContent = content.replace(
-          regex,
-          `$1${isCurrentlyChecked ? " " : "x"}$3`
-        );
+        const updatedContent = content.replace(regex, `$1${isCurrentlyChecked ? " " : "x"}$3`);
         handleChange(updatedContent);
       }
     },
-    [content, handleChange]
+    [content, handleChange],
   );
 
   const editorHeight = selectedRevisionId
@@ -1366,9 +1241,7 @@ It's important that you don't simply add the comment text to the document, but r
               ) : (
                 <XCircle className="h-5 w-5" />
               )}
-              {dragOverlayState === "image"
-                ? "Paste image"
-                : "File type not supported"}
+              {dragOverlayState === "image" ? "Paste image" : "File type not supported"}
             </span>
           </div>
         )}
@@ -1388,10 +1261,8 @@ It's important that you don't simply add the comment text to the document, but r
             markdown(),
             EditorView.lineWrapping,
             createEditorCompletions(
-              Object.keys(gist?.files || {}).filter(
-                (filename) => filename !== selectedFile
-              ),
-              isAiEnabled
+              Object.keys(gist?.files || {}).filter((filename) => filename !== selectedFile),
+              isAiEnabled,
             ),
             assetUrlShortener(),
             codeFenceMarker([
@@ -1404,16 +1275,13 @@ It's important that you don't simply add the comment text to the document, but r
             isSpellCheckEnabled && spellChecker,
             isSpellCheckEnabled && lintTimeField,
             showDiff &&
-            unifiedMergeView({
-              original: getDisplayContent(originalContent),
-              mergeControls: !selectedRevisionId,
-              collapseUnchanged:
-                (hasUnsavedChanges && hasPendingAiEdit) ||
-                  !!selectedRevisionId
-                  ? {}
-                  : undefined,
-              allowInlineDiffs: true,
-            }),
+              unifiedMergeView({
+                original: getDisplayContent(originalContent),
+                mergeControls: !selectedRevisionId,
+                collapseUnchanged:
+                  (hasUnsavedChanges && hasPendingAiEdit) || !!selectedRevisionId ? {} : undefined,
+                allowInlineDiffs: true,
+              }),
             commentQuotes(
               comments,
               (commentId) => {
@@ -1422,7 +1290,7 @@ It's important that you don't simply add the comment text to the document, but r
                 setSelectedCommentsTab(null);
               },
               selectedCommentId,
-              showInlineComments && !selectedRevisionId
+              showInlineComments && !selectedRevisionId,
             ),
             selectionComment(handleAddedComment),
             mathEquationResult(),
@@ -1443,10 +1311,7 @@ It's important that you don't simply add the comment text to the document, but r
   );
 
   const previewPanel = (
-    <div
-      ref={previewRef}
-      className="overflow-y-auto p-4 h-full"
-    >
+    <div ref={previewRef} className="overflow-y-auto p-4 h-full">
       <MarkdownPreview
         onSelectFile={onSelectFile}
         onSelectHeading={setSelectedHeading}
@@ -1469,10 +1334,7 @@ It's important that you don't simply add the comment text to the document, but r
         {content}
       </MarkdownPreview>
       {!isEditMode && (
-        <ScrollToTop
-          containerRef={previewRef}
-          isActionBarVisible={!selectedRevisionId}
-        />
+        <ScrollToTop containerRef={previewRef} isActionBarVisible={!selectedRevisionId} />
       )}
     </div>
   );
@@ -1486,10 +1348,7 @@ It's important that you don't simply add the comment text to the document, but r
   ) : isLoading && !isSaving ? (
     <LoadingSkeleton leftWidth={editorPanelSize} />
   ) : (
-    <ResizablePanelGroup
-      direction="horizontal"
-      onLayout={(sizes) => setEditorPanelSize(sizes[0])}
-    >
+    <ResizablePanelGroup direction="horizontal" onLayout={(sizes) => setEditorPanelSize(sizes[0])}>
       <ResizablePanel
         ref={editorPanelRef}
         defaultSize={editorPanelSize}
@@ -1525,33 +1384,22 @@ It's important that you don't simply add the comment text to the document, but r
       gistId={gistId}
       onCommentAdded={(comment) => {
         setNewCommentValue("");
-        queryClient.setQueryData(
-          ["gist-comments", gistId],
-          (oldComments: GistComment[]) => {
-            return [comment, ...oldComments];
-          }
-        );
+        queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {
+          return [comment, ...oldComments];
+        });
       }}
       onCommentDeleted={(commentId) => {
         if (selectedCommentId === commentId) {
           setSelectedCommentId(null);
         }
-        queryClient.setQueryData(
-          ["gist-comments", gistId],
-          (oldComments: GistComment[]) => {
-            return oldComments.filter((comment) => comment.id !== commentId);
-          }
-        );
+        queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {
+          return oldComments.filter((comment) => comment.id !== commentId);
+        });
       }}
       onCommentUpdated={(comment) => {
-        queryClient.setQueryData(
-          ["gist-comments", gistId],
-          (oldComments: GistComment[]) => {
-            return oldComments.map((c) =>
-              c.id === comment.id ? comment : c
-            );
-          }
-        );
+        queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {
+          return oldComments.map((c) => (c.id === comment.id ? comment : c));
+        });
       }}
       currentUser={currentUser}
       isGistOwner={gist?.owner?.login === currentUser}
@@ -1705,16 +1553,10 @@ It's important that you don't simply add the comment text to the document, but r
             }
           }}
         >
-          <ResizablePanel
-            defaultSize={100 - commentPanelSize}
-            minSize={25}
-            className="flex"
-          >
+          <ResizablePanel defaultSize={100 - commentPanelSize} minSize={25} className="flex">
             {selectedRevisionId && (
               <RevisionBanner
-                revision={revisions?.find(
-                  (r) => r.version === selectedRevisionId
-                )}
+                revision={revisions?.find((r) => r.version === selectedRevisionId)}
                 onClearRevision={() => onSelectRevision(null)}
                 onRestoreRevision={onRestoreRevision}
                 gistCreatedAt={gist?.created_at}
@@ -1738,10 +1580,9 @@ It's important that you don't simply add the comment text to the document, but r
             minSize={18}
             collapsible
             onCollapse={() => setIsCommentSidebarOpen(false)}
-            className={`flex flex-1 ${isCommentPanelDragging
-              ? ""
-              : "transition-[flex-grow] duration-200 ease-in-out"
-              }`}
+            className={`flex flex-1 ${
+              isCommentPanelDragging ? "" : "transition-[flex-grow] duration-200 ease-in-out"
+            }`}
           >
             {commentsSidebar}
           </ResizablePanel>
@@ -1750,9 +1591,7 @@ It's important that you don't simply add the comment text to the document, but r
         <div className={"flex h-[calc(100vh-8.3rem)]"}>
           {selectedRevisionId && (
             <RevisionBanner
-              revision={revisions?.find(
-                (r) => r.version === selectedRevisionId
-              )}
+              revision={revisions?.find((r) => r.version === selectedRevisionId)}
               onClearRevision={() => onSelectRevision(null)}
               onRestoreRevision={onRestoreRevision}
               gistCreatedAt={gist?.created_at}
@@ -1765,9 +1604,7 @@ It's important that you don't simply add the comment text to the document, but r
           >
             {editorBody}
           </div>
-          <div className={`w-full ${isCommentSidebarOpen ? "" : "hidden"}`}>
-            {commentsSidebar}
-          </div>
+          <div className={`w-full ${isCommentSidebarOpen ? "" : "hidden"}`}>{commentsSidebar}</div>
         </div>
       )}
 
@@ -1777,9 +1614,7 @@ It's important that you don't simply add the comment text to the document, but r
         onOpenChange={setShowDeleteDialog}
         onConfirm={onDelete}
         gistDescription={
-          selectedFile === "README.md"
-            ? description || ""
-            : selectedFile?.replace(/\.md$/, "")
+          selectedFile === "README.md" ? description || "" : selectedFile?.replace(/\.md$/, "")
         }
         isDeletingFile={isDeletingFile}
       />
@@ -1796,4 +1631,4 @@ It's important that you don't simply add the comment text to the document, but r
       />
     </Card>
   );
-}
+};

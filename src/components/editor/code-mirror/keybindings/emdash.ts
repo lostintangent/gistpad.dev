@@ -26,10 +26,7 @@ export const emdash: Extension = keymap.of([
 
       // Find the beginning of the current line
       let lineStart = head - 1;
-      while (
-        lineStart > 0 &&
-        doc.sliceString(lineStart - 1, lineStart) !== "\n"
-      ) {
+      while (lineStart > 0 && doc.sliceString(lineStart - 1, lineStart) !== "\n") {
         lineStart--;
       }
 
@@ -53,6 +50,6 @@ export const emdash: Extension = keymap.of([
       });
 
       return true;
-    }
+    },
   },
 ]);

@@ -46,9 +46,7 @@ export default function ResearchStatus({
         style={{ backgroundColor: "rgba(147, 51, 234, 0.17)" }}
       >
         <Loader2 className="absolute h-6 w-6 animate-spin" />
-        <span className="font-medium text-xs text-white">
-          {inProgressCount}
-        </span>
+        <span className="font-medium text-xs text-white">{inProgressCount}</span>
       </div>
     ) : (
       <div
@@ -56,9 +54,7 @@ export default function ResearchStatus({
         style={{ backgroundColor: "rgba(147, 51, 234, 0.17)" }}
       >
         <Bell className="h-4 w-4" />
-        {hasUnseen && (
-          <span className="absolute top-0 right-0 bg-blue-500 rounded-full w-2 h-2" />
-        )}
+        {hasUnseen && <span className="absolute top-0 right-0 bg-blue-500 rounded-full w-2 h-2" />}
       </div>
     );
 
@@ -91,13 +87,12 @@ export default function ResearchStatus({
                   <p className="text-xs text-muted-foreground">
                     {task.content
                       ? `Completed ${formatDistanceToNow(
-                        new Date(task.completedTime ?? Date.now()),
-                        { addSuffix: true }
-                      )}`
-                      : `Started ${formatDistanceToNow(
-                        new Date(task.startedTime),
-                        { addSuffix: true }
-                      )}`}
+                          new Date(task.completedTime ?? Date.now()),
+                          { addSuffix: true },
+                        )}`
+                      : `Started ${formatDistanceToNow(new Date(task.startedTime), {
+                          addSuffix: true,
+                        })}`}
                   </p>
                 </div>
                 {!task.content ? (
