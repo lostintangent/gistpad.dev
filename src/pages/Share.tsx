@@ -54,14 +54,23 @@ export default function View() {
   const forceRefreshRef = useRef(false);
 
   // TODO: Share the same query client between the editor and share page
-  const { data: gist, isLoading, refetch: refetchGist, isFetching: isFetchingGist } = useQuery({
+  const {
+    data: gist,
+    isLoading,
+    refetch: refetchGist,
+    isFetching: isFetchingGist,
+  } = useQuery({
     queryKey: ["view-gist", gistId],
     queryFn: () => getGistById(gistId!, forceRefreshRef.current),
     enabled: !!gistId,
     staleTime: 1000 * 60 * 2, // 5 minutes
   });
 
-  const { data: comments = [], refetch: refetchComments, isFetching: isFetchingComments } = useQuery({
+  const {
+    data: comments = [],
+    refetch: refetchComments,
+    isFetching: isFetchingComments,
+  } = useQuery({
     queryKey: ["gist-comments", gistId],
     queryFn: () => getGistComments(gistId!, forceRefreshRef.current),
     enabled: !!gistId && (gist?.comments ?? 0) > 0,
@@ -98,7 +107,7 @@ export default function View() {
 
     const sanitizedHeadings =
       extractedHeadings.length > 0 &&
-        extractedHeadings[extractedHeadings.length - 1].text.trim().toLowerCase() === "footnotes"
+      extractedHeadings[extractedHeadings.length - 1].text.trim().toLowerCase() === "footnotes"
         ? extractedHeadings.slice(0, -1)
         : extractedHeadings;
 
@@ -287,7 +296,11 @@ export default function View() {
                     </>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
+                  <DropdownMenuItem
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="gap-2"
+                  >
                     <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                     Refresh
                   </DropdownMenuItem>

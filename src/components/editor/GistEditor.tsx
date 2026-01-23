@@ -129,6 +129,8 @@ export interface GistEditorProps {
   /** Toggle zen mode */
   onToggleZenMode?: () => void;
   onSelectGist?: (gistId: string) => void;
+  onCommentAdded?: () => void;
+  onCommentDeleted?: () => void;
   ref?: React.Ref<GistEditorRef>;
 }
 
@@ -180,6 +182,8 @@ export default ({
   isZenMode = false,
   onToggleZenMode,
   onSelectGist,
+  onCommentAdded,
+  onCommentDeleted,
   ref,
 }: GistEditorProps) => {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -1387,6 +1391,7 @@ It's important that you don't simply add the comment text to the document, but r
         queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {
           return [comment, ...oldComments];
         });
+        onCommentAdded?.();
       }}
       onCommentDeleted={(commentId) => {
         if (selectedCommentId === commentId) {
@@ -1395,6 +1400,7 @@ It's important that you don't simply add the comment text to the document, but r
         queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {
           return oldComments.filter((comment) => comment.id !== commentId);
         });
+        onCommentDeleted?.();
       }}
       onCommentUpdated={(comment) => {
         queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {

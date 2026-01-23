@@ -147,6 +147,7 @@ const Index = () => {
   const {
     // Session state
     isLoggedIn,
+    hasCachedSession,
     signin,
     signout,
     user,
@@ -202,6 +203,10 @@ const Index = () => {
   // Data queries
   const queryClient = useQueryClient();
 
+  // Enable queries if logged in OR if we have a cached session (optimistic).
+  // This allows returning users to see cached data immediately while session validates.
+  const canFetch = isLoggedIn || hasCachedSession;
+
   const {
     data: { gists, archivedGists, dailyNotes } = {
       gists: [],
@@ -213,14 +218,14 @@ const Index = () => {
   } = useQuery({
     queryKey: ["gists"],
     queryFn: () => fetchUserGists(activeRefresh),
-    enabled: isLoggedIn,
+    enabled: canFetch,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const { data: starredGists = [] } = useQuery({
     queryKey: ["starred-gists"],
     queryFn: fetchStarredGists,
-    enabled: isLoggedIn,
+    enabled: canFetch,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -231,7 +236,7 @@ const Index = () => {
   } = useQuery({
     queryKey: ["gist", selectedGist?.id, selectedFile],
     queryFn: () => fetchGistContent(selectedGist!.id, selectedFile),
-    enabled: isLoggedIn && !!selectedGist,
+    enabled: canFetch && !!selectedGist,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
@@ -437,6 +442,25 @@ const Index = () => {
       setActiveRefresh(false);
     }
   }, [gistsLoading, gistsFetching]);
+
+  // Helper to update the comment count for a gist in the cache
+  const updateGistCommentCount = useCallback(
+    (gistId: string, delta: number) => {
+      queryClient.setQueryData(["gists"], (oldData: GistData | undefined) => {
+        if (!oldData) return oldData;
+
+        const updateGist = (g: Gist) =>
+          g.id === gistId ? { ...g, comments: Math.max(0, g.comments + delta) } : g;
+
+        return {
+          ...oldData,
+          gists: oldData.gists.map(updateGist),
+          archivedGists: oldData.archivedGists.map(updateGist),
+        };
+      });
+    },
+    [queryClient],
+  );
 
   const handleSaveGist = useCallback(
     async (gistId: string, content: string) => {
@@ -1230,8 +1254,10 @@ const Index = () => {
   // Check if we're in development mode
   const isDevMode = import.meta.env.VITE_DEV_MODE === "true";
 
-  // Only show the sign-in screen if not in dev mode and not logged in
-  if (!isLoggedIn && !isDevMode) {
+  // Only show the sign-in screen if not in dev mode, not logged in, and no
+  // cached session. This prevents flashing the login screen for returning
+  // users - instead they'll see the app with cached data while validating.
+  if (!isLoggedIn && !hasCachedSession && !isDevMode) {
     return <SignInCard onSignIn={signin} />;
   }
 
@@ -1608,6 +1634,8 @@ const Index = () => {
                 toast.error("Failed to generate file");
               }
             }}
+            onCommentAdded={() => updateGistCommentCount(selectedGist!.id, 1)}
+            onCommentDeleted={() => updateGistCommentCount(selectedGist!.id, -1)}
           />
         </div>
       </div>

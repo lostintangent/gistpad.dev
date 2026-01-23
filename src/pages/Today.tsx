@@ -3,20 +3,20 @@ import { createOrUpdateDailyNote, fetchUserGists, getTodayNoteFilename } from "@
 import LoadingCard from "@/pages/cards/LoadingCard";
 import SignInCard from "@/pages/cards/SignInCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "../index.css";
 
 export default function Today() {
-  const { isLoggedIn, signin } = useUserSession();
+  const { isLoggedIn, hasCachedSession, signin } = useUserSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [authFailed, setAuthFailed] = useState(false);
 
   useEffect(() => {
-    // TODO: Remove the need for this, by having the
-    // session hook properly set this redirect.
-    if (!isLoggedIn) {
+    // If we don't have a cached session, store the redirect URL for after sign in
+    if (!hasCachedSession) {
       sessionStorage.setItem(
         "gistpad-auth-redirect",
         JSON.stringify({
@@ -25,16 +25,29 @@ export default function Today() {
         }),
       );
     }
-  }, [isLoggedIn]);
+  }, [hasCachedSession]);
 
-  const { data: { dailyNotes } = {}, isLoading } = useQuery({
+  // Enable query if we have a cached session (optimistic)
+  const {
+    data: { dailyNotes } = {},
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["gists"],
     queryFn: () => fetchUserGists(true),
-    enabled: isLoggedIn,
+    enabled: hasCachedSession,
+    retry: false, // Don't retry on auth failure
   });
 
+  // If the query failed, the token might be stale
   useEffect(() => {
-    if (!isLoggedIn || isLoading) return;
+    if (isError) {
+      setAuthFailed(true);
+    }
+  }, [isError]);
+
+  useEffect(() => {
+    if (!hasCachedSession || isLoading || isError) return;
 
     const openTodaysNote = async () => {
       try {
@@ -57,16 +70,17 @@ export default function Today() {
         navigate(`/${updatedGist.id}/${filename}`);
       } catch (error) {
         console.error("Failed to open daily note:", error);
-        navigate("/");
+        setAuthFailed(true);
       }
     };
 
     openTodaysNote();
-  }, [isLoggedIn, isLoading, queryClient]);
+  }, [hasCachedSession, isLoading, isError, dailyNotes, queryClient, navigate]);
 
-  return isLoggedIn ? (
-    <LoadingCard message="Loading today's note..." />
-  ) : (
-    <SignInCard onSignIn={signin} />
-  );
+  // Show login if: no cached session, or session validation failed, or API call failed
+  if ((!hasCachedSession && !isLoggedIn) || authFailed) {
+    return <SignInCard onSignIn={signin} />;
+  }
+
+  return <LoadingCard message="Loading today's note..." />;
 }

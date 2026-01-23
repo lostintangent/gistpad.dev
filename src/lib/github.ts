@@ -431,7 +431,10 @@ export async function forkGist(gistId: string): Promise<Gist> {
 
 // Comments
 
-export async function getGistComments(gistId: string, forceRefresh: boolean = false): Promise<GistComment[]> {
+export async function getGistComments(
+  gistId: string,
+  forceRefresh: boolean = false,
+): Promise<GistComment[]> {
   // TODO: Paginate these. But for now, most gists have less than 100 comments
   const response = await gistFetch(`/${gistId}/comments?per_page=100`, "GET", null, forceRefresh);
   if (!response.ok) {

@@ -79,8 +79,19 @@ const DEFAULT_FRONTMATTER = `{
   }
 }`;
 
+// Check synchronously if we might have a session (based on cached token)
+// This is used to avoid flashing the login screen for logged-in users
+function hasPotentialSession(): boolean {
+  // Check if we have a cached GitHub token - this is a reliable indicator
+  // that the user has logged in before (set during successful OAuth flow)
+  return !!localStorage.getItem(TOKEN_CACHE_KEY);
+}
+
 export function useUserSession() {
   const [user, setUser] = useState<User | null>(null);
+  // Track whether we have a cached session (based on GitHub token in localStorage).
+  // This prevents flashing the login screen for returning users.
+  const [hasCachedSession, setHasCachedSession] = useState(hasPotentialSession);
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(true);
   const [showDiffs, setShowDiffs] = useState(false);
   const [showFrontmatter, setShowFrontmatter] = useState(false);
@@ -185,6 +196,8 @@ export function useUserSession() {
         window.localStorage.setItem(TOKEN_CACHE_KEY, import.meta.env.VITE_GITHUB_TOKEN);
       }
 
+      // Dev mode is immediately ready
+      setHasCachedSession(false);
       return;
     }
 
@@ -240,6 +253,9 @@ export function useUserSession() {
                 ? user.email[0].toUpperCase()
                 : "A",
           });
+
+          // Session validation complete - user is logged in
+          setHasCachedSession(false);
         });
 
         // Check to see whether the user was redirected after signing in
@@ -254,6 +270,10 @@ export function useUserSession() {
           navigate(url);
         }
       } else {
+        // Session validation failed - no valid session
+        // Clear the cached token since it's stale
+        localStorage.removeItem(TOKEN_CACHE_KEY);
+        setHasCachedSession(false);
         // Handle storing redirect URL when user is not logged in
         // First check if we have a gist ID in the URL params
         if (gistId) {
@@ -627,6 +647,7 @@ export function useUserSession() {
   return {
     // Session management
     isLoggedIn: !!user,
+    hasCachedSession,
     signin,
     signout: () => supabase.auth.signOut(),
     user: userProfile,

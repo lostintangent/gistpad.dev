@@ -3,20 +3,21 @@ import { createGist, GistData } from "@/lib/github";
 import LoadingCard from "@/pages/cards/LoadingCard";
 import SignInCard from "@/pages/cards/SignInCard";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import "../index.css";
 
 export default function New() {
-  const { isLoggedIn, signin } = useUserSession();
+  const { isLoggedIn, hasCachedSession, signin } = useUserSession();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const [authFailed, setAuthFailed] = useState(false);
 
   useEffect(() => {
-    // Store the redirect URL for when the user signs in
-    if (!isLoggedIn) {
+    // If we don't have a cached session, store the redirect URL for after sign in
+    if (!hasCachedSession) {
       sessionStorage.setItem(
         "gistpad-auth-redirect",
         JSON.stringify({
@@ -27,6 +28,7 @@ export default function New() {
       return;
     }
 
+    // We have a cached session - try to create the gist optimistically
     const createNewGist = async () => {
       try {
         const description = searchParams.get("description") || "";
@@ -56,12 +58,18 @@ export default function New() {
         }
       } catch (error) {
         console.error("Failed to create new gist:", error);
-        navigate("/");
+        // If the API call failed, the token might be stale - show login
+        setAuthFailed(true);
       }
     };
 
     createNewGist();
-  }, [isLoggedIn, navigate, searchParams, queryClient]);
+  }, [hasCachedSession, navigate, searchParams, queryClient]);
 
-  return isLoggedIn ? <LoadingCard message="Creating gist..." /> : <SignInCard onSignIn={signin} />;
+  // Show login if: no cached session, or session validation failed, or API call failed
+  if ((!hasCachedSession && !isLoggedIn) || authFailed) {
+    return <SignInCard onSignIn={signin} />;
+  }
+
+  return <LoadingCard message="Creating gist..." />;
 }
