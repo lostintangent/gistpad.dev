@@ -96,6 +96,7 @@ const DesktopToolbar = ({
         { value: "preview", Icon: Eye },
       ].map(({ value, Icon }) => (
         <ToggleGroupItem
+          key={value}
           size="sm"
           value={value}
           title={`${value.charAt(0).toUpperCase() + value.slice(1)} mode`}

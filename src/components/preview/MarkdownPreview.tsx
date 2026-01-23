@@ -206,7 +206,7 @@ function createComponents(
               return <React.Fragment key={index}>{nodes}</React.Fragment>;
             }
 
-            const match = child.match(/^(?:([^:]+):\s*)?(.*?)([-+*/().\d\s,\$a-zA-Z_\-]+)=\s*$/);
+            const match = child.match(/^(?:([^:]+):\s*)?(.*?)([-+*/().\d\s,$a-zA-Z_-]+)=\s*$/);
             if (match) {
               const nameCapture = match[1];
               const beforeEq = match[2];
@@ -371,7 +371,7 @@ function createComponents(
 
       // Make sure that external links open in a new tab
       return (
-        <a {...props} href={href} target="_blank">
+        <a {...props} href={href} target="_blank" rel="noreferrer">
           {children}
         </a>
       );

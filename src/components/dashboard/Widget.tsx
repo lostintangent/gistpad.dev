@@ -73,10 +73,7 @@ export function Widget<T>({
   getBadge,
 }: WidgetProps<T>) {
   // Transform title once for both keys (lowercase, spaces to hyphens)
-  const titleKey = title
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[\(\)]/g, "");
+  const titleKey = title.toLowerCase().replace(/\s+/g, "-").replace(/[()]/g, "");
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInEditMode, setIsInEditMode] = useState(false);

@@ -33,6 +33,7 @@ const AddFileDialog = ({ isOpen, onOpenChange, onSubmit, defaultFilename }: AddF
     }
 
     // Check for invalid characters
+    // oxlint-disable-next-line no-control-regex
     const invalidChars = /[<>:"/\\|?*\x00-\x1F]/;
     if (invalidChars.test(name)) {
       return "Filename contains invalid characters";

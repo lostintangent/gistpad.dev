@@ -2,7 +2,7 @@ import { RangeSetBuilder } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, WidgetType } from "@codemirror/view";
 
 // URL regex pattern that matches http(s), file, and ftp protocols
-const urlPattern = /\b((?:https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi;
+const urlPattern = /\b((?:https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/gi;
 
 // Wikilink pattern that matches [[something]] (but not images ![[ ]])
 const wikilinkPattern = /(?<!!)\[\[([^\]]+)\]\]/g;

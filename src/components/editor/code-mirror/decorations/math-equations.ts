@@ -65,7 +65,7 @@ const equationPlugin = ViewPlugin.fromClass(
           continue;
         }
 
-        const match = text.match(/(?:\s*[-*]\s+)?(?:([^:]+):\s*)?([-+*/().\d\s,\$a-zA-Z_-]+)=\s*$/);
+        const match = text.match(/(?:\s*[-*]\s+)?(?:([^:]+):\s*)?([-+*/().\d\s,$a-zA-Z_-]+)=\s*$/);
         if (match) {
           const nameCapture = match[1];
           const expr = match[2];

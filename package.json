@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "lint": "oxlint --fix",
     "format": "oxfmt",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepare": "husky"
   },
   "dependencies": {
     "@af-utils/scrollend-polyfill": "^0.0.14",
@@ -63,22 +64,27 @@
     "zod": "^3.25.71"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.0",
-    "@tailwindcss/typography": "^0.5.15",
-    "@tailwindcss/vite": "^4.1.13",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.5",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react-swc": "^4.0.1",
-    "eslint": "^9.26.0",
-    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
-    "eslint-plugin-react-refresh": "^0.4.9",
-    "globals": "^15.9.0",
-    "oxfmt": "^0.24.0",
-    "prettier": "^3.4.2",
-    "tailwindcss": "^4.1.13",
-    "typescript": "^5.9.2",
-    "typescript-eslint": "^8.0.1",
-    "vite": "^7.1.5"
+    "@vitejs/plugin-react-swc": "^4.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "oxfmt": "^0.26.0",
+    "oxlint": "^0.17.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "oxfmt",
+      "oxlint --fix"
+    ],
+    "*.{json,css,md}": [
+      "oxfmt"
+    ]
   }
 }

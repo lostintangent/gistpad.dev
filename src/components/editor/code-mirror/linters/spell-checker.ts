@@ -358,7 +358,7 @@ export const spellChecker = linter((view) => {
 
       // Skip checking words that contain numbers or special characters. Apostrophes
       // are allowed so that contractions can be spell checked.
-      if (/[0-9@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]/.test(word)) continue;
+      if (/[0-9@#$%^&*()_+\-=[\]{};:"\\|,.<>/?]/.test(word)) continue;
 
       // Skip checking words that are likely camelCase or PascalCase identifiers
       if (/^[a-z]+[A-Z]/.test(word) || /^[A-Z][a-z]+[A-Z]/.test(word)) continue;

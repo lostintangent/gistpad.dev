@@ -174,7 +174,7 @@ export function GistListItem({
             {tagIds.map((id) => {
               const tag = tags[id];
               if (!tag) return null;
-              return <TagBadge tag={tag.name} color={tag.color} />;
+              return <TagBadge key={id} tag={tag.name} color={tag.color} />;
             })}
           </div>
         </ScrollableText>
