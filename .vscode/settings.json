@@ -1,7 +1,7 @@
 {
   "editor.formatOnPaste": true,
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.codeActionsOnSave": {
     "source.removeUnusedImports": "always",
     "source.organizeImports": "always"
