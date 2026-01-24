@@ -58,8 +58,29 @@ interface UserMetadata {
 }
 
 const TOKEN_CACHE_KEY = "gistpad-github-token";
+const USER_PROFILE_CACHE_KEY = "gistpad-user-profile";
+
 export function getGitHubToken() {
   return localStorage.getItem(TOKEN_CACHE_KEY);
+}
+
+// Get cached user profile for immediate display while session validates
+function getCachedUserProfile(): UserProfile | null {
+  try {
+    const cached = localStorage.getItem(USER_PROFILE_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Cache user profile for faster display on return visits
+function cacheUserProfile(profile: UserProfile | null) {
+  if (profile) {
+    localStorage.setItem(USER_PROFILE_CACHE_KEY, JSON.stringify(profile));
+  } else {
+    localStorage.removeItem(USER_PROFILE_CACHE_KEY);
+  }
 }
 
 const DEFAULT_FRONTMATTER = `{
@@ -108,7 +129,14 @@ export function useUserSession() {
     [],
   );
   const [showInlineComments, setShowInlineComments] = useState(true);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  // Initialize with cached profile for immediate display on return visits
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(getCachedUserProfile);
+
+  // Keep the cached profile in sync with state
+  useEffect(() => {
+    cacheUserProfile(userProfile);
+  }, [userProfile]);
+
   const [pinnedGists, setPinnedGists] = useState<string[]>([]);
   const [tags, setTags] = useState<Record<string, TagData>>({});
   const [gistTags, setGistTags] = useState<Record<string, string[]>>({});
@@ -166,8 +194,6 @@ export function useUserSession() {
 
       // Set user state
       setUser(mockUser);
-
-      // Set user profile
       setUserProfile({
         login: devUserName,
         avatar_url:
@@ -271,8 +297,9 @@ export function useUserSession() {
         }
       } else {
         // Session validation failed - no valid session
-        // Clear the cached token since it's stale
+        // Clear the cached token and profile since they're stale
         localStorage.removeItem(TOKEN_CACHE_KEY);
+        setUserProfile(null);
         setHasCachedSession(false);
         // Handle storing redirect URL when user is not logged in
         // First check if we have a gist ID in the URL params
