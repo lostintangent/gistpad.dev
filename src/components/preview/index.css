@@ -126,67 +126,6 @@
   text-decoration: underline;
 }
 
-/* Comment quotes and tooltips */
-
-.markdown-container .md-comment-quote {
-  background: #4ade80;
-  color: black;
-  border-radius: 3px;
-  padding: 1px;
-  cursor: pointer;
-}
-
-.markdown-container .md-comment-quote:hover {
-  text-decoration: underline;
-  background: #22c55e;
-}
-
-.markdown-container .md-comment-quote.selected {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-.markdown-container .tooltip-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.markdown-container .md-comment-tooltip {
-  visibility: hidden;
-  position: absolute;
-  z-index: 50;
-  bottom: 100%;
-  min-width: 300px;
-  max-width: 500px;
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border));
-  border-radius: 6px;
-  padding: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  opacity: 0;
-  transition:
-    opacity 0.2s ease,
-    visibility 0.2s ease;
-
-  .prose {
-    font-weight: normal;
-  }
-}
-
-.markdown-container .md-comment-tooltip.below {
-  bottom: auto;
-  top: 100%;
-}
-
-.markdown-container .md-comment-tooltip img {
-  margin: 0;
-}
-
-.markdown-container .tooltip-wrapper:hover .md-comment-tooltip {
-  visibility: visible;
-  opacity: 1;
-}
-
 /* ToC */
 
 pre:has(.markdown-toc) {

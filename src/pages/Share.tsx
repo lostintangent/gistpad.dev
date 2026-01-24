@@ -5,6 +5,8 @@ import { ScrollableText } from "@/components/ScrollableText";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { commentTooltipService } from "@/components/comments/CommentTooltipService";
+import { buildCommentThreads, getQuotedCommentThreads } from "@/lib/comments";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +35,7 @@ import {
   Pencil,
   RefreshCw,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 export default function View() {
@@ -75,6 +77,17 @@ export default function View() {
     queryFn: () => getGistComments(gistId!, forceRefreshRef.current),
     enabled: !!gistId && (gist?.comments ?? 0) > 0,
   });
+
+  // Build comment threads once for efficient rendering
+  const quotedCommentThreads = useMemo(() => {
+    const threads = buildCommentThreads(comments);
+    return getQuotedCommentThreads(threads);
+  }, [comments]);
+
+  // Update the tooltip service with threads
+  useEffect(() => {
+    commentTooltipService.setThreads(quotedCommentThreads);
+  }, [quotedCommentThreads]);
 
   const [isManualRefresh, setIsManualRefresh] = useState(false);
 
@@ -170,7 +183,7 @@ export default function View() {
     navigate(`/share/${gistId}${filePath}`);
   }
 
-  const handleBackToApp = (quote?: string) => {
+  const handleBackToApp = (quote?: string, replyToCommentId?: number) => {
     // Selected gist is a global atom, and thereforem when we navigate
     // back to the editor, we need to clear it so that the editor knows
     // to load the selected gist based on the URL, not the atom.
@@ -179,8 +192,15 @@ export default function View() {
     let path = `/${gistId}${selectedGistFile !== "README.md" ? `/${selectedGistFile}` : ""}`;
 
     // Add the quote parameter if provided
+    const params = new URLSearchParams();
     if (quote) {
-      path += `?quote=${encodeURIComponent(quote)}`;
+      params.set("quote", quote);
+    }
+    if (replyToCommentId) {
+      params.set("replyTo", replyToCommentId.toString());
+    }
+    if (params.toString()) {
+      path += `?${params.toString()}`;
     }
 
     if (gistId) {
@@ -411,7 +431,7 @@ export default function View() {
                 contentContainerRef={previewRef}
                 isReadonly={true}
                 onAddComment={(selectedText) => handleBackToApp(selectedText)}
-                comments={comments}
+                quotedCommentThreads={quotedCommentThreads}
                 showInlineComments={true}
               >
                 {gist?.files[selectedGistFile]?.content || ""}

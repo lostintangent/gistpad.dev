@@ -1,13 +1,17 @@
 import { AgentFollowUp } from "@/agents/openai";
 import { type ReviewComment } from "@/agents/qa/review";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommentThread } from "@/lib/comments";
 import { type GistComment } from "@/lib/github";
 import { Loader2 } from "lucide-react";
 import AiComments from "./AiComments";
 import UserComments from "./UserComments";
 
 interface CommentsSidebarProps {
-  comments: GistComment[];
+  /** Total comment count (for badge display) */
+  commentCount: number;
+  /** Threaded comments structure */
+  commentThreads: CommentThread[];
   aiComments?: ReviewComment[];
   gistId: string;
   onCommentAdded: (comment: GistComment) => void;
@@ -18,6 +22,8 @@ interface CommentsSidebarProps {
   selectedCommentId: number | null;
   onCommentSelected: (commentId: number | null) => void;
   initialCommentValue: string;
+  replyingToCommentId?: number | null;
+  onReplyingToCommentChanged?: (commentId: number | null) => void;
   onAiCommentDeleted: (index: number) => void;
   onAcceptAiComment: (comment: ReviewComment, clarification?: string) => void;
   selectedTab: "user" | "ai" | null;
@@ -39,7 +45,8 @@ interface CommentsSidebarProps {
 }
 
 export default function CommentsSidebar({
-  comments,
+  commentCount,
+  commentThreads,
   aiComments = [],
   gistId,
   onCommentAdded,
@@ -50,6 +57,8 @@ export default function CommentsSidebar({
   selectedCommentId = null,
   onCommentSelected,
   initialCommentValue = "",
+  replyingToCommentId = null,
+  onReplyingToCommentChanged,
   onAiCommentDeleted,
   onAcceptAiComment,
   selectedTab,
@@ -99,9 +108,9 @@ export default function CommentsSidebar({
           <TabsList className="border-b rounded-none h-11 px-4 justify-start gap-4 shrink-0">
             <TabsTrigger value="user" className="relative flex items-center">
               User Comments
-              {comments.length > 0 && (
+              {commentCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {comments.length}
+                  {commentCount}
                 </span>
               )}
             </TabsTrigger>
@@ -126,7 +135,7 @@ export default function CommentsSidebar({
             className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col"
           >
             <UserComments
-              comments={comments}
+              commentThreads={commentThreads}
               gistId={gistId}
               onCommentAdded={onCommentAdded}
               onCommentDeleted={onCommentDeleted}
@@ -136,6 +145,8 @@ export default function CommentsSidebar({
               selectedCommentId={selectedCommentId}
               onCommentSelected={onCommentSelected}
               initialCommentValue={initialCommentValue}
+              replyingToCommentId={replyingToCommentId}
+              onReplyingToCommentChanged={onReplyingToCommentChanged}
             />
           </TabsContent>
 
@@ -165,7 +176,7 @@ export default function CommentsSidebar({
       ) : (
         <div className="flex flex-col flex-1 min-h-0">
           <UserComments
-            comments={comments}
+            commentThreads={commentThreads}
             gistId={gistId}
             onCommentAdded={onCommentAdded}
             onCommentDeleted={onCommentDeleted}
@@ -175,6 +186,8 @@ export default function CommentsSidebar({
             selectedCommentId={selectedCommentId}
             onCommentSelected={onCommentSelected}
             initialCommentValue={initialCommentValue}
+            replyingToCommentId={replyingToCommentId}
+            onReplyingToCommentChanged={onReplyingToCommentChanged}
           />
         </div>
       )}

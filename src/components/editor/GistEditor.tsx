@@ -20,6 +20,12 @@ import { ScrollToTop } from "@/components/preview/ScrollToTop";
 import { Card } from "@/components/ui/card";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useIsMobile } from "@/hooks/useMobile";
+import { commentTooltipService } from "@/components/comments/CommentTooltipService";
+import {
+  buildCommentThreads,
+  findQuotedThreadForComment,
+  getQuotedCommentThreads,
+} from "@/lib/comments";
 import {
   fetchGistContent,
   forkGist,
@@ -259,6 +265,22 @@ export default ({
   const [isCommentSidebarOpen, setIsCommentSidebarOpen] = useState(false);
   const [showAddFileDialog, setShowAddFileDialog] = useState(false);
   const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
+  const [replyingToCommentId, setReplyingToCommentId] = useState<number | null>(null);
+
+  // Consolidated comment sidebar actions to avoid duplication
+  const openCommentSidebar = useCallback(
+    (options?: { commentId?: number; reply?: boolean; tab?: "user" | "ai" | null }) => {
+      setIsCommentSidebarOpen(true);
+      setSelectedCommentsTab(options?.tab ?? null);
+      if (options?.commentId !== undefined) {
+        setSelectedCommentId(options.commentId);
+        if (options.reply) {
+          setReplyingToCommentId(options.commentId);
+        }
+      }
+    },
+    [],
+  );
 
   const [editorPanelSize, setEditorPanelSize] = useState<number>(() => {
     const saved = localStorage.getItem("gistpad-editor-width");
@@ -299,6 +321,7 @@ export default ({
       setSelectedCommentId(null);
       setNewCommentValue("");
       setSelectedCommentsTab(null);
+      setReplyingToCommentId(null);
     }
   }, [isCommentSidebarOpen]);
 
@@ -328,6 +351,25 @@ export default ({
     enabled: !!gistId && isCommentsEnabled,
     staleTime: 1000 * 60 * 2, // 5 minutes
   });
+
+  // Build comment threads once for efficient rendering
+  const commentThreads = useMemo(() => buildCommentThreads(comments), [comments]);
+  const quotedCommentThreads = useMemo(
+    () => getQuotedCommentThreads(commentThreads),
+    [commentThreads],
+  );
+
+  // When a reply is selected, highlight its top-level quoted ancestor instead
+  const highlightedCommentId = useMemo(() => {
+    if (!selectedCommentId) return null;
+    const thread = findQuotedThreadForComment(quotedCommentThreads, selectedCommentId);
+    return thread?.comment.id ?? null;
+  }, [selectedCommentId, quotedCommentThreads]);
+
+  // Update the tooltip service with threads (centralized here rather than in each consumer)
+  useEffect(() => {
+    commentTooltipService.setThreads(quotedCommentThreads);
+  }, [quotedCommentThreads]);
 
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const [hasSelection, setHasSelection] = useState(false);
@@ -406,12 +448,14 @@ export default ({
     return () => view.scrollDOM.removeEventListener("scroll", handleScroll);
   }, [isSplitMode, editorRef.current, previewRef.current]);
 
-  const handleAddedComment = useCallback((text: string) => {
-    const comment = `> ${text}\n\n`;
-    setNewCommentValue(comment);
-    setIsCommentSidebarOpen(true);
-    setSelectedCommentsTab(null);
-  }, []);
+  const handleAddedComment = useCallback(
+    (text: string) => {
+      const comment = `> ${text}\n\n`;
+      setNewCommentValue(comment);
+      openCommentSidebar();
+    },
+    [openCommentSidebar],
+  );
 
   // Check for a "quote" parameter in the URL and use it to add a comment
   useEffect(() => {
@@ -427,6 +471,19 @@ export default ({
       }, 100);
     }
   }, [searchParams, gistId, handleAddedComment, setSearchParams]);
+
+  // Check for a "replyTo" parameter in the URL and use it to reply to a comment
+  useEffect(() => {
+    const replyToParam = searchParams.get("replyTo");
+    if (replyToParam && gistId) {
+      const commentId = parseInt(replyToParam, 10);
+      if (!isNaN(commentId)) {
+        openCommentSidebar({ commentId, reply: true });
+        searchParams.delete("replyTo");
+        setSearchParams(searchParams);
+      }
+    }
+  }, [searchParams, gistId, openCommentSidebar, setSearchParams]);
 
   // Auto-close comments panel when selecting a revision
   useEffect(() => {
@@ -988,8 +1045,7 @@ export default ({
           setAiReviewComments([]);
           setAppliedAiComments([]);
           setReviewReasoningSummary(null);
-          setIsCommentSidebarOpen(true);
-          setSelectedCommentsTab("ai");
+          openCommentSidebar({ tab: "ai" });
 
           if (args?.isRegen) {
             command =
@@ -1287,13 +1343,9 @@ It's important that you don't simply add the comment text to the document, but r
                 allowInlineDiffs: true,
               }),
             commentQuotes(
-              comments,
-              (commentId) => {
-                setIsCommentSidebarOpen(true);
-                setSelectedCommentId(commentId);
-                setSelectedCommentsTab(null);
-              },
-              selectedCommentId,
+              quotedCommentThreads,
+              (commentId) => openCommentSidebar({ commentId }),
+              highlightedCommentId,
               showInlineComments && !selectedRevisionId,
             ),
             selectionComment(handleAddedComment),
@@ -1324,13 +1376,9 @@ It's important that you don't simply add the comment text to the document, but r
         isReadonly={isReadOnly || !!selectedRevisionId}
         scrollPastTheEnd={isAiEnabled}
         showInlineComments={showInlineComments && !selectedRevisionId}
-        comments={comments}
-        selectedCommentId={selectedCommentId}
-        setSelectedComment={(commentId) => {
-          setIsCommentSidebarOpen(true);
-          setSelectedCommentId(commentId);
-          setSelectedCommentsTab(null);
-        }}
+        quotedCommentThreads={quotedCommentThreads}
+        selectedCommentId={highlightedCommentId}
+        setSelectedComment={(commentId) => openCommentSidebar({ commentId })}
         onToggleTaskListItem={handleTaskListItemChange}
         gists={gists}
         onSelectGist={onSelectGist}
@@ -1383,11 +1431,14 @@ It's important that you don't simply add the comment text to the document, but r
   const commentsSidebar = gistId && (
     <CommentsSidebar
       initialCommentValue={newCommentValue}
-      comments={comments}
+      commentCount={comments.length}
+      commentThreads={commentThreads}
       aiComments={aiReviewComments}
       gistId={gistId}
       onCommentAdded={(comment) => {
         setNewCommentValue("");
+        setSelectedCommentId(comment.id);
+        setReplyingToCommentId(null);
         queryClient.setQueryData(["gist-comments", gistId], (oldComments: GistComment[]) => {
           return [comment, ...oldComments];
         });
@@ -1411,6 +1462,8 @@ It's important that you don't simply add the comment text to the document, but r
       isGistOwner={gist?.owner?.login === currentUser}
       selectedCommentId={selectedCommentId}
       onCommentSelected={setSelectedCommentId}
+      replyingToCommentId={replyingToCommentId}
+      onReplyingToCommentChanged={setReplyingToCommentId}
       onAiCommentDeleted={(id) => {
         if (aiReviewComments.length === 1) {
           setIsCommentSidebarOpen(false);

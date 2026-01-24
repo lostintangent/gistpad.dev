@@ -1,8 +1,8 @@
 import { selectedGistFilesAtom } from "@/atoms";
 import { ImageDialog } from "@/components/preview/ImageDialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Gist, GistComment } from "@/lib/github";
+import { QuotedCommentThread } from "@/lib/comments";
+import { Gist } from "@/lib/github";
 import {
   cn,
   decodeHtmlEntities,
@@ -14,8 +14,8 @@ import { useAtomValue } from "jotai";
 import { Check, Copy, Link } from "lucide-react";
 import * as React from "react";
 import { Children, createElement, memo, useCallback, useEffect, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
 import ReactMarkdown from "react-markdown";
+import { useCommentHighlights } from "./useCommentHighlights";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import remarkFrontmatter from "remark-frontmatter";
@@ -446,7 +446,7 @@ interface MarkdownProps {
   scrollPastTheEnd?: boolean;
 
   showInlineComments?: boolean;
-  comments?: GistComment[];
+  quotedCommentThreads?: QuotedCommentThread[];
   onAddComment?: (selectedText: string) => void;
   setSelectedComment?: (commentId: number) => void;
   selectedCommentId?: number | null;
@@ -470,7 +470,7 @@ function MarkdownInternal({
   onAddComment,
   scrollPastTheEnd = false,
   showInlineComments = true,
-  comments = [],
+  quotedCommentThreads = [],
   setSelectedComment,
   selectedCommentId = null,
   onToggleTaskListItem,
@@ -490,6 +490,8 @@ function MarkdownInternal({
   const commentButtonRef = useRef<HTMLButtonElement | null>(null);
   const commentButtonVisible = useRef<boolean>(false);
   const selectionTimeoutRef = useRef<number | null>(null);
+  const setSelectedCommentRef = useRef(setSelectedComment);
+  setSelectedCommentRef.current = setSelectedComment; // Keep ref in sync
   const THROTTLE_DELAY = 300;
 
   // DOM-based implementation for adding comment button
@@ -608,138 +610,13 @@ function MarkdownInternal({
     }, THROTTLE_DELAY);
   }, [onAddComment, showCommentButton, hideCommentButton]);
 
-  // Process comment quotes and apply annotations to the rendered markdown
-  const processCommentQuotes = useCallback(() => {
-    if (!markdownContainerRef.current || comments.length === 0) return;
-
-    // Get comments that start with quotes (>)
-    const commentsWithQuotes = comments.filter((comment) => {
-      const firstLine = comment.body.split("\n")[0];
-      return firstLine.trim().startsWith(">");
-    });
-
-    if (commentsWithQuotes.length === 0) return;
-
-    // For each comment with a quote, find the quoted text in the rendered markdown
-    commentsWithQuotes.forEach((comment) => {
-      const firstLine = comment.body.split("\n")[0];
-      // Extract text after the '>' character and trim it
-      const quotedText = firstLine.trim().substring(1).trim();
-
-      if (quotedText.length < 3) return; // Skip very short quotes
-
-      // Use a text finder to locate the quoted text within the container
-      const walker = document.createTreeWalker(
-        markdownContainerRef.current,
-        NodeFilter.SHOW_TEXT,
-        null,
-      );
-
-      const matches: Array<{
-        node: Text;
-        startOffset: number;
-        endOffset: number;
-      }> = [];
-
-      let selectedComment = null;
-
-      // Find all text node matches
-      while (walker.nextNode()) {
-        const textNode = walker.currentNode as Text;
-        const textContent = textNode.textContent || "";
-
-        // Escape special regex characters in quotedText
-        const escapedQuotedText = quotedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        // Create a regex with word boundaries
-        const regex = new RegExp(`\\b${escapedQuotedText}\\b`, "g");
-        let match: RegExpExecArray | null;
-
-        while ((match = regex.exec(textContent)) !== null) {
-          matches.push({
-            node: textNode,
-            startOffset: match.index,
-            endOffset: match.index + quotedText.length,
-          });
-        }
-      }
-
-      // Only annotate if we found exactly one match (to avoid incorrect annotations)
-      if (matches.length === 1) {
-        const match = matches[0];
-        const range = document.createRange();
-        range.setStart(match.node, match.startOffset);
-        range.setEnd(match.node, match.endOffset);
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "tooltip-wrapper";
-
-        // Create the tooltip content
-        const tooltipContent = document.createElement("div");
-        tooltipContent.className = "md-comment-tooltip";
-
-        const adjustTooltipPosition = () => {
-          const tooltipHeight = tooltipContent.offsetHeight;
-          const wrapperRect = wrapper.getBoundingClientRect();
-          if (wrapperRect.top < tooltipHeight + 8) {
-            tooltipContent.classList.add("below");
-          } else {
-            tooltipContent.classList.remove("below");
-          }
-        };
-
-        wrapper.addEventListener("mouseenter", adjustTooltipPosition);
-
-        // Get comment body without the blockquote
-        const commentLines = comment.body.split("\n");
-        const bodyWithoutQuote = commentLines
-          .slice(1) // Skip the first line which contains the blockquote
-          .join("\n")
-          .trim();
-
-        // Create and render the tooltip content
-        const root = createRoot(tooltipContent);
-        root.render(
-          <>
-            <div className="flex items-center gap-2 mb-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={comment.user?.avatar_url} />
-                <AvatarFallback>{comment.user?.login[0].toUpperCase() ?? "A"}</AvatarFallback>
-              </Avatar>
-              <div className="text-sm font-bold">{comment.user?.login || "Anonymous"}</div>
-            </div>
-            <div className="mt-1">
-              <MarkdownPreview>{bodyWithoutQuote}</MarkdownPreview>
-            </div>
-          </>,
-        );
-
-        // Create the highlighted text span
-        const highlightSpan = document.createElement("span");
-        highlightSpan.className = `md-comment-quote${selectedCommentId === comment.id ? " selected" : ""}`;
-        highlightSpan.textContent = quotedText;
-        highlightSpan.onclick = () => setSelectedComment(comment.id);
-
-        if (selectedCommentId === comment.id) {
-          selectedComment = highlightSpan;
-        }
-
-        // Add the elements to the wrapper
-        wrapper.appendChild(highlightSpan);
-        wrapper.appendChild(tooltipContent);
-
-        // Replace the original text with our wrapper
-        range.deleteContents();
-        range.insertNode(wrapper);
-      }
-
-      if (selectedComment) {
-        selectedComment.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
-    });
-  }, [comments, selectedCommentId]);
+  // Inline comment highlights (hover tooltips, click-to-select, selection styling)
+  useCommentHighlights(markdownContainerRef, {
+    threads: quotedCommentThreads,
+    selectedId: selectedCommentId,
+    showInline: showInlineComments,
+    onSelect: setSelectedComment,
+  });
 
   useEffect(() => {
     const container = markdownContainerRef.current;
@@ -781,14 +658,6 @@ function MarkdownInternal({
     };
   }, [handleTextSelection, hideCommentButton, onAddComment]);
 
-  // Process comment quotes after render
-  useEffect(() => {
-    if (showInlineComments) {
-      const timer = setTimeout(processCommentQuotes, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [processCommentQuotes, children, showInlineComments, selectedCommentId]);
-
   // Process the markdown content
   let processedChildren = children;
 
@@ -828,6 +697,8 @@ function MarkdownInternal({
 
       <ImageDialog imageUrl={openImageUrl} onClose={() => setOpenImageUrl(null)} />
 
+      {/* Tooltip is rendered via portal in tooltipRootRef - no JSX here */}
+
       <Dialog
         open={openMermaidSvg !== null}
         onOpenChange={(open) => {
@@ -846,14 +717,14 @@ function MarkdownInternal({
   );
 }
 
+// Memo to prevent unnecessary re-renders of the markdown content.
+// We allow re-renders for: content changes, theme changes, selection changes,
+// and comment thread changes (handled efficiently by idempotent cleanup/apply).
 export const MarkdownPreview = memo(MarkdownInternal, (prev, next) => {
-  // If the content, comments, or selected comment hasn't changed, then
-  // don't re-render the component.
   return (
     prev.children === next.children &&
-    prev.comments === next.comments &&
-    prev.showInlineComments === next.showInlineComments &&
+    prev.shouldInvert === next.shouldInvert &&
     prev.selectedCommentId === next.selectedCommentId &&
-    prev.shouldInvert === next.shouldInvert
+    prev.quotedCommentThreads === next.quotedCommentThreads
   );
 });

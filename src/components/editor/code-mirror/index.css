@@ -110,44 +110,6 @@
   font-weight: 500;
 }
 
-/* Comment quote highlight */
-
-.cm-comment-quote {
-  background: #4ade80;
-  border-radius: 3px;
-  padding: 1px;
-  cursor: pointer;
-
-  &,
-  & span {
-    color: black;
-  }
-}
-
-.cm-comment-quote:hover {
-  text-decoration: underline;
-}
-
-.cm-comment-quote.selected {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-/* Comment tooltip styles */
-
-.cm-comment-tooltip {
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border));
-  border-radius: 6px;
-  padding: 1rem;
-  max-width: 500px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-}
-
-.cm-comment-tooltip .markdown-content {
-  color: hsl(var(--popover-foreground));
-}
-
 /* Selection comment button */
 
 .cm-selection-comment-wrapper {
