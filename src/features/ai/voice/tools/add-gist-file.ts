@@ -29,15 +29,10 @@ export default {
   handler: async ({ filename, content, userRequested }, { addFile }) => {
     await addFile(filename.endsWith(".md") ? filename : `${filename}.md`, content);
 
-    const successMessage = `We are now viewing the "${filename}" file, which is included in the gist.`;
-    if (userRequested) {
-      await playAiChime();
-      return successMessage;
-    }
-
+    if (userRequested) await playAiChime();
     return {
-      successMessage,
-      requestResponse: true,
+      successMessage: `We are now viewing the "${filename}" file, which is included in the gist.`,
+      requestResponse: !userRequested,
     };
   },
   isEditTool: true,

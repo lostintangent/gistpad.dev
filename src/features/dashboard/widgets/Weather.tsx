@@ -19,13 +19,7 @@ import {
 import { useState } from "react";
 import { WidgetDefinition, WidgetProps } from "../types";
 
-export interface HourlyForecast {
-  time: string;
-  temperature: number;
-  precipitation: number;
-}
-
-export interface WeatherData {
+interface WeatherData {
   temperature: number;
   description: string;
   location: string;
@@ -35,7 +29,7 @@ export interface WeatherData {
   sunrise: string;
   sunset: string;
   chanceOfRain: number;
-  hourly: HourlyForecast[];
+  hourly: { time: string; temperature: number; precipitation: number }[];
 }
 
 // Open-Meteo's weather codes, grouped by the icons that represent them (where clear skies are the default)
@@ -52,79 +46,57 @@ const WEATHER_ICONS: Record<number, LucideIcon> = Object.fromEntries(
   WEATHER_ICON_CODES.flatMap(([icon, codes]) => codes.map((code) => [code, icon])),
 );
 
+const WEATHER_DESCRIPTIONS: Record<number, string> = {
+  0: "Clear sky",
+  1: "Mainly clear",
+  2: "Partly cloudy",
+  3: "Overcast",
+  45: "Foggy",
+  48: "Rime fog",
+  51: "Light drizzle",
+  53: "Moderate drizzle",
+  55: "Dense drizzle",
+  56: "Light freezing drizzle",
+  57: "Dense freezing drizzle",
+  61: "Slight rain",
+  63: "Moderate rain",
+  65: "Heavy rain",
+  66: "Light freezing rain",
+  67: "Heavy freezing rain",
+  71: "Slight snow",
+  73: "Moderate snow",
+  75: "Heavy snow",
+  77: "Snow grains",
+  80: "Slight rain showers",
+  81: "Moderate rain showers",
+  82: "Violent rain showers",
+  85: "Slight snow showers",
+  86: "Heavy snow showers",
+  95: "Thunderstorm",
+  96: "Thunderstorm with slight hail",
+  99: "Thunderstorm with heavy hail",
+};
+
+const formatTime = (time: string) =>
+  new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
 async function fetchData(): Promise<WeatherData> {
-  // Get user's location
-  const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject);
-  });
+  const position = await new Promise<GeolocationPosition>((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject),
+  );
   const { latitude, longitude } = position.coords;
 
-  // Fetch weather data from Open-Meteo API
   const response = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&hourly=temperature_2m,precipitation_probability&temperature_unit=fahrenheit&timezone=auto`,
   );
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch weather");
-  }
-
-  const data = await response.json();
+  if (!response.ok) throw new Error("Failed to fetch weather");
+  const { current_weather, daily, hourly } = await response.json();
 
   // Get location name from reverse geocoding
   const geoResponse = await fetch(
     `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
   );
-  const geoData = await geoResponse.json();
-
-  // Map weather codes to descriptions
-  const weatherDescriptions: { [key: number]: string } = {
-    0: "Clear sky",
-    1: "Mainly clear",
-    2: "Partly cloudy",
-    3: "Overcast",
-    45: "Foggy",
-    48: "Rime fog",
-    51: "Light drizzle",
-    53: "Moderate drizzle",
-    55: "Dense drizzle",
-    56: "Light freezing drizzle",
-    57: "Dense freezing drizzle",
-    61: "Slight rain",
-    63: "Moderate rain",
-    65: "Heavy rain",
-    66: "Light freezing rain",
-    67: "Heavy freezing rain",
-    71: "Slight snow",
-    73: "Moderate snow",
-    75: "Heavy snow",
-    77: "Snow grains",
-    80: "Slight rain showers",
-    81: "Moderate rain showers",
-    82: "Violent rain showers",
-    85: "Slight snow showers",
-    86: "Heavy snow showers",
-    95: "Thunderstorm",
-    96: "Thunderstorm with slight hail",
-    99: "Thunderstorm with heavy hail",
-  };
-
-  // Build hourly forecast for the next 12 hours
-  const now = new Date();
-  const startIndex = data.hourly.time.findIndex((t: string) => new Date(t) >= now);
-  const hourly: HourlyForecast[] = [];
-  for (let i = 0; i < 12; i++) {
-    const idx = startIndex + i;
-    if (idx >= data.hourly.time.length) break;
-    hourly.push({
-      time: new Date(data.hourly.time[idx]).toLocaleTimeString([], {
-        hour: "numeric",
-      }),
-      temperature: Math.round(data.hourly.temperature_2m[idx]),
-      precipitation: data.hourly.precipitation_probability[idx] ?? 0,
-    });
-  }
-
-  const address = geoData.address || {};
+  const address = (await geoResponse.json()).address || {};
   const city =
     address.city ||
     address.town ||
@@ -135,29 +107,26 @@ async function fetchData(): Promise<WeatherData> {
     address.county ||
     "Unknown";
   const state = address.state || address.region || address.state_district;
-  const country = address.country || "";
+
+  // The hourly forecast for the next 12 hours
+  const now = new Date();
+  const startIndex = hourly.time.findIndex((time: string) => new Date(time) >= now);
 
   return {
-    temperature: Math.round(data.current_weather.temperature),
-    description: weatherDescriptions[data.current_weather.weathercode] || "Unknown",
-    location: [city, state, country].filter(Boolean).join(", "),
-    weatherCode: data.current_weather.weathercode,
-    dailyHigh: Math.round(data.daily.temperature_2m_max[0]),
-    dailyLow: Math.round(data.daily.temperature_2m_min[0]),
-    sunrise: new Date(data.daily.sunrise[0])
-      .toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      })
-      .replace("AM", ""),
-    sunset: new Date(data.daily.sunset[0])
-      .toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      })
-      .replace("PM", ""),
-    chanceOfRain: data.daily.precipitation_probability_max[0] || 0,
-    hourly,
+    temperature: Math.round(current_weather.temperature),
+    description: WEATHER_DESCRIPTIONS[current_weather.weathercode] || "Unknown",
+    location: [city, state, address.country].filter(Boolean).join(", "),
+    weatherCode: current_weather.weathercode,
+    dailyHigh: Math.round(daily.temperature_2m_max[0]),
+    dailyLow: Math.round(daily.temperature_2m_min[0]),
+    sunrise: formatTime(daily.sunrise[0]).replace("AM", ""),
+    sunset: formatTime(daily.sunset[0]).replace("PM", ""),
+    chanceOfRain: daily.precipitation_probability_max[0] || 0,
+    hourly: hourly.time.slice(startIndex, startIndex + 12).map((time: string, i: number) => ({
+      time: new Date(time).toLocaleTimeString([], { hour: "numeric" }),
+      temperature: Math.round(hourly.temperature_2m[startIndex + i]),
+      precipitation: hourly.precipitation_probability[startIndex + i] ?? 0,
+    })),
   };
 }
 
@@ -165,10 +134,10 @@ async function fetchData(): Promise<WeatherData> {
 const HOURS_PER_PAGE = 6;
 const PAGE_COUNT = 3;
 
-export function WeatherWidget({ data, isLoading, config }: WidgetProps<WeatherData>) {
+function WeatherWidget({ data, config }: WidgetProps<WeatherData>) {
   const [page, setPage] = useState(0);
 
-  if (isLoading || !data) {
+  if (!data) {
     return (
       <div className="flex items-center gap-4">
         <Skeleton className="w-16 h-16 rounded-lg" />
@@ -210,7 +179,7 @@ export function WeatherWidget({ data, isLoading, config }: WidgetProps<WeatherDa
                 <ArrowDown className="w-4 h-4" />
                 {data.dailyLow}°
               </span>
-              {config?.showChanceOfRain !== "false" && (
+              {config.showChanceOfRain !== "false" && (
                 <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
                   <Droplet className="w-4 h-4" />
                   {data.chanceOfRain}%
@@ -219,7 +188,7 @@ export function WeatherWidget({ data, isLoading, config }: WidgetProps<WeatherDa
             </p>
             <p className="flex items-center gap-1 text-sm text-muted-foreground capitalize">
               <span className="text-primary font-bold">{data.description}</span>
-              {config?.showSunriseSunset !== "false" && (
+              {config.showSunriseSunset !== "false" && (
                 <>
                   <span className="ml-2 flex items-center gap-1">
                     <Sunrise className="w-4 h-4" /> {data.sunrise}
@@ -238,7 +207,7 @@ export function WeatherWidget({ data, isLoading, config }: WidgetProps<WeatherDa
           <div key={hourlyPage} className="w-full flex-shrink-0 flex items-center">
             <div className="flex-1 grid grid-cols-6 text-center text-xs gap-2 px-6">
               {data.hourly
-                ?.slice(hourlyPage * HOURS_PER_PAGE, (hourlyPage + 1) * HOURS_PER_PAGE)
+                .slice(hourlyPage * HOURS_PER_PAGE, (hourlyPage + 1) * HOURS_PER_PAGE)
                 .map((hour, i) => (
                   <div key={i} className="space-y-1">
                     <div className="font-medium text-primary">{hour.time}</div>
@@ -278,16 +247,8 @@ export function WeatherWidget({ data, isLoading, config }: WidgetProps<WeatherDa
 export default {
   name: "Weather",
   config: [
-    {
-      id: "showSunriseSunset",
-      name: "Show sunrise/sunset?",
-      default: true,
-    },
-    {
-      id: "showChanceOfRain",
-      name: "Show chance of rain?",
-      default: true,
-    },
+    { id: "showSunriseSunset", name: "Show sunrise/sunset?", default: true },
+    { id: "showChanceOfRain", name: "Show chance of rain?", default: true },
   ],
   fetchData,
   component: WeatherWidget,

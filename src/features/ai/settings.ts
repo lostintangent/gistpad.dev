@@ -22,18 +22,12 @@ const DEFAULT_MODELS: Record<ModelType, string> = {
   research: "o3",
 };
 
-export interface AiSettings {
-  apiKey: string;
-  models: Record<ModelType, string>;
-  showReasoningSummaries: boolean;
-}
-
 const API_KEY = "gistpad-openai-key";
 const REASONING_SUMMARIES_KEY = "gistpad-show-reasoning-summaries";
 const modelKey = (type: ModelType) => `gistpad-openai-${type}-model`;
 const modelTypes = Object.keys(DEFAULT_MODELS) as ModelType[];
 
-export const aiSettingsStore = createStore<AiSettings>({
+export const aiSettingsStore = createStore({
   apiKey: localStorage.getItem(API_KEY) ?? "",
   models: Object.fromEntries(
     modelTypes.map((type) => [type, localStorage.getItem(modelKey(type)) || DEFAULT_MODELS[type]]),

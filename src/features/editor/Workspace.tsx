@@ -2,16 +2,15 @@ import CommentsPanel from "@/features/comments/CommentsPanel";
 import { CommentTooltips } from "@/features/comments/CommentTooltips";
 import { openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
-import { Card } from "@/shared/ui/card";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable";
 import { useDocument, useDocumentContent, useSaveDocument, type GistDocument } from "./document";
 import { useEditorMode } from "./mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
+import { CARD_CLASS } from "./card";
 import { gistQueries } from "@/features/gists/queries";
 import { useIsAiEnabled } from "@/features/ai/settings";
-import { draftAtom, editorViewAtom, revisionAtom, updateDraft } from "./store";
+import { draftAtom, editorPanelSizeAtom, editorViewAtom, revisionAtom, zenModeAtom } from "./store";
 import { commentsPanelOpenAtom, commentsPanelSizeAtom } from "@/features/comments/store";
-import { editorPanelSizeAtom, zenModeAtom } from "./store";
 import { undo, undoDepth } from "@codemirror/commands";
 import type { EditorMode } from "@/router";
 import { useQuery } from "@tanstack/react-query";
@@ -104,16 +103,9 @@ function getPaneLayout(mode: EditorMode, editorSize: number) {
  * Lays out the editor and preview, based on the view mode. Hidden panes are collapsed
  * (rather than unmounted), so that switching modes preserves their state.
  */
-function DocumentPanes({
-  editor,
-  preview,
-  isMobile,
-}: {
-  editor: ReactNode;
-  preview: ReactNode;
-  isMobile: boolean;
-}) {
+function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactNode }) {
   const [mode, setMode] = useEditorMode();
+  const isMobile = useIsMobile();
   const groupRef = useGroupRef();
 
   const previewPane = (
@@ -163,7 +155,6 @@ function DocumentPanes({
 export default function Workspace() {
   const doc = useDocument();
   const content = useDocumentContent(doc);
-  const [mode] = useEditorMode();
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
   const isAiEnabled = useIsAiEnabled();
@@ -192,19 +183,17 @@ export default function Workspace() {
   );
 
   if (!doc.gistId) {
-    return <Card className="w-full h-full relative py-0">{aiAssistant}</Card>;
+    return <div className={`${CARD_CLASS} w-full h-full relative`}>{aiAssistant}</div>;
   }
 
-  const isLoading = doc.isLoading || !!revision?.isLoading;
   const body = doc.error ? (
     <div className="h-full flex items-center justify-center text-muted-foreground italic">
       This gist couldn't be loaded
     </div>
-  ) : isLoading ? (
+  ) : doc.isLoading || revision?.isLoading ? (
     <LoadingSkeleton />
   ) : (
     <DocumentPanes
-      isMobile={isMobile}
       editor={
         <EditorPane
           doc={doc}
@@ -212,7 +201,6 @@ export default function Workspace() {
           originalContent={revision?.previousContent ?? doc.savedContent}
           revisionId={revisionId}
           previewRef={previewRef}
-          isSplitMode={mode === "split"}
         />
       }
       preview={
@@ -229,24 +217,13 @@ export default function Workspace() {
 
   const documentArea = (
     <div className="relative flex flex-col h-full min-h-0">
-      {revisionId && (
-        <RevisionBanner
-          doc={doc}
-          revisionId={revisionId}
-          onClose={() => revisionAtom.set(null)}
-          onRestore={() => {
-            if (!revision) return;
-            updateDraft(doc.documentKey, doc.savedContent, { content: revision.content });
-            revisionAtom.set(null);
-          }}
-        />
-      )}
+      {revision && <RevisionBanner doc={doc} content={revision.content} />}
       <div className="flex-1 min-h-0">{body}</div>
     </div>
   );
 
   return (
-    <Card className="w-full h-full relative flex flex-col gap-0 py-0 overflow-hidden">
+    <div className={`${CARD_CLASS} w-full h-full relative flex flex-col`}>
       {aiAssistant}
       {!isZenMode && <EditorToolbar key={doc.documentKey} doc={doc} onSave={saveOrFork} />}
 
@@ -288,6 +265,6 @@ export default function Workspace() {
         threads={quotedThreads}
         onSelect={(commentId) => openComments({ commentId })}
       />
-    </Card>
+    </div>
   );
 }

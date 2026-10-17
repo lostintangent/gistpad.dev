@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-export function useMediaQuery(query: string) {
+function useMediaQuery(query: string) {
   return useSyncExternalStore(
     (onChange) => {
       const mediaQuery = window.matchMedia(query);

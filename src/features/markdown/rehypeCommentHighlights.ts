@@ -1,38 +1,30 @@
 import { findQuoteMatches, type QuotedCommentThread } from "@/features/comments/threads";
+import type { Element, Parent, Root, Text } from "hast";
+import { SKIP, visit } from "unist-util-visit";
 
 // A rehype plugin that wraps the text that comments quote in `span[data-comment-id]` elements,
 // which the preview renders as highlights. Quotes are matched within individual text nodes
 // (excluding code and diagrams), and only when they appear exactly once in the document.
 
-interface HastNode {
-  type: string;
-  tagName?: string;
-  value?: string;
-  properties?: Record<string, unknown>;
-  children?: HastNode[];
-}
-
 const SKIPPED_ELEMENTS = new Set(["pre", "code", "svg"]);
 
 export default function rehypeCommentHighlights({ threads }: { threads: QuotedCommentThread[] }) {
-  return (tree: HastNode) => {
-    const textNodes: { node: HastNode; parent: HastNode }[] = [];
-    (function collect(parent: HastNode) {
-      for (const node of parent.children ?? []) {
-        if (node.type === "text") textNodes.push({ node, parent });
-        else if (!SKIPPED_ELEMENTS.has(node.tagName ?? "")) collect(node);
-      }
-    })(tree);
+  return (tree: Root) => {
+    const textNodes: { node: Text; parent: Parent }[] = [];
+    visit(tree, (node, _, parent) => {
+      if (node.type === "element" && SKIPPED_ELEMENTS.has(node.tagName)) return SKIP;
+      if (node.type === "text" && parent) textNodes.push({ node, parent });
+    });
 
     const matches = findQuoteMatches(
       threads,
-      textNodes.map(({ node }) => node.value ?? ""),
+      textNodes.map(({ node }) => node.value),
     );
 
     for (const [segment, segmentMatches] of Map.groupBy(matches, ({ segment }) => segment)) {
       const { node, parent } = textNodes[segment];
-      const value = node.value ?? "";
-      const pieces: HastNode[] = [];
+      const { value } = node;
+      const pieces: (Text | Element)[] = [];
       let index = 0;
 
       for (const { thread, start, end } of segmentMatches.sort((a, b) => a.start - b.start)) {
@@ -50,7 +42,7 @@ export default function rehypeCommentHighlights({ threads }: { threads: QuotedCo
       }
 
       if (index < value.length) pieces.push({ type: "text", value: value.slice(index) });
-      parent.children!.splice(parent.children!.indexOf(node), 1, ...pieces);
+      parent.children.splice(parent.children.indexOf(node), 1, ...pieces);
     }
   };
 }

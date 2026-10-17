@@ -18,7 +18,7 @@ export default function FullScreenCard({ children, description, className }: Ful
           </CardTitle>
           {description && <CardDescription className="text-center">{description}</CardDescription>}
         </CardHeader>
-        <CardContent className={className || ""}>{children}</CardContent>
+        <CardContent className={className}>{children}</CardContent>
       </Card>
     </div>
   );

@@ -1,134 +1,86 @@
 import { Skeleton } from "@/shared/ui/skeleton";
-import { decodeHtmlEntities } from "@/shared/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowUp, Clock, MessageSquare } from "lucide-react";
-import type { Comment } from "../types";
-import { WidgetDefinition, WidgetProps } from "../types";
+import type { Comment, WidgetDefinition, WidgetProps } from "../types";
 
-export interface Story {
+interface Story {
   id: number;
   title: string;
-  by: string;
   score: number;
   url?: string;
   time: number;
   descendants?: number;
   text?: string;
-  type?: string;
 }
 
-// Utility function to clean HackerNews HTML text
-function cleanHackerNewsText(text?: string): string | undefined {
-  if (!text) return;
-  let decoded = decodeHtmlEntities(text);
+const fetchItem = async (id: number) =>
+  (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json();
 
-  // The HN API truncates the URL of long links, and so this logic simply re-expands
-  // them so that they always show the full URL.
-  decoded = decoded.replace(
-    /<a href="([^"]*)"[^>]*>([^<]+)<\/a>/g,
-    (_, href) => `[${href}](${href})`,
-  );
+// Decodes an item's (HTML) text, and re-expands its links (since the HN API truncates long URLs)
+const cleanHackerNewsText = (text?: string) =>
+  text
+    ?.replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/<a href="([^"]*)"[^>]*>([^<]+)<\/a>/g, (_, href) => `[${href}](${href})`);
 
-  return decoded;
-}
-
-function getDomain(url?: string): string | undefined {
-  if (!url) return;
+/** A link's domain (along with the account, for GitHub and Twitter/X links). */
+function getDomain(url: string) {
   try {
     const { hostname, pathname } = new URL(url);
-    const cleanHost = hostname.replace(/^www\./, "");
-    const host = cleanHost.toLowerCase();
-    const specialHosts = ["github.com", "twitter.com", "x.com"];
-    if (specialHosts.includes(host)) {
-      const firstSegment = pathname.split("/").filter(Boolean)[0];
-      if (firstSegment) {
-        return `${cleanHost}/${firstSegment}`;
-      }
-    }
-    return cleanHost;
+    const host = hostname.replace(/^www\./, "");
+    const [account] = pathname.split("/").filter(Boolean);
+    return ["github.com", "twitter.com", "x.com"].includes(host) && account
+      ? `${host}/${account}`
+      : host;
   } catch {
     return;
   }
 }
 
-export async function fetchData(config?: Record<string, string>): Promise<Story[]> {
-  // Get top story IDs
-  const topStoriesResponse = await fetch("https://hacker-news.firebaseio.com/v0/topstories.json");
-  const topStoryIds = await topStoriesResponse.json();
+async function fetchData(config: Record<string, string>): Promise<Story[]> {
+  const response = await fetch("https://hacker-news.firebaseio.com/v0/topstories.json");
+  const ids: number[] = await response.json();
+  const postCount = Number(config.postCount) || 10;
 
-  // Use post count from config, default to 10
-  const postCount = config?.postCount ? parseInt(config.postCount) : 10;
-
-  // Fetch more stories than needed to account for filtered job posts
+  // Stories are fetched in batches until there are enough of them (since job posts are skipped)
   const stories: Story[] = [];
-  let index = 0;
-
-  while (stories.length < postCount && index < topStoryIds.length) {
-    const batchSize = Math.min(10, topStoryIds.length - index);
-    const batchIds = topStoryIds.slice(index, index + batchSize);
-
-    const storyPromises = batchIds.map(async (id: number) => {
-      const response = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-      return response.json();
-    });
-
-    const batchStories = await Promise.all(storyPromises);
-
-    // Filter out job posts
-    const nonJobStories = batchStories.filter((story) => story.type !== "job");
-    stories.push(...nonJobStories);
-
-    index += batchSize;
+  for (let index = 0; stories.length < postCount && index < ids.length; index += 10) {
+    const batch = await Promise.all(ids.slice(index, index + 10).map(fetchItem));
+    stories.push(...batch.filter((story) => story.type !== "job"));
   }
 
-  // Return only the requested number of stories
   return stories.slice(0, postCount);
 }
 
-export async function fetchHackerNewsComments(storyId: number): Promise<Comment[]> {
-  const fetchComment = async (id: number): Promise<Comment | null> => {
-    const response = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-    const data = await response.json();
-    if (!data || data.deleted || data.dead) return null;
+/** Fetches the replies to an item (and their replies), skipping the deleted and dead ones. */
+async function fetchReplies(ids: number[] = []): Promise<Comment[]> {
+  const replies = await Promise.all(
+    ids.map(async (id): Promise<Comment | null> => {
+      const item = await fetchItem(id);
+      if (!item || item.deleted || item.dead) return null;
 
-    let replies: Comment[] = [];
-    if (data.kids && data.kids.length > 0) {
-      const repliesData = await Promise.all(data.kids.map((kid: number) => fetchComment(kid)));
-      replies = repliesData.filter(Boolean) as Comment[];
-    }
+      return {
+        id: String(item.id),
+        user: { name: item.by, url: `https://news.ycombinator.com/user?id=${item.by}` },
+        date: new Date(item.time * 1000),
+        text: cleanHackerNewsText(item.text),
+        url: `https://news.ycombinator.com/item?id=${item.id}`,
+        replies: await fetchReplies(item.kids),
+      };
+    }),
+  );
 
-    return {
-      id: data.id.toString(),
-      user: {
-        name: data.by,
-        url: `https://news.ycombinator.com/user?id=${data.by}`,
-      },
-      date: new Date(data.time * 1000),
-      text: cleanHackerNewsText(data.text),
-      url: `https://news.ycombinator.com/item?id=${data.id}`,
-      replies,
-    };
-  };
-
-  const storyResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`);
-  const story = await storyResponse.json();
-  if (!story.kids || story.kids.length === 0) return [];
-
-  const comments = await Promise.all(story.kids.map((id: number) => fetchComment(id)));
-  return comments.filter(Boolean) as Comment[];
+  return replies.filter((reply) => reply !== null);
 }
 
-export function HackerNewsWidget({
-  data,
-  isLoading,
-  config,
-  openCommentsDialog,
-}: WidgetProps<Story[]>) {
-  if (isLoading || !data) {
-    const postCount = config?.postCount ? parseInt(config.postCount) : 10;
+function HackerNewsWidget({ data, config, openCommentsDialog }: WidgetProps<Story[]>) {
+  if (!data) {
     return (
       <div className="space-y-3">
-        {[...Array(postCount)].map((_, index) => (
+        {[...Array(Number(config.postCount) || 10)].map((_, index) => (
           <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
             <div className="flex gap-2">
               <span className="text-sm text-muted-foreground mt-0.5">{index + 1}.</span>
@@ -175,7 +127,8 @@ export function HackerNewsWidget({
                         title: story.title,
                         text: cleanHackerNewsText(story.text),
                         queryKey: ["hn-comments", story.id],
-                        fetchComments: () => fetchHackerNewsComments(story.id),
+                        // (The story is refetched, so that refreshing the dialog shows new comments)
+                        fetchComments: async () => fetchReplies((await fetchItem(story.id)).kids),
                       });
                     }}
                     className="flex items-center gap-1 hover:text-foreground transition-colors hover:underline"
@@ -190,9 +143,7 @@ export function HackerNewsWidget({
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(story.time * 1000), {
-                    addSuffix: true,
-                  })}
+                  {formatDistanceToNow(story.time * 1000, { addSuffix: true })}
                 </span>
               </div>
             </div>
@@ -206,15 +157,7 @@ export function HackerNewsWidget({
 export default {
   name: "Hacker News",
   fetchData,
-  config: [
-    {
-      id: "postCount",
-      name: "Post count",
-      default: 10,
-      minValue: 1,
-      maxValue: 20,
-    },
-  ],
+  config: [{ id: "postCount", name: "Post count", default: 10, minValue: 1, maxValue: 20 }],
   component: HackerNewsWidget,
   emptyStateMessage: null,
   getExternalUrl: () => "https://news.ycombinator.com",

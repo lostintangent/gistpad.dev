@@ -21,13 +21,6 @@ export const deleteGistDialog = AlertDialogPrimitive.createHandle<{
   filename?: string;
 }>();
 
-/** Asks to delete an open file, where deleting a gist's README deletes the whole gist. */
-export const confirmDeleteFile = (gist: Gist, filename: string) =>
-  deleteGistDialog.openWithPayload({
-    gist,
-    filename: filename === "README.md" ? undefined : filename,
-  });
-
 /** Confirms the deletion of a gist, or one of its files (rendered once, by the editor page). */
 export default function DeleteGistDialog() {
   const deleteGistOrFile = useDeleteGistOrFile();

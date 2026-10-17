@@ -7,26 +7,18 @@ import { cn } from "cn";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, MessageSquare, RefreshCw, X } from "lucide-react";
 import { useRef, useState } from "react";
-import type { Comment } from "../types";
+import type { CommentThread } from "../types";
 import { CommentItem } from "./CommentItem";
-import { gcOldCollapsedData, loadCollapsedIds, saveCollapsedIds } from "./storage";
-
-export interface CommentsDialogProps {
-  title: string;
-  text?: string;
-  onClose: () => void;
-  queryKey: unknown[];
-  fetchComments: () => Promise<Comment[]>;
-}
+import { loadCollapsedIds, saveCollapsedIds } from "./storage";
 
 /** The comments on a widget's item (e.g. a Hacker News story), which is mounted while it's open. */
 export function CommentsDialog({
   title,
   text,
-  onClose,
   queryKey,
   fetchComments,
-}: CommentsDialogProps) {
+  onClose,
+}: CommentThread & { onClose: () => void }) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const {
     data: comments = [],
@@ -42,10 +34,7 @@ export function CommentsDialog({
   });
 
   // The comments that the user collapsed, which are remembered for a couple of days.
-  const [collapsedIds, setCollapsedIds] = useState(() => {
-    gcOldCollapsedData();
-    return loadCollapsedIds(queryKey);
-  });
+  const [collapsedIds, setCollapsedIds] = useState(() => loadCollapsedIds(queryKey));
 
   const toggleCollapsed = (id: string, isCollapsed: boolean) => {
     const ids = isCollapsed
@@ -77,9 +66,22 @@ export function CommentsDialog({
               <ScrollableText>{title}</ScrollableText>
             </div>
             <div className="flex items-center gap-2">
-              <RefreshButton onRefresh={() => refetch()} isFetching={isFetching} />
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-1 text-xs hover:text-foreground transition-colors"
+                disabled={isFetching}
+                title="Refresh comments"
+              >
+                <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+              </button>
               <div className="h-4 w-px bg-border" />
-              <CloseButton onClose={onClose} />
+              <button
+                onClick={onClose}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -92,17 +94,32 @@ export function CommentsDialog({
           {text && <DescriptionSection text={text} />}
 
           {isLoading ? (
-            <LoadingSkeleton />
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ))}
+            </div>
           ) : error ? (
-            <ErrorMessage />
+            <div className="text-red-500 text-sm text-center py-8">Failed to load comments</div>
           ) : comments.length === 0 ? (
-            <EmptyState />
+            <div className="text-muted-foreground text-center py-8">No comments yet</div>
           ) : (
-            <CommentsList
-              comments={comments}
-              isCollapsed={(id) => collapsedIds.includes(id)}
-              onToggleCollapse={toggleCollapsed}
-            />
+            <div className="space-y-5">
+              {comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  isInitiallyCollapsed={collapsedIds.includes(comment.id)}
+                  onToggleCollapse={toggleCollapsed}
+                />
+              ))}
+            </div>
           )}
         </ScrollArea>
       </DialogContent>
@@ -110,35 +127,11 @@ export function CommentsDialog({
   );
 }
 
-// Sub-components for better organization
-function RefreshButton({ onRefresh, isFetching }: { onRefresh: () => void; isFetching: boolean }) {
-  return (
-    <button
-      onClick={onRefresh}
-      className="flex items-center gap-1 text-xs hover:text-foreground transition-colors"
-      disabled={isFetching}
-      title="Refresh comments"
-    >
-      <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
-    </button>
-  );
-}
-
-function CloseButton({ onClose }: { onClose: () => void }) {
-  return (
-    <button
-      onClick={onClose}
-      className="text-muted-foreground hover:text-foreground transition-colors"
-      title="Close"
-    >
-      <X className="h-4 w-4" />
-    </button>
-  );
-}
-
+/** The item's text, which is clamped (until it's clicked) when it's long. */
 function DescriptionSection({ text }: { text: string }) {
   const [isClamped, setIsClamped] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const isCollapsed = isClamped && !isExpanded;
 
   const measureRef = (node: HTMLDivElement | null) => {
     if (node) setIsClamped(node.scrollHeight > 250);
@@ -146,82 +139,27 @@ function DescriptionSection({ text }: { text: string }) {
 
   return (
     <div className="mb-4 p-3 bg-muted rounded-md">
+      {/* (Clicking anywhere, including the "Expand text" pill, expands the text) */}
       <div
-        className={cn("relative", isClamped && !isExpanded && "max-h-[250px] overflow-hidden")}
+        className={cn("relative", isCollapsed && "max-h-[250px] overflow-hidden")}
         onClick={() => {
-          if (isClamped && !isExpanded) {
-            setIsExpanded(true);
-          }
+          if (isCollapsed) setIsExpanded(true);
         }}
       >
         <div ref={measureRef}>
           <MarkdownPreview>{text}</MarkdownPreview>
         </div>
-        {isClamped && !isExpanded && (
+        {isCollapsed && (
           <>
             {/* Gradient overlay */}
             <div className="absolute left-0 bottom-0 w-full h-8 bg-linear-to-t from-muted to-transparent pointer-events-none" />
-            {/* Expand pill */}
-            <div
-              className="absolute left-1/2 bottom-0 transform -translate-x-1/2 bg-background text-foreground px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm border border-border flex items-center gap-1 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(true);
-              }}
-            >
+            <div className="absolute left-1/2 bottom-0 transform -translate-x-1/2 bg-background text-foreground px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm border border-border flex items-center gap-1 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
               <ChevronDown className="h-3 w-3" />
               <span className="text-xs font-medium whitespace-nowrap">Expand text</span>
             </div>
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-3 w-12" />
-          </div>
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ErrorMessage() {
-  return <div className="text-red-500 text-sm text-center py-8">Failed to load comments</div>;
-}
-
-function EmptyState() {
-  return <div className="text-muted-foreground text-center py-8">No comments yet</div>;
-}
-
-function CommentsList({
-  comments,
-  isCollapsed,
-  onToggleCollapse,
-}: {
-  comments: Comment[];
-  isCollapsed: (id: string) => boolean;
-  onToggleCollapse: (id: string, collapsed: boolean) => void;
-}) {
-  return (
-    <div className="space-y-5">
-      {comments.map((comment) => (
-        <CommentItem
-          key={comment.id}
-          comment={comment}
-          isInitiallyCollapsed={isCollapsed(comment.id)}
-          onToggleCollapse={onToggleCollapse}
-        />
-      ))}
     </div>
   );
 }

@@ -16,34 +16,33 @@ import { evaluateMathExpression, extractVariableAssignments } from "@/shared/uti
 interface Node {
   type: string;
   value?: string;
-  tagName?: string;
-  properties?: Record<string, unknown>;
   children?: Node[];
-  data?: { hName: string; hProperties?: Record<string, unknown>; hChildren?: Node[] };
+  data?: { hName: string; hProperties: Record<string, unknown> };
 }
 
 const text = (value: string): Node => ({ type: "text", value });
 
-// Elements are inserted into the markdown tree, and rendered as HTML elements (via \`data.hName\`).
-// But their children are already HTML, so nested elements need to be converted to HTML nodes.
+// Elements are inserted into the markdown tree, and rendered as HTML elements (via `data.hName`).
 const element = (
   tagName: string,
   properties: Record<string, unknown>,
   children: Node[] = [],
-): Node => ({
-  type: "inlineSyntax",
-  data: { hName: tagName, hProperties: properties, hChildren: children.map(toHtmlNode) },
-});
+): Node => ({ type: "inlineSyntax", data: { hName: tagName, hProperties: properties }, children });
 
-const toHtmlNode = (node: Node): Node =>
-  node.data
-    ? ({
-        type: "element",
-        tagName: node.data.hName,
-        properties: node.data.hProperties ?? {},
-        children: node.data.hChildren ?? [],
-      } as Node)
-    : node;
+/** Replaces a pattern's matches in some text with elements (keeping the text between them). */
+function replaceMatches(value: string, pattern: RegExp, replace: (match: RegExpExecArray) => Node) {
+  const nodes: Node[] = [];
+  let lastIndex = 0;
+
+  for (const match of value.matchAll(pattern)) {
+    if (match.index > lastIndex) nodes.push(text(value.slice(lastIndex, match.index)));
+    nodes.push(replace(match));
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < value.length) nodes.push(text(value.slice(lastIndex)));
+  return nodes;
+}
 
 const SYNTAX =
   /(?<!!)\[\[([^\]]+)\]\]|\{#([a-zA-Z0-9_-]*)\}|>!([^<>]+)!<|(?<![\w/.@])@([a-zA-Z0-9-]+)\b/g;
@@ -54,17 +53,15 @@ const EQUATION = /^(?:([^:]+):\s*)?(.*?)([-+*/().\d\s,$a-zA-Z_-]+)=\s*$/;
 const RESULT_CLASSES = "inline-block text-black rounded px-0.5 py-0 select-none";
 const NAME_CLASSES = "font-bold text-blue-500";
 
-// Nodes whose text isn't transformed
-const SKIPPED_NODES = new Set(["link", "linkReference"]);
+// Nodes whose text isn't transformed (including the elements that this plugin inserts)
+const SKIPPED_NODES = new Set(["link", "linkReference", "inlineSyntax"]);
 
 export default function remarkInlineSyntax({
   emojis,
-  parseMentions = true,
 }: {
   /** Emojis by shortcode (once they've loaded). */
   emojis?: Map<string, string>;
-  parseMentions?: boolean;
-} = {}) {
+}) {
   return (tree: Node) => {
     let bookmarkCount = 0;
     let previousResult: string | null = null;
@@ -78,33 +75,20 @@ export default function remarkInlineSyntax({
         );
       }
 
-      const nodes: Node[] = [];
-      let lastIndex = 0;
-
-      for (const match of value.matchAll(SYNTAX)) {
-        const [syntax, wikilink, bookmark, spoiler, mention] = match;
-        if (mention !== undefined && !parseMentions) continue;
-        if (match.index > lastIndex) nodes.push(text(value.slice(lastIndex, match.index)));
-
+      return replaceMatches(value, SYNTAX, ([syntax, wikilink, bookmark, spoiler, mention]) => {
         if (mention !== undefined) {
-          nodes.push(
-            element("a", { href: `https://github.com/${mention}` }, [
-              element("strong", {}, [text(syntax)]),
-            ]),
-          );
-        } else if (wikilink !== undefined) {
-          nodes.push(element("a", { dataWikilink: wikilink }, [text(wikilink)]));
-        } else if (bookmark !== undefined) {
-          nodes.push(element("a", { dataBookmark: bookmark || `bookmark-${++bookmarkCount}` }));
-        } else {
-          nodes.push(element("span", { dataSpoiler: true }, [text(spoiler)]));
+          return element("a", { href: `https://github.com/${mention}` }, [
+            element("strong", {}, [text(syntax)]),
+          ]);
         }
-
-        lastIndex = match.index + syntax.length;
-      }
-
-      if (lastIndex < value.length) nodes.push(text(value.slice(lastIndex)));
-      return nodes;
+        if (wikilink !== undefined) {
+          return element("a", { dataWikilink: wikilink }, [text(wikilink)]);
+        }
+        if (bookmark !== undefined) {
+          return element("a", { dataBookmark: bookmark || `bookmark-${++bookmarkCount}` });
+        }
+        return element("span", { dataSpoiler: true }, [text(spoiler)]);
+      });
     }
 
     function transformCalculations(value: string): Node[] | null {
@@ -113,21 +97,12 @@ export default function remarkInlineSyntax({
       if (assignments.size > 0) {
         for (const [name, result] of assignments) variables.set(name, result);
 
-        const nodes: Node[] = [];
-        let lastIndex = 0;
-        for (const match of value.matchAll(ASSIGNMENT)) {
-          if (match.index > lastIndex) nodes.push(text(value.slice(lastIndex, match.index)));
-          nodes.push(
-            element("span", {}, [
-              element("span", { className: NAME_CLASSES }, [text(`${match[1].trim()}: `)]),
-              text(match[2].trim()),
-            ]),
-          );
-          lastIndex = match.index + match[0].length;
-        }
-
-        if (lastIndex < value.length) nodes.push(text(value.slice(lastIndex)));
-        return nodes;
+        return replaceMatches(value, ASSIGNMENT, ([, name, result]) =>
+          element("span", {}, [
+            element("span", { className: NAME_CLASSES }, [text(`${name.trim()}: `)]),
+            text(result.trim()),
+          ]),
+        );
       }
 
       // An equation to evaluate (e.g. `total: 5 * 3 =`)
@@ -141,19 +116,15 @@ export default function remarkInlineSyntax({
       // Show the previous result wherever the equation references it (using `_`)
       const expressionNodes = expression
         .trim()
-        .split("_")
-        .flatMap((part, index) => [
-          ...(index > 0 && previousResult !== null
-            ? [
-                element("span", { className: `${RESULT_CLASSES} bg-green-500` }, [
-                  text(previousResult),
-                ]),
-              ]
-            : index > 0
-              ? [text("_")]
-              : []),
-          ...(part ? [text(part)] : []),
-        ]);
+        .split(/(_)/)
+        .filter(Boolean)
+        .map((part) =>
+          part === "_" && previousResult !== null
+            ? element("span", { className: `${RESULT_CLASSES} bg-green-500` }, [
+                text(previousResult),
+              ])
+            : text(part),
+        );
 
       if (name) {
         variables.set(name.trim(), result);

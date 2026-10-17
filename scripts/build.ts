@@ -1,5 +1,3 @@
-/// <reference types="bun" />
-
 import tailwind from "bun-plugin-tailwind";
 import { cp, rm } from "node:fs/promises";
 import { basename } from "node:path";
@@ -26,13 +24,7 @@ const result = await Bun.build({
     // so make sure a developer's token can never end up in a deployed build.
     "process.env.BUN_PUBLIC_GITHUB_TOKEN": "undefined",
   },
-  throw: false,
 });
-
-if (!result.success) {
-  for (const log of result.logs) console.error(log);
-  process.exit(1);
-}
 
 // The PWA manifest refers to the app's icon by its (unhashed) URL
 await cp("src/assets/icon.png", `${outdir}/icon.png`);
@@ -83,7 +75,7 @@ const editorFiles = [...startupFiles, ...editorChunks];
 // A service worker caches the app's files, so that it loads instantly (and works offline) on return
 // visits. It's given the files in this version of the app (so it can remove previous versions'), and
 // the files to cache up front (i.e. the page, and what it needs to open the editor).
-const serviceWorker = await Bun.build({
+await Bun.build({
   entrypoints: ["src/service-worker.ts"],
   outdir,
   naming: "sw.js",
@@ -93,13 +85,7 @@ const serviceWorker = await Bun.build({
     BUILD_FILES: JSON.stringify(["./", "icon.png", ...outputs.keys()]),
     STARTUP_FILES: JSON.stringify(["./", ...editorFiles]),
   },
-  throw: false,
 });
-
-if (!serviceWorker.success) {
-  for (const log of serviceWorker.logs) console.error(log);
-  process.exit(1);
-}
 
 const gzippedSize = async (files: string[]) => {
   let bytes = 0;

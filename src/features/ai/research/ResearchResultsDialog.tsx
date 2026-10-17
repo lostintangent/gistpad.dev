@@ -1,24 +1,22 @@
 import { useAddAndOpenFile, useCreateAndOpenGist } from "@/features/gists/actions";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
-import type { ResearchTask } from "@/features/session/queries";
+import type { ResearchTask } from "@/features/account/queries";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/shared/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Save, Trash } from "lucide-react";
-
-interface ResearchResultsDialogProps {
-  task: ResearchTask;
-  onClose: () => void;
-  /** Deletes the task, which is also how saved results are cleared. */
-  onDelete: () => void;
-}
 
 /** Displays the results of a research task, which can be saved to a gist (or deleted). */
 export default function ResearchResultsDialog({
   task,
   onClose,
   onDelete,
-}: ResearchResultsDialogProps) {
+}: {
+  task: ResearchTask;
+  onClose: () => void;
+  /** Deletes the task, which is also how saved results are cleared. */
+  onDelete: () => void;
+}) {
   const createGist = useCreateAndOpenGist();
   const addFile = useAddAndOpenFile();
 
@@ -35,7 +33,7 @@ export default function ResearchResultsDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[80vh]">
         <DialogHeader>
-          <p className="text-gray-500 italic text-left">{task.topic}</p>
+          <p className="text-muted-foreground italic text-left">{task.topic}</p>
         </DialogHeader>
         <div className="flex-1 overflow-auto py-4">
           <MarkdownPreview isReadOnly>{task.content!}</MarkdownPreview>

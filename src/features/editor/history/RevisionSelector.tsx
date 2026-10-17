@@ -1,13 +1,7 @@
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import type { GistDocument } from "../document";
 import type { GistRevision } from "@/shared/github";
@@ -15,7 +9,6 @@ import { gistQueries } from "@/features/gists/queries";
 import { revisionAtom } from "../store";
 import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "@tanstack/react-store";
-import type { ReactElement, ReactNode } from "react";
 import { RevisionLabel } from "./RevisionLabel";
 
 const MAX_REVISIONS = 15;
@@ -29,7 +22,8 @@ const toContentRevisions = (revisions: GistRevision[]) =>
 
 const CURRENT_VERSION = "current";
 
-function RevisionItems({ doc }: { doc: GistDocument }) {
+/** The menu items for viewing past revisions of the document (in a menu or submenu). */
+export function RevisionItems({ doc }: { doc: GistDocument }) {
   const revisionId = useSelector(revisionAtom);
   const { data: revisions = [] } = useQuery({
     ...gistQueries.revisions(doc.gistId ?? ""),
@@ -57,37 +51,5 @@ function RevisionItems({ doc }: { doc: GistDocument }) {
         </DropdownMenuRadioItem>
       ))}
     </DropdownMenuRadioGroup>
-  );
-}
-
-/** A menu for viewing past revisions of the document. */
-export function RevisionMenu({
-  doc,
-  trigger,
-  disabled,
-}: {
-  doc: GistDocument;
-  trigger: ReactElement;
-  disabled?: boolean;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={trigger} disabled={disabled} />
-      <DropdownMenuContent className="w-auto min-w-60">
-        <RevisionItems doc={doc} />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** A submenu for viewing past revisions of the document (within another menu). */
-export function RevisionSubmenu({ doc, children }: { doc: GistDocument; children: ReactNode }) {
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>{children}</DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="w-auto min-w-60">
-        <RevisionItems doc={doc} />
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
   );
 }

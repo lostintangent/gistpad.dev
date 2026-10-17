@@ -82,5 +82,3 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
-
-export {};

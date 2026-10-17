@@ -6,7 +6,7 @@ import {
   usePreferences,
   useUpdatePreferences,
   type ResearchTask,
-} from "@/features/session/queries";
+} from "@/features/account/queries";
 import { queryOptions, useQueries } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Bell, Check, CircleStop, Clipboard, Loader2 } from "lucide-react";
@@ -16,9 +16,9 @@ import ResearchResultsDialog from "./ResearchResultsDialog";
 
 const POLLING_INTERVAL = 3000;
 
-/** Manages the user's research tasks, which run in the background, and polls for their results. */
-function useResearchTasks() {
-  const { researchTasks } = usePreferences();
+/** The user's research tasks, which run in the background (and are polled for their results). */
+export default function ResearchStatus() {
+  const { researchTasks: tasks } = usePreferences();
   const updatePreferences = useUpdatePreferences();
 
   const updateTask = (id: string, changes: Partial<ResearchTask>) =>
@@ -33,7 +33,7 @@ function useResearchTasks() {
 
   // Poll each in-progress task until it's done
   useQueries({
-    queries: researchTasks
+    queries: tasks
       .filter((task) => !task.content)
       .map((task) =>
         queryOptions({
@@ -62,12 +62,6 @@ function useResearchTasks() {
         }),
       ),
   });
-
-  return { tasks: researchTasks, updateTask, deleteTask };
-}
-
-export default function ResearchStatus() {
-  const { tasks, updateTask, deleteTask } = useResearchTasks();
 
   // The task whose results are being viewed (which closes once it's saved or deleted)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);

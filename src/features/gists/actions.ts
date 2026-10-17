@@ -15,8 +15,8 @@ import {
   useDeleteGistFile,
   useOpenDailyNote,
 } from "./queries";
-import { useUpdatePreferences } from "@/features/session/queries";
-import { discardDraft, mobileSidebarOpenAtom } from "@/features/editor/store";
+import { useUpdatePreferences } from "@/features/account/queries";
+import { draftAtom, mobileSidebarOpenAtom } from "@/features/editor/store";
 import { useDocument, useOpenDocument } from "@/features/editor/document";
 
 /** Creates a gist (optionally tagged), and then opens it. */
@@ -26,17 +26,10 @@ export function useCreateAndOpenGist() {
   const openDocument = useOpenDocument();
 
   return async ({
-    description,
-    content,
-    isPublic,
     tagIds = [],
-  }: {
-    description?: string;
-    content?: string;
-    isPublic?: boolean;
-    tagIds?: string[];
-  }) => {
-    const gist = await createGist({ description, content, isPublic });
+    ...options
+  }: Parameters<typeof createGist>[0] & { tagIds?: string[] }) => {
+    const gist = await createGist(options);
 
     if (tagIds.length > 0) {
       updatePreferences(({ gistTags }) => ({ gistTags: { ...gistTags, [gist.id]: tagIds } }));
@@ -79,9 +72,9 @@ export function useOpenDailyTemplate() {
       : addAndOpenFile(dailyNotes.id, TEMPLATE_FILENAME, "# 📆 {{date}}\n\n");
 }
 
-/** Whether deleting a gist's file deletes the gist itself (since gists can't be empty). */
+/** Whether deleting a gist's file deletes the gist itself (i.e. its README, or its only file). */
 export const deletesGist = (gist: Gist, filename?: string) =>
-  !filename || Object.keys(gist.files).length === 1;
+  !filename || filename === "README.md" || Object.keys(gist.files).length === 1;
 
 /**
  * Deletes a gist, or one of its files. And if it's currently open, then the next most recent gist
@@ -103,7 +96,7 @@ export function useDeleteGistOrFile() {
     if (!wasOpen) return;
 
     // The deleted changes don't need to be saved.
-    discardDraft();
+    draftAtom.set(null);
 
     if (!isDeletingGist) {
       await openDocument(gist.id);

@@ -1,51 +1,40 @@
+import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useDocument } from "@/features/editor/document";
 import { useOpenDailyTemplate } from "../actions";
 import { TEMPLATE_FILENAME, type Gist } from "@/shared/github";
 import { useQuery } from "@tanstack/react-query";
-import { isToday, isValid, parse } from "date-fns";
+import { parse, startOfToday } from "date-fns";
 import { gistQueries } from "../queries";
 import { Calendar, CheckSquare, FileText, Trash2 } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { GistLink } from "./GistLink";
 import { deleteGistDialog } from "../dialogs/DeleteGistDialog";
 
-interface DailyTaskStats {
-  filename: string;
-  totalTasks: number;
-  completedTasks: number;
-  /** Whether the note is from a previous day, and still has incomplete tasks. */
-  isPastDueWithTasks: boolean;
-  /** The date from the note's filename (e.g. `2025-01-31.md`). */
-  date: Date | null;
-}
-
-function getDailyTaskStats(gist: Gist): DailyTaskStats[] {
-  const today = new Date();
-
+function getDailyTaskStats(gist: Gist) {
   return Object.values(gist.files)
     .map(({ filename, content = "" }) => {
       // Markdown task syntax: - [ ] or - [x]
       const totalTasks = content.match(/- \[[ x]\]/g)?.length ?? 0;
       const completedTasks = content.match(/- \[x\]/g)?.length ?? 0;
 
-      const parsedDate = parse(filename.replace(/\.md$/, ""), "yyyy-MM-dd", new Date());
-      const date = isValid(parsedDate) ? parsedDate : null;
+      // (e.g. `2025-01-31.md`, where other files, like the template, have an invalid date)
+      const date = parse(filename.replace(/\.md$/, ""), "yyyy-MM-dd", new Date());
 
       return {
         filename,
         totalTasks,
         completedTasks,
-        date,
-        isPastDueWithTasks: !!date && !isToday(date) && date < today && completedTasks < totalTasks,
+        time: date.getTime() || 0,
+        // Whether the note is from a previous day, and still has incomplete tasks
+        isPastDueWithTasks: date < startOfToday() && completedTasks < totalTasks,
       };
     })
     .sort(
       (a, b) =>
         // Past-due notes first, and then newest first
-        Number(b.isPastDueWithTasks) - Number(a.isPastDueWithTasks) ||
-        (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0),
+        Number(b.isPastDueWithTasks) - Number(a.isPastDueWithTasks) || b.time - a.time,
     );
 }
 
@@ -80,7 +69,8 @@ export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
       title={
         <>
           <Calendar className="h-3.5 w-3.5 text-blue-400 mr-1" />
-          Daily notes ({filenames.length})
+          Daily notes
+          <Badge variant="count">{filenames.length}</Badge>
         </>
       }
       collapsedDetails={

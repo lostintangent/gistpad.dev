@@ -22,19 +22,18 @@ export function SelectionCommentButton({
   const updateSelection = useEffectEvent(() => {
     const current = window.getSelection();
     const text = current?.toString() ?? "";
-    const container = containerRef.current;
+    const range = current?.isCollapsed === false ? current.getRangeAt(0) : null;
 
     if (
-      !current ||
-      current.isCollapsed ||
+      !range ||
       text.trim().length < MIN_SELECTION_LENGTH ||
-      !container?.contains(current.getRangeAt(0).commonAncestorContainer)
+      !containerRef.current?.contains(range.commonAncestorContainer)
     ) {
       setSelection(null);
       return;
     }
 
-    const { top, left } = current.getRangeAt(0).getBoundingClientRect();
+    const { top, left } = range.getBoundingClientRect();
     setSelection({ text, top: top - 30, left });
   });
 

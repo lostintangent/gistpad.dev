@@ -21,19 +21,16 @@ export default function CommentsPanel({ doc }: { doc: GistDocument }) {
   const tab = useSelector(commentsStore, (state) => state.tab);
   const { comments } = useCommentThreads(doc);
 
+  const userComments = <UserComments doc={doc} />;
+  const aiComments = review && (
+    <Suspense>
+      <AiComments review={review} />
+    </Suspense>
+  );
+
+  // In zen mode, an AI review replaces the user comments (rather than being tabbed)
   if (!review || isZenMode) {
-    return (
-      <div className="flex flex-col h-full">
-        {/* In zen mode, an AI review replaces the user comments (rather than being tabbed) */}
-        {review ? (
-          <Suspense>
-            <AiComments review={review} />
-          </Suspense>
-        ) : (
-          <UserComments doc={doc} />
-        )}
-      </div>
-    );
+    return <div className="flex flex-col h-full">{aiComments || userComments}</div>;
   }
 
   return (
@@ -58,12 +55,10 @@ export default function CommentsPanel({ doc }: { doc: GistDocument }) {
         </TabsTrigger>
       </TabsList>
       <TabsContent value="user" className="min-h-0 flex flex-col">
-        <UserComments doc={doc} />
+        {userComments}
       </TabsContent>
       <TabsContent value="ai" className="min-h-0 flex flex-col">
-        <Suspense>
-          <AiComments review={review} />
-        </Suspense>
+        {aiComments}
       </TabsContent>
     </Tabs>
   );

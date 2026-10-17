@@ -36,13 +36,11 @@ export function GistLink({
       params={{ gistId, filePath: filename }}
       search={({ view }) => ({ view })}
       onClick={(event) => {
-        if (event.metaKey || event.ctrlKey) {
-          if (isSelected) {
-            event.preventDefault();
-            openDocument();
-          }
-        } else {
+        if (!event.metaKey && !event.ctrlKey) {
           prepareToOpenDocument(isMobile);
+        } else if (isSelected) {
+          event.preventDefault();
+          openDocument();
         }
       }}
       className={cn(

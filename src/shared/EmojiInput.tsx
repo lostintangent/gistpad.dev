@@ -57,7 +57,7 @@ export function EmojiInput({
   ref,
   ...props
 }: EmojiInputProps) {
-  const inputRef = useRef<InputElement | null>(null);
+  const inputRef = useRef<InputElement>(null);
   const [query, setQuery] = useState<string | null>(null);
 
   const { data: emojis = [] } = useQuery({ ...emojisQuery, enabled: query !== null });

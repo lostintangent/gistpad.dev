@@ -96,7 +96,7 @@ export function CompletionList<T>({
           onMouseEnter={() => onHighlight(index)}
           className={cn(
             "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm",
-            index === highlightedIndex && "bg-accent text-accent-foreground",
+            index === highlightedIndex && "bg-accent/50 text-accent-foreground",
           )}
         >
           {renderItem(item)}

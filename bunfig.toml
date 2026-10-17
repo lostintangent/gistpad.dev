@@ -19,7 +19,6 @@ ignorePatterns = ["dist/"]
 "react-hooks/preserve-manual-memoization" = "error"
 "react-hooks/purity" = "error"
 "react-hooks/refs" = "error"
-"react-hooks/rules-of-hooks" = "error"
 "react-hooks/set-state-in-effect" = "error"
 "react-hooks/set-state-in-render" = "error"
 "react-hooks/static-components" = "error"

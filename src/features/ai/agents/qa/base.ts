@@ -6,11 +6,12 @@ import {
   Tool,
   webSearchTool,
 } from "@openai/agents";
-import { JSONParser, type StackElement } from "@streamparser/json";
+import { JSONParser, type ParsedElementInfo } from "@streamparser/json";
 import {
-  buildAgentInput,
   createOpenAIClient,
   getModelProperties,
+  referencesAsContext,
+  userCommentsAsContext,
   type AgentFollowUp,
   type AgentRequest,
 } from "../openai";
@@ -43,41 +44,47 @@ const baseSystemPrompt = `## Using context
 * The follow-up question/topic won't be rendered as markdown, so just use plain text (e.g. don't use bold, italics, etc.).
 * The follow-up can only be a subsequent question to ask, as opposed to an action to take (e.g. editing a document, or creating a new gist).`;
 
-/** Callbacks for observing the progress of an agent, while it streams its response. */
-export interface AgentProgressHandlers {
+/** The options that the Q&A agents (ask and review) have in common. */
+export interface QaAgentOptions extends AgentRequest {
+  tools?: Tool[];
+
+  // Callbacks for observing the progress of the agent, while it streams its response.
   onFollowUp?: (followUp: AgentFollowUp) => void;
   onReasoning?: (summary: string) => void;
   onWebSearching?: (isSearching: boolean) => void;
 }
 
-export interface StreamingAgentOptions extends AgentRequest, AgentProgressHandlers {
+interface StreamingAgentOptions extends QaAgentOptions {
   agentType: "ask" | "review";
   systemPrompt: string;
   outputSchema: AgentOutputType;
-  onParserValue: (args: {
-    key: string | number | undefined;
-    value: unknown;
-    stack: StackElement[];
-  }) => void;
-  tools?: Tool[];
+  onParserValue: (info: ParsedElementInfo) => void;
 }
 
-export async function runStreamingAgent(options: StreamingAgentOptions): Promise<string | null> {
+export async function runStreamingAgent(options: StreamingAgentOptions) {
   setDefaultOpenAIClient(createOpenAIClient());
 
   const modelProperties = getModelProperties(options.agentType);
-  const instructions = `${options.systemPrompt}\n\n${baseSystemPrompt}`;
-
   const agent = new Agent({
     name: options.agentType,
-    instructions,
+    instructions: `${options.systemPrompt}\n\n${baseSystemPrompt}`,
     model: modelProperties.model,
     modelSettings: { providerData: modelProperties },
     outputType: options.outputSchema,
     tools: [webSearchTool(), ...(options.tools ?? [])],
   });
 
-  const input = buildAgentInput(options);
+  const { prompt, content, description, instructions, userComments, references } = options;
+  const input = [
+    `<request>${prompt}</request>`,
+    content?.trim() &&
+      `<current_document${description ? ` title="${description}"` : ""}>\n${content}\n</current_document>`,
+    userCommentsAsContext(userComments),
+    referencesAsContext(references),
+    instructions && `<additional_instructions>${instructions}</additional_instructions>`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const stream = await runAgent(agent, input, {
     previousResponseId: options.previousResponseId,
@@ -85,62 +92,40 @@ export async function runStreamingAgent(options: StreamingAgentOptions): Promise
     signal: options.signal,
   });
 
-  const parser = new JSONParser({
-    emitPartialTokens: true,
-    emitPartialValues: true,
-  });
-
+  const parser = new JSONParser({ emitPartialTokens: true, emitPartialValues: true });
   const followUp: AgentFollowUp = { question: "", topic: "" };
+  parser.onValue = (info) => {
+    options.onParserValue(info);
 
-  parser.onValue = ({ key, value, stack }) => {
-    options.onParserValue({ key, value, stack });
-
-    if (stack.length >= 2 && stack[1].key === "follow_up") {
-      if (key === "question") {
-        followUp.question = String(value ?? "");
-      } else if (key === "topic") {
-        followUp.topic = String(value ?? "");
-      }
+    const { key, value, stack } = info;
+    if (stack[1]?.key === "follow_up") {
+      if (key === "question" || key === "topic") followUp[key] = String(value ?? "");
       options.onFollowUp?.({ ...followUp });
     }
   };
 
-  let responseId: string | undefined;
   let reasoningSummary = "";
-
   for await (const event of stream) {
-    if (options.signal?.aborted) {
-      return null;
-    }
+    if (options.signal?.aborted) return null;
+    if (event.type !== "raw_model_stream_event") continue;
 
-    if (event.type !== "raw_model_stream_event") {
-      continue;
-    }
-
-    const eventData = event.data;
-    switch (eventData.type) {
-      case "response_started":
-        responseId = eventData.providerData?.response.id;
-        break;
-
-      case "output_text_delta":
-        parser.write(eventData.delta);
-        break;
-
-      case "model":
-        if (eventData.event.type === "response.reasoning_summary_text.delta") {
-          reasoningSummary += eventData.event.delta;
-          options.onReasoning?.(reasoningSummary);
-        } else if (eventData.event.type === "response.reasoning_summary_part.added") {
-          reasoningSummary = "";
-        } else if (eventData.event.type === "response.web_search_call.in_progress") {
-          options.onWebSearching?.(true);
-        } else if (eventData.event.type === "response.web_search_call.completed") {
-          options.onWebSearching?.(false);
-        }
-        break;
+    const { data } = event;
+    if (data.type === "output_text_delta") {
+      parser.write(data.delta);
+    } else if (data.type === "model") {
+      const { type, delta } = data.event;
+      if (type === "response.reasoning_summary_part.added") {
+        reasoningSummary = "";
+      } else if (type === "response.reasoning_summary_text.delta") {
+        reasoningSummary += delta;
+        options.onReasoning?.(reasoningSummary);
+      } else if (type === "response.web_search_call.in_progress") {
+        options.onWebSearching?.(true);
+      } else if (type === "response.web_search_call.completed") {
+        options.onWebSearching?.(false);
+      }
     }
   }
 
-  return responseId ?? null;
+  return stream.lastResponseId ?? null;
 }

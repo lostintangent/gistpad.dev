@@ -5,12 +5,6 @@ import { formatDistanceToNow } from "date-fns";
 import { Calendar, File, Globe, MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** The number of markdown files in a gist (excluding the README of a date-based gist). */
-function getMarkdownFileCount(gist: Gist) {
-  const count = Object.keys(gist.files).filter((filename) => filename.endsWith(".md")).length;
-  return isDateBasedGist(gist) && gist.files["README.md"] ? count - 1 : count;
-}
-
 /** The details shown below a gist's name in the gist list (e.g. when it was last updated). */
 export function GistMetadata({
   gist,
@@ -24,8 +18,12 @@ export function GistMetadata({
   hasIndicator?: boolean;
   children?: ReactNode;
 }) {
-  const fileCount = getMarkdownFileCount(gist);
   const isDateBased = isDateBasedGist(gist);
+  const FileIcon = isDateBased ? Calendar : File;
+
+  // The README of a date-based gist isn't counted, since it isn't one of its dated files
+  const markdownFiles = Object.keys(gist.files).filter((filename) => filename.endsWith(".md"));
+  const fileCount = markdownFiles.length - (isDateBased && gist.files["README.md"] ? 1 : 0);
 
   return (
     <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -39,11 +37,7 @@ export function GistMetadata({
       {(fileCount > 1 || isDateBased) && (
         <Badge variant="secondary" title={`${fileCount} files`}>
           {fileCount}
-          {isDateBased ? (
-            <Calendar className="ml-1 h-3.5 w-3.5" />
-          ) : (
-            <File className="ml-1 h-3.5 w-3.5" />
-          )}
+          <FileIcon className="ml-1 h-3.5 w-3.5" />
         </Badge>
       )}
       {gist.comments > 0 && (

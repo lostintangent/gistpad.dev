@@ -27,6 +27,6 @@ export async function emojiCompletions(
         apply: emoji.native,
         detail: emoji.name,
       })),
-    validFor: /^:[\w]*$/,
+    validFor: /^:\w*$/,
   };
 }

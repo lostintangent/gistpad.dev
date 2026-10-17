@@ -2,7 +2,6 @@ import type { WidgetDefinition } from "./types";
 import espnWidget from "./widgets/ESPN";
 import hackerNewsWidget from "./widgets/HackerNews";
 import onThisDayWidget from "./widgets/OnThisDay";
-import redditWidget from "./widgets/Reddit";
 import weatherWidget from "./widgets/Weather";
 import nasaApodWidget from "./widgets/NasaApod";
 import aiWidget from "./widgets/AI";
@@ -15,23 +14,14 @@ export interface WidgetState {
   config?: Record<string, string>;
 }
 
-const widgetRegistry: Record<string, WidgetDefinition> = {
+export const widgetRegistry: Record<string, WidgetDefinition> = {
   weather: weatherWidget,
   hackernews: hackerNewsWidget,
   onthisday: onThisDayWidget,
   espnnews: espnWidget,
-  reddit: redditWidget,
   nasaapod: nasaApodWidget,
   ai: aiWidget,
 };
-
-export function getWidget(type: string): WidgetDefinition | undefined {
-  return widgetRegistry[type];
-}
-
-export function getAllWidgetTypes(): { type: string; name: string }[] {
-  return Object.entries(widgetRegistry).map(([type, { name }]) => ({ type, name }));
-}
 
 /** The config options that the user has to set (i.e. the ones without a default value). */
 export function getRequiredOptions(definition: WidgetDefinition) {
@@ -43,7 +33,7 @@ export function isConfigured(definition: WidgetDefinition, config?: Record<strin
   return getRequiredOptions(definition).every((option) => config?.[option.id]?.trim());
 }
 
-/** A widget's name, along with the value of its first required option (e.g. "Reddit (javascript)"). */
+/** A widget's name, along with the value of its first required option (e.g. "ESPN News (NFL)"). */
 export function getWidgetTitle({ type, config }: WidgetState) {
   const { name } = widgetRegistry[type];
   const [titleOption] = getRequiredOptions(widgetRegistry[type]);
@@ -56,12 +46,7 @@ export function createWidget(type: string, id: string = crypto.randomUUID()): Wi
     option.default === undefined ? [] : [[option.id, String(option.default)]],
   );
 
-  return {
-    id,
-    type,
-    collapsed: false,
-    config: defaults.length > 0 ? Object.fromEntries(defaults) : undefined,
-  };
+  return { id, type, config: Object.fromEntries(defaults) };
 }
 
 export function getDefaultWidgets() {

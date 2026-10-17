@@ -11,7 +11,6 @@ function Player({ playlistId }: { playlistId: string }) {
   const [isMinimized, setIsMinimized] = useState(true);
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
 
-  const hidePlayer = () => setIsVisible(false);
   const toggleMinimized = () => setIsMinimized(!isMinimized);
 
   if (!isVisible) return null;
@@ -22,7 +21,6 @@ function Player({ playlistId }: { playlistId: string }) {
         isMinimized ? "w-12 h-12 overflow-hidden" : "w-80 h-53"
       }`}
     >
-      {/* Minimized State - Clickable Music Icon */}
       {isMinimized && (
         <div
           className="flex items-center justify-center w-full h-full cursor-pointer hover:scale-105 transition-all duration-200 relative z-10"
@@ -32,7 +30,6 @@ function Player({ playlistId }: { playlistId: string }) {
         </div>
       )}
 
-      {/* Header - Always rendered */}
       <div
         className={`flex items-center justify-between p-2 border-b bg-muted/30 ${isMinimized ? "hidden" : ""}`}
       >
@@ -50,7 +47,7 @@ function Player({ playlistId }: { playlistId: string }) {
             <Minimize2 className="h-3 w-3" />
           </Button>
           <Button
-            onClick={hidePlayer}
+            onClick={() => setIsVisible(false)}
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 hover:bg-muted hover:text-red-500"
@@ -60,9 +57,8 @@ function Player({ playlistId }: { playlistId: string }) {
         </div>
       </div>
 
-      {/* Player Content - Always rendered, just hidden when minimized */}
+      {/* (The player is hidden rather than unmounted when it's minimized, so that it keeps playing) */}
       <div className={`p-2 relative ${isMinimized ? "absolute -top-[9999px] -left-[9999px]" : ""}`}>
-        {/* Loading skeleton */}
         {!isIframeLoaded && !isMinimized && (
           <div className="w-full h-[160px] bg-muted rounded animate-pulse flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">

@@ -3,72 +3,40 @@ import { formatDistanceToNow } from "date-fns";
 import { Trophy } from "lucide-react";
 import { WidgetDefinition, WidgetProps } from "../types";
 
-export interface ESPNNewsArticle {
+interface ESPNNewsArticle {
   id: number;
   headline: string;
-  description: string;
   published: string;
-  links: {
-    web: {
-      href: string;
-    };
-  };
-  images?: Array<{
-    url: string;
-    alt?: string;
-    height: number;
-    width: number;
-  }>;
+  links: { web: { href: string } };
+  images?: { url: string; alt?: string; width: number }[];
   byline?: string;
 }
 
-export interface ESPNNewsData {
-  articles: ESPNNewsArticle[];
+// The API's path for each sport (whose league is also its section of espn.com)
+const SPORT_PATHS: Record<string, string> = {
+  NFL: "football/nfl",
+  Baseball: "baseball/mlb",
+  Basketball: "basketball/nba",
+};
+
+const getSportPath = (config: Record<string, string>) =>
+  SPORT_PATHS[config.sport] ?? SPORT_PATHS.NFL;
+
+async function fetchData(config: Record<string, string>): Promise<ESPNNewsArticle[]> {
+  const response = await fetch(
+    `https://site.api.espn.com/apis/site/v2/sports/${getSportPath(config)}/news`,
+  );
+  if (!response.ok) throw new Error("Failed to fetch ESPN news");
+
+  const { articles } = await response.json();
+  return articles.slice(0, Number(config.postCount) || 10);
 }
 
-async function fetchData(config?: Record<string, string>): Promise<ESPNNewsData> {
-  const sport = config?.sport || "NFL";
-  const postCount = config?.postCount ? parseInt(config.postCount) : 10;
-  const sportMap: Record<string, { path: string }> = {
-    NFL: { path: "football/nfl" },
-    Baseball: { path: "baseball/mlb" },
-    Basketball: { path: "basketball/nba" },
-  };
-  const { path } = sportMap[sport] || sportMap["NFL"];
-
-  const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/news`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch ESPN news");
-  }
-
-  const data = await response.json();
-
-  // Get the configured number of articles
-  const articles = data.articles.slice(0, postCount).map((article: ESPNNewsArticle) => ({
-    id: article.id,
-    headline: article.headline,
-    description: article.description,
-    published: article.published,
-    links: article.links,
-    images: article.images,
-    byline: article.byline,
-  }));
-
-  return { articles };
-}
-
-export function ESPNNewsWidget({
-  data,
-  isLoading,
-  config,
-  displayMediaDialog,
-}: WidgetProps<ESPNNewsData>) {
-  if (isLoading || !data) {
-    const postCount = config?.postCount ? parseInt(config.postCount) : 10;
+function ESPNNewsWidget({ data, config, displayMediaDialog }: WidgetProps<ESPNNewsArticle[]>) {
+  if (!data) {
     return (
       <div className="space-y-4">
-        {[...Array(postCount)].map((_, i) => (
+        {[...Array(Number(config.postCount) || 10)].map((_, i) => (
           <div key={i} className="flex gap-3">
             <Skeleton className="w-24 h-16 rounded-md flex-shrink-0" />
             <div className="flex-1 space-y-2">
@@ -83,66 +51,52 @@ export function ESPNNewsWidget({
 
   return (
     <div className="space-y-4">
-      {data.articles.map((article, index) => {
-        // Find the first header image
+      {data.map((article) => {
         const headerImage = article.images?.find(
           (img) => img.url && (img.width === 608 || img.width === 1296),
         );
 
         return (
-          <div
-            key={article.id}
-            className={`group ${
-              index !== data.articles.length - 1 ? "border-b border-border pb-4" : ""
-            }`}
-          >
+          <div key={article.id} className="group not-last:border-b not-last:pb-4">
             <a
               href={article.links.web.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="block hover:no-underline"
+              className="flex gap-3 hover:no-underline"
             >
-              <div className="flex gap-3">
-                {/* Image */}
-                {headerImage ? (
-                  <div
-                    className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      displayMediaDialog(headerImage.url);
-                    }}
-                  >
-                    <img
-                      src={headerImage.url}
-                      alt={headerImage.alt || article.headline}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
-                    <Trophy className="w-8 h-8 text-muted-foreground/50" />
-                  </div>
-                )}
+              {headerImage ? (
+                <div
+                  className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    displayMediaDialog({ type: "image", url: headerImage.url });
+                  }}
+                >
+                  <img
+                    src={headerImage.url}
+                    alt={headerImage.alt || article.headline}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-16 md:w-32 md:h-20 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
+                  <Trophy className="w-8 h-8 text-muted-foreground/50" />
+                </div>
+              )}
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                    {article.headline}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                    <span>
-                      {formatDistanceToNow(new Date(article.published), {
-                        addSuffix: true,
-                      })}
-                    </span>
-                    {article.byline && (
-                      <>
-                        <span>•</span>
-                        <span>{article.byline}</span>
-                      </>
-                    )}
-                  </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                  {article.headline}
+                </h3>
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                  <span>{formatDistanceToNow(article.published, { addSuffix: true })}</span>
+                  {article.byline && (
+                    <>
+                      <span>•</span>
+                      <span>{article.byline}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </a>
@@ -162,15 +116,5 @@ export default {
   ],
   component: ESPNNewsWidget,
   emptyStateMessage: "No sports news available",
-  checkEmpty: (data) => !data || !data.articles || data.articles.length === 0,
-  getExternalUrl: (config) => {
-    const sport = config?.sport || "NFL";
-    const sportMap: Record<string, string> = {
-      NFL: "nfl",
-      Baseball: "mlb",
-      Basketball: "nba",
-    };
-    const site = sportMap[sport] || "nfl";
-    return `https://www.espn.com/${site}/`;
-  },
-} satisfies WidgetDefinition<ESPNNewsData>;
+  getExternalUrl: (config) => `https://www.espn.com/${getSportPath(config).split("/")[1]}/`,
+} satisfies WidgetDefinition<ESPNNewsArticle[]>;

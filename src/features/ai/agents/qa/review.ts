@@ -1,7 +1,6 @@
-import type { Tool } from "@openai/agents";
 import z from "zod";
-import { generateTitle, type AgentRequest } from "../openai";
-import { runStreamingAgent, type AgentProgressHandlers } from "./base";
+import { createOpenAIClient } from "../openai";
+import { runStreamingAgent, type QaAgentOptions } from "./base";
 
 export interface ReviewComment {
   id: number;
@@ -50,21 +49,32 @@ const systemPrompt = `# Objective
     - If the user asks for a checklist or tasklist, then use the \`- []\` format for the checklist items, as opposed to appending an \`☐\` character to the start of each item.
 * CRITICAL: Make sure to create distinct/individual comments for each distinct piece of feedback/suggestion you have, even if they are related to the same topic. Do not combine multiple suggestions into a single comment.`;
 
-export interface ReviewOptions extends AgentRequest, AgentProgressHandlers {
-  tools?: Tool[];
+interface ReviewOptions extends QaAgentOptions {
   /** Called with the review's comments, as they're streamed. */
   onComments: (comments: ReviewComment[]) => void;
   /** Called with the review's title, as it's streamed. */
   onTitle: (title: string) => void;
 }
 
-export async function reviewContent(options: ReviewOptions): Promise<string | null> {
+export async function reviewContent(options: ReviewOptions) {
   const titlePromise = (async () => {
     try {
+      const stream = createOpenAIClient().responses.stream(
+        {
+          model: "gpt-4o",
+          instructions:
+            "Generate a concise title that summarizes the objective, request, and context in the user's message. Respond with nothing but the title, and prepend it with an emoji.",
+          input: options.prompt,
+        },
+        { signal: options.signal },
+      );
+
       let title = "";
-      for await (const delta of generateTitle(options.prompt, options.signal)) {
-        title += delta;
-        options.onTitle(title);
+      for await (const event of stream) {
+        if (event.type === "response.output_text.delta") {
+          title += event.delta;
+          options.onTitle(title);
+        }
       }
     } catch (e) {
       console.error("Failed to generate title:", e);

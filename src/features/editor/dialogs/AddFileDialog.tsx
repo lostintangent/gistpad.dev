@@ -6,12 +6,6 @@ import { useState } from "react";
 // oxlint-disable-next-line no-control-regex
 const INVALID_CHARACTERS = /[<>:"/\\|?*\x00-\x1F]/;
 
-function validateFilename(filename: string) {
-  if (INVALID_CHARACTERS.test(filename)) return "Filename contains invalid characters";
-  if (filename.length > 255) return "Filename is too long";
-  return null;
-}
-
 /** Adds a new (markdown) file to a gist. */
 export default function AddFileDialog({
   defaultFilename,
@@ -23,7 +17,11 @@ export default function AddFileDialog({
   onSubmit: (filename: string) => void;
 }) {
   const [filename, setFilename] = useState(defaultFilename);
-  const error = validateFilename(filename);
+  const error = INVALID_CHARACTERS.test(filename)
+    ? "Filename contains invalid characters"
+    : filename.length > 255
+      ? "Filename is too long"
+      : null;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

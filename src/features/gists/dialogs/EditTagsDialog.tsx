@@ -11,7 +11,7 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
-import { usePreferences, useUpdatePreferences, type TagData } from "@/features/session/queries";
+import { usePreferences, useUpdatePreferences, type TagData } from "@/features/account/queries";
 import { tagFiltersAtom } from "../store";
 import { Plus, Trash2 } from "lucide-react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
@@ -19,23 +19,18 @@ import { useState } from "react";
 
 const DEFAULT_TAG_COLOR = "#3b82f6";
 
-const newTag = () => [crypto.randomUUID(), { name: "", color: DEFAULT_TAG_COLOR }] as const;
+const newTag = () => ({ [crypto.randomUUID()]: { name: "", color: DEFAULT_TAG_COLOR } });
 
-/** Removes tags from the gists they're applied to. */
-const untagGists = (gistTags: Record<string, string[]>, isRemoved: (tagId: string) => boolean) =>
-  Object.fromEntries(
-    Object.entries(gistTags)
-      .map(([gistId, tagIds]) => [gistId, tagIds.filter((tagId) => !isRemoved(tagId))] as const)
-      .filter(([, tagIds]) => tagIds.length > 0),
-  );
+/** Opens the dialog for editing the user's tags (e.g. from the tag filter, or a gist's menu). */
+export const editTagsDialog = DialogPrimitive.createHandle();
 
-function TagsForm({ onSaved }: { onSaved: () => void }) {
+function TagsForm() {
   const { tags } = usePreferences();
   const updatePreferences = useUpdatePreferences();
 
   // If there aren't any tags yet, then start with an empty one, so the user can type its name.
   const [edits, setEdits] = useState<Record<string, TagData>>(() =>
-    Object.keys(tags).length > 0 ? tags : Object.fromEntries([newTag()]),
+    Object.keys(tags).length > 0 ? tags : newTag(),
   );
   const [tagToDelete, setTagToDelete] = useState<{ id: string; name: string }>();
 
@@ -52,7 +47,11 @@ function TagsForm({ onSaved }: { onSaved: () => void }) {
 
     updatePreferences(({ gistTags }) => ({
       tags: updatedTags,
-      gistTags: untagGists(gistTags, (tagId) => !updatedTags[tagId]),
+      gistTags: Object.fromEntries(
+        Object.entries(gistTags)
+          .map(([gistId, ids]) => [gistId, ids.filter((id) => updatedTags[id])] as const)
+          .filter(([, ids]) => ids.length > 0),
+      ),
     }));
     tagFiltersAtom.set((ids) => ids.filter((tagId) => updatedTags[tagId]));
   };
@@ -103,16 +102,13 @@ function TagsForm({ onSaved }: { onSaved: () => void }) {
         ))}
       </div>
       <DialogFooter className="flex-row justify-between sm:justify-between">
-        <Button
-          className="bg-green-700 hover:bg-green-800 text-white"
-          onClick={() => setEdits({ ...edits, ...Object.fromEntries([newTag()]) })}
-        >
+        <Button variant="accent" onClick={() => setEdits({ ...edits, ...newTag() })}>
           <Plus /> Add tag
         </Button>
         <Button
           onClick={() => {
             saveTags(edits);
-            onSaved();
+            editTagsDialog.close();
           }}
         >
           Save
@@ -146,14 +142,12 @@ function TagsForm({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-/** Opens the dialog for editing the user's tags (e.g. from the tag filter, or a gist's menu). */
-export const editTagsDialog = DialogPrimitive.createHandle();
-
 export default function EditTagsDialog() {
   return (
     <Dialog handle={editTagsDialog}>
       <DialogContent>
-        <TagsForm onSaved={() => editTagsDialog.close()} />
+        {/* (The form is remounted, and so its edits are reset, whenever the dialog is opened) */}
+        <TagsForm />
       </DialogContent>
     </Dialog>
   );

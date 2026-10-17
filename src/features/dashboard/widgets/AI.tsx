@@ -2,27 +2,15 @@ import { AiLoadingMessage } from "@/features/ai/AiLoadingMessage";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import { WidgetDefinition, WidgetProps } from "../types";
 
-async function fetchData(config?: Record<string, string>): Promise<string> {
-  const prompt = config?.prompt;
-  if (!prompt) {
-    return "";
-  }
+async function fetchData({ prompt }: Record<string, string>) {
   const { askContent } = await import("@/features/ai/agents");
   let answer = "";
   await askContent({ prompt, onAnswer: (text) => (answer = text) });
   return answer;
 }
 
-function AIWidget({ data, isLoading }: WidgetProps<string>) {
-  if (isLoading) {
-    return <AiLoadingMessage />;
-  }
-
-  if (!data) {
-    return null;
-  }
-
-  return <MarkdownPreview isReadOnly>{data}</MarkdownPreview>;
+function AIWidget({ data }: WidgetProps<string>) {
+  return data ? <MarkdownPreview isReadOnly>{data}</MarkdownPreview> : <AiLoadingMessage />;
 }
 
 export default {

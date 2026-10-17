@@ -196,7 +196,7 @@ export default function AiComments({ review }: { review: AiReview }) {
   const status = isReviewing ? (
     <div className="relative mt-8!">
       <AiLoadingMessage
-        reasoningSummary={review.reasoningSummary ?? undefined}
+        reasoningSummary={review.reasoningSummary}
         isWebSearching={review.isWebSearching}
       />
     </div>

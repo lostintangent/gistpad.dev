@@ -50,14 +50,17 @@
   font-style: italic;
 }
 
-/* Inline code blocks */
+/* Inline code blocks (without their wrapping backticks) */
 
-.prose li code,
-.prose p code,
-.prose td code {
+.prose :is(li, p, td) code {
   background: var(--muted);
   padding: 0.25rem;
   border-radius: 6px;
+
+  &::before,
+  &::after {
+    content: "";
+  }
 }
 
 .prose tbody tr:nth-child(even) td code {
@@ -87,54 +90,14 @@
   font-size: 1.25rem;
 }
 
-/* Remove the wrapping quotes from quotes and inline code blocks */
-
-.prose td code::before,
-.prose td code::after,
-.prose li code::before,
-.prose li code::after,
-.prose p code::before,
-.prose p code::after {
-  content: "";
-}
+/* Remove the wrapping quotes from blockquotes */
 
 .prose blockquote p::before,
 .prose blockquote p::after {
   content: "";
 }
 
-/* Wikilinks */
-
-.prose .cm-wikilink-content {
-  text-decoration: none;
-  background: var(--muted);
-  padding: 0 4px;
-  border-radius: 4px;
-  margin: 0 -2px;
-  border: none;
-  font: inherit;
-  color: var(--primary);
-  cursor: pointer;
-}
-
-.prose .cm-wikilink-content:hover {
-  background: var(--accent);
-  text-decoration: underline;
-}
-
 /* ToC */
-
-pre:has(.markdown-toc) {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-}
-
-pre:has(.tl-container) {
-  margin: 0.25rem;
-  padding: 0;
-  background: transparent;
-}
 
 .markdown-toc {
   background: light-dark(hsl(240 5.9% 10%), hsl(224.3 76.3% 48%));

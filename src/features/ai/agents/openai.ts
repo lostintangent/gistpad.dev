@@ -30,10 +30,8 @@ export interface AgentRequest {
   signal?: AbortSignal;
 }
 
-export function referencesAsContext(references?: AdditionalReference[]): string {
-  if (!references || references.length === 0) {
-    return "";
-  }
+export function referencesAsContext(references?: AdditionalReference[]) {
+  if (!references?.length) return "";
 
   const refs = references.map(
     (r) =>
@@ -47,14 +45,11 @@ export function createOpenAIClient() {
   return new OpenAI({ apiKey: aiSettingsStore.state.apiKey, dangerouslyAllowBrowser: true });
 }
 
-export function getModelProperties(modelType: ModelType): {
-  model: string;
-  reasoning?: { effort?: "high"; summary?: "auto" };
-} {
+export function getModelProperties(modelType: ModelType) {
   const { models, showReasoningSummaries } = aiSettingsStore.state;
   let model = models[modelType];
 
-  const reasoning: { effort?: "high"; summary?: "auto" } = {};
+  const reasoning: OpenAI.Reasoning = {};
   if ((model.startsWith("o") || model === "gpt-5") && showReasoningSummaries) {
     reasoning.summary = "auto";
   }
@@ -67,10 +62,8 @@ export function getModelProperties(modelType: ModelType): {
   return Object.keys(reasoning).length > 0 ? { model, reasoning } : { model };
 }
 
-export function userCommentsAsContext(comments?: GistComment[]): string {
-  if (!comments || comments.length === 0) {
-    return "";
-  }
+export function userCommentsAsContext(comments?: GistComment[]) {
+  if (!comments?.length) return "";
 
   const notes = comments.map(
     (comment) => `
@@ -90,29 +83,8 @@ ${notes.join("\n")}
 </user_notes>`;
 }
 
-export function buildAgentInput(request: AgentRequest): string {
-  const { prompt, content, description, instructions, userComments, references } = request;
-
-  const documentContext = content?.trim()
-    ? `<current_document${description ? ` title="${description}"` : ""}>\n${content}\n</current_document>`
-    : null;
-  const instructionContext = instructions
-    ? `<additional_instructions>${instructions}</additional_instructions>`
-    : null;
-
-  return [
-    `<request>${prompt}</request>`,
-    documentContext,
-    userCommentsAsContext(userComments),
-    referencesAsContext(references),
-    instructionContext,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-}
-
 /** Generates an image (as PNG data) from a prompt. */
-export async function generateImage(prompt: string): Promise<ArrayBuffer> {
+export async function generateImage(prompt: string) {
   const response = await createOpenAIClient().images.generate({
     model: "gpt-image-2",
     prompt,
@@ -125,33 +97,9 @@ export async function generateImage(prompt: string): Promise<ArrayBuffer> {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)).buffer;
 }
 
-export async function* generateTitle(
-  prompt: string,
-  abortSignal?: AbortSignal,
-): AsyncGenerator<string> {
-  const openai = createOpenAIClient();
-
-  const stream = openai.responses.stream(
-    {
-      model: "gpt-4o",
-      instructions:
-        "Generate a concise title that summarizes the objective, request, and context in the user's message. Respond with nothing but the title, and prepend it with an emoji.",
-      input: prompt,
-    },
-    { signal: abortSignal },
-  );
-
-  for await (const event of stream) {
-    if (event.type === "response.output_text.delta") {
-      yield event.delta;
-    }
-  }
-}
-
-export async function cancelResponse(responseId: string): Promise<void> {
+export async function cancelResponse(responseId: string) {
   try {
-    const openai = createOpenAIClient();
-    await openai.responses.cancel(responseId);
+    await createOpenAIClient().responses.cancel(responseId);
   } catch (error) {
     console.error("Error attempting to cancel response:", error);
   }

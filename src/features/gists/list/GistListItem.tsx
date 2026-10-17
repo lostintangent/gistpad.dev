@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { useOpenDocument } from "@/features/editor/document";
 import { getGistDisplayName, type Gist } from "@/shared/github";
 import { useDuplicateGist, useToggleArchived } from "../queries";
-import { usePreferences, useUpdatePreferences } from "@/features/session/queries";
+import { usePreferences, useUpdatePreferences } from "@/features/account/queries";
 import { useIsAiInProgress } from "@/features/ai/store";
 import { draftAtom } from "@/features/editor/store";
 import { useSelector } from "@tanstack/react-store";

@@ -9,9 +9,13 @@ import { useEditorMode } from "@/features/editor/mode";
 import { useAddAndOpenFile, useCreateAndOpenGist } from "@/features/gists/actions";
 import { getGistDescription } from "@/shared/github";
 import { parseFrontMatter } from "@/shared/frontMatter";
-import { parseGlobalFrontMatter, usePreferences } from "@/features/session/queries";
+import { parseGlobalFrontMatter, usePreferences } from "@/features/account/queries";
 import { aiSettingsStore } from "../settings";
 import { useMutation } from "@tanstack/react-query";
+import type {
+  RealtimeConversationItemFunctionCall as FunctionCall,
+  RealtimeServerEvent as ServerEvent,
+} from "openai/resources/realtime/realtime";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AiCommands } from "../useAiCommands";
 import { getToolDefinitions, getToolHandler } from "./tools";
@@ -22,29 +26,6 @@ import type { VoiceToolContext } from "./types";
 
 const REALTIME_URL = "https://api.openai.com/v1/realtime?model=gpt-realtime";
 
-/** The (subset of) events that the realtime API sends, which the conversation handles. */
-type ServerEvent =
-  | { type: "response.done"; response: { output?: ({ type: string } & FunctionCall)[] } }
-  | {
-      type:
-        | "output_audio_buffer.started"
-        | "output_audio_buffer.stopped"
-        | "input_audio_buffer.speech_started"
-        | "input_audio_buffer.speech_stopped";
-    };
-
-interface FunctionCall {
-  name: string;
-  call_id: string;
-  arguments: string;
-}
-
-interface Connection {
-  peer: RTCPeerConnection;
-  channel: RTCDataChannel;
-  microphone: MediaStream;
-}
-
 function send(channel: RTCDataChannel, event: Record<string, unknown>) {
   if (channel.readyState === "open") channel.send(JSON.stringify(event));
 }
@@ -54,16 +35,14 @@ const userMessage = (text: string) => ({
   item: { type: "message", role: "user", content: [{ type: "input_text", text }] },
 });
 
-function close({ peer, channel, microphone }: Connection) {
-  channel.close();
-  for (const track of microphone.getTracks()) track.stop();
-  peer.close();
-}
-
 /** Connects to the realtime API, with the user's microphone, and plays the assistant's audio. */
-async function connect(): Promise<Connection> {
+async function openConnection() {
   const peer = new RTCPeerConnection();
   let microphone: MediaStream | undefined;
+  const close = () => {
+    for (const track of microphone?.getTracks() ?? []) track.stop();
+    peer.close();
+  };
 
   try {
     const audio = document.createElement("audio");
@@ -89,10 +68,9 @@ async function connect(): Promise<Connection> {
     });
     await peer.setRemoteDescription({ type: "answer", sdp: await response.text() });
 
-    return { peer, channel, microphone };
+    return { channel, microphone, close };
   } catch (error) {
-    for (const track of microphone?.getTracks() ?? []) track.stop();
-    peer.close();
+    close();
     throw error;
   }
 }
@@ -107,13 +85,12 @@ export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
   const createGist = useCreateAndOpenGist();
   const save = useSaveDocument(doc);
 
-  const [connection, setConnection] = useState<Connection | null>(null);
-  const { mutate: startConnecting, isPending: isConnecting } = useMutation({
-    mutationFn: connect,
-    onSuccess: setConnection,
+  const session = useMutation({
+    mutationFn: openConnection,
     onError: (error) => console.error("Voice conversation error:", error),
     meta: { errorMessage: "Failed to start voice conversation." },
   });
+  const connection = session.data;
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [whoIsSpeaking, setWhoIsSpeaking] = useState<"user" | "assistant" | null>(null);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
@@ -122,7 +99,7 @@ export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
   const announcedDocumentRef = useRef<string | null>(null);
 
   const end = () => {
-    setConnection(null);
+    session.reset();
     setIsMicMuted(false);
     setWhoIsSpeaking(null);
     setIsAwaitingResponse(false);
@@ -247,7 +224,7 @@ ${files}
     }
   });
 
-  // The connection's lifetime is tied to this state (i.e. ending the conversation closes it).
+  // The connection's lifetime is tied to the session's data (i.e. resetting the session closes it).
   useEffect(() => {
     if (!connection) return;
 
@@ -262,7 +239,8 @@ ${files}
     return () => {
       channel.removeEventListener("open", onOpen);
       channel.removeEventListener("message", onMessage);
-      close(connection);
+      channel.close();
+      connection.close();
       announcedDocumentRef.current = null;
     };
   }, [connection]);
@@ -288,7 +266,7 @@ ${content}
   }, [connection, doc.documentKey, doc.isLoading]);
 
   return {
-    isActive: connection !== null,
+    isActive: !!connection,
     isMicMuted,
     whoIsSpeaking,
     /** Whether the assistant is responding to a (typed) command. */
@@ -297,7 +275,7 @@ ${content}
     /** Starts a conversation (or ends the current one). */
     start: () => {
       if (connection) end();
-      else if (!isConnecting) startConnecting();
+      else if (!session.isPending) session.mutate();
     },
     end,
     toggleMute: () => setMicMuted(!isMicMuted),

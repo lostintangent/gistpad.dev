@@ -8,7 +8,7 @@ import { createAtom, useSelector } from "@tanstack/react-store";
 // to a single document, it's either tagged with the document's key (which ensures that state from a
 // previously opened document is never applied to the current one), or reset when the document closes.
 
-export interface Draft {
+interface Draft {
   documentKey: string;
   /** The edited content of the document. */
   content: string;
@@ -58,10 +58,6 @@ export function setEmbeddedFile(
   const draft = draftAtom.get();
   const embeddedFiles = draft?.documentKey === documentKey ? draft.embeddedFiles : {};
   updateDraft(documentKey, savedContent, { embeddedFiles: { ...embeddedFiles, [filename]: read } });
-}
-
-export function discardDraft() {
-  draftAtom.set(null);
 }
 
 /** The revision of the open document that's being viewed (if any), which is reset when it's closed. */

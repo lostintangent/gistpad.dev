@@ -7,7 +7,13 @@ import { Slider } from "@/shared/ui/slider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, ExternalLink, Pencil, RefreshCw, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
-import { getRequiredOptions, isConfigured, type WidgetState } from "./registry";
+import {
+  getRequiredOptions,
+  getWidgetTitle,
+  isConfigured,
+  widgetRegistry,
+  type WidgetState,
+} from "./registry";
 import type { WidgetDefinition, WidgetProps as WidgetComponentProps } from "./types";
 
 const LONG_PRESS_DELAY = 500;
@@ -43,7 +49,7 @@ function WidgetConfigForm({
   onCancel,
 }: {
   definition: WidgetDefinition;
-  config?: Record<string, string>;
+  config: Record<string, string>;
   /** Returns an error message, if the config can't be saved. */
   onSave: (config: Record<string, string>) => string | void;
   onCancel?: () => void;
@@ -169,8 +175,6 @@ interface WidgetProps extends Pick<
   "openCommentsDialog" | "displayMediaDialog"
 > {
   widget: WidgetState;
-  definition: WidgetDefinition;
-  title: string;
   /** Whether the dashboard is in edit mode (where widgets can be configured, moved and removed). */
   isEditMode: boolean;
   isFirst: boolean;
@@ -187,8 +191,6 @@ interface WidgetProps extends Pick<
 
 export function Widget({
   widget,
-  definition,
-  title,
   isEditMode,
   isFirst,
   isLast,
@@ -203,9 +205,11 @@ export function Widget({
   displayMediaDialog,
 }: WidgetProps) {
   const queryClient = useQueryClient();
-  const { config, collapsed } = widget;
+  const definition = widgetRegistry[widget.type];
+  const title = getWidgetTitle(widget);
+  const { collapsed, config = {} } = widget;
   const isReady = isConfigured(definition, config);
-  const canEditConfig = !!definition.config?.length && !!config && Object.keys(config).length > 0;
+  const canEditConfig = !!definition.config?.length && Object.keys(config).length > 0;
 
   // Long-pressing a widget edits its config, which then exits edit mode once the user is done.
   const [configEdit, setConfigEdit] = useState<{ exitsEditMode: boolean } | null>(null);
@@ -233,13 +237,11 @@ export function Widget({
     staleTime: definition.staleTime ?? 1000 * 60 * 5,
     retry: 1,
     enabled: isReady,
-    // Widget data is short-lived, and can be large (e.g. Reddit posts)
+    // Widget data is short-lived, and can be large (e.g. ESPN's articles)
     meta: { persist: false },
   });
 
-  const isEmpty = definition.checkEmpty
-    ? definition.checkEmpty(data)
-    : !data || (Array.isArray(data) && data.length === 0);
+  const isEmpty = !data || (Array.isArray(data) && data.length === 0);
 
   return (
     <div className="border rounded-lg [.edit-mode_&]:border-dashed [.edit-mode_&]:border-primary/50">
@@ -349,8 +351,7 @@ export function Widget({
           ) : (
             <definition.component
               data={data}
-              isLoading={isLoading}
-              config={config ?? {}}
+              config={config}
               openCommentsDialog={openCommentsDialog}
               displayMediaDialog={displayMediaDialog}
             />

@@ -21,24 +21,23 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { CommentsDialog, type CommentsDialogProps } from "./comments/CommentsDialog";
+import { CommentsDialog } from "./comments/CommentsDialog";
 import { MediaDialog } from "./MediaDialog";
 import {
   createWidget,
-  getAllWidgetTypes,
   getDefaultWidgets,
   getRequiredOptions,
-  getWidget,
   getWidgetTitle,
   isConfigured,
+  widgetRegistry,
   type WidgetState,
 } from "./registry";
-import type { MediaItem } from "./types";
+import type { CommentThread, Media } from "./types";
 import { Widget } from "./Widget";
 
-/** The widgets on the dashboard (skipping any whose type no longer exists). */
+/** The widgets on the dashboard (skipping any whose type no longer exists, e.g. Reddit). */
 const widgetsAtom = persistedAtom<WidgetState[]>("gistpad-widget-config", getDefaultWidgets(), {
-  parse: (value) => (JSON.parse(value) as WidgetState[]).filter(({ type }) => getWidget(type)),
+  parse: (value) => (JSON.parse(value) as WidgetState[]).filter(({ type }) => widgetRegistry[type]),
   stringify: JSON.stringify,
 });
 
@@ -54,22 +53,18 @@ const moveWidget = (id: string, toIndex: number) =>
     return widgets.filter((widget) => widget.id !== id).toSpliced(toIndex, 0, widget);
   });
 
-/** Removes widgets that weren't configured (e.g. a new Reddit widget that wasn't given a subreddit). */
+/** Removes widgets that weren't configured (e.g. a new AI widget that wasn't given a prompt). */
 const removeUnconfiguredWidgets = () =>
   widgetsAtom.set((widgets) =>
-    widgets.filter((widget) => isConfigured(getWidget(widget.type)!, widget.config)),
+    widgets.filter((widget) => isConfigured(widgetRegistry[widget.type], widget.config)),
   );
 
 /** The news dashboard's contents (which are loaded on demand, when it's first opened). */
 export default function WidgetDashboard() {
   const widgets = useSelector(widgetsAtom);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [commentsDialog, setCommentsDialog] = useState<Omit<CommentsDialogProps, "onClose"> | null>(
-    null,
-  );
-  const [mediaDialogItem, setMediaDialogItem] = useState<string | MediaItem | MediaItem[] | null>(
-    null,
-  );
+  const [commentsDialog, setCommentsDialog] = useState<CommentThread | null>(null);
+  const [mediaDialogItem, setMediaDialogItem] = useState<Media | null>(null);
   const [availableCollapsed, setAvailableCollapsed] = useState(false);
   const [highlightedId, setHighlightedId] = useTransientState<string | null>(null);
   const widgetListRef = useRef<HTMLDivElement>(null);
@@ -100,9 +95,9 @@ export default function WidgetDashboard() {
     setHighlightedId(id);
   };
 
-  /** Rejects a config that would duplicate another widget (i.e. the same subreddit). */
+  /** Rejects a config that would duplicate another widget (e.g. the same sport). */
   const saveConfig = (widget: WidgetState, config: Record<string, string>) => {
-    const requiredOptions = getRequiredOptions(getWidget(widget.type)!);
+    const requiredOptions = getRequiredOptions(widgetRegistry[widget.type]);
     const isDuplicate = widgets.some(
       (other) =>
         other.id !== widget.id &&
@@ -122,18 +117,18 @@ export default function WidgetDashboard() {
   // Closing the dashboard also leaves edit mode (since its state is reset when it's closed)
   useEffect(() => removeUnconfiguredWidgets, []);
 
-  // Widgets that require config can be added multiple times (e.g. for different subreddits)
-  const availableWidgets = getAllWidgetTypes()
+  // Widgets that require config can be added multiple times (e.g. for different sports)
+  const availableWidgets = Object.entries(widgetRegistry)
     .filter(
-      ({ type }) =>
-        getRequiredOptions(getWidget(type)!).length > 0 ||
+      ([type, definition]) =>
+        getRequiredOptions(definition).length > 0 ||
         !widgets.some((widget) => widget.type === type),
     )
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name));
 
   return (
     <>
-      <SheetHeader className="py-2 border-b">
+      <SheetHeader className="py-2 border-b bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <SheetTitle
@@ -167,27 +162,18 @@ export default function WidgetDashboard() {
             </DropdownMenu>
           </div>
           <div className="flex items-center gap-1">
-            {isEditMode ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={exitEditMode}
-                className="h-8 w-8 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20"
-                title="Save and exit edit mode"
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsEditMode(true)}
-                className="h-8 w-8"
-                title="Edit widgets"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={isEditMode ? exitEditMode : () => setIsEditMode(true)}
+              className={cn(
+                "h-8 w-8",
+                isEditMode && "hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20",
+              )}
+              title={isEditMode ? "Save and exit edit mode" : "Edit widgets"}
+            >
+              {isEditMode ? <Check className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+            </Button>
             <div className="h-4 w-px bg-border" />
             <SheetClose render={<Button variant="ghost" size="icon-sm" title="Close dashboard" />}>
               <PanelLeftOpen className="h-4 w-4" />
@@ -239,8 +225,6 @@ export default function WidgetDashboard() {
           >
             <Widget
               widget={widget}
-              definition={getWidget(widget.type)!}
-              title={getWidgetTitle(widget)}
               isEditMode={isEditMode}
               isFirst={index === 0}
               isLast={index === widgets.length - 1}
@@ -282,13 +266,13 @@ export default function WidgetDashboard() {
             className={`overflow-hidden transition-all duration-300 ${availableCollapsed ? "max-h-0" : "max-h-[500px]"}`}
           >
             <div className="space-y-2 pt-2">
-              {availableWidgets.map((widget) => (
-                <div key={widget.type} className="flex items-center gap-2">
-                  <span className="text-sm flex-1">{widget.name}</span>
+              {availableWidgets.map(([type, { name }]) => (
+                <div key={type} className="flex items-center gap-2">
+                  <span className="text-sm flex-1">{name}</span>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => addWidget(widget.type, "top")}
+                    onClick={() => addWidget(type, "top")}
                     title="Add to top"
                   >
                     <ListStart className="mr-1 h-4 w-4" /> Top
@@ -296,7 +280,7 @@ export default function WidgetDashboard() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => addWidget(widget.type, "bottom")}
+                    onClick={() => addWidget(type, "bottom")}
                     title="Add to bottom"
                   >
                     <ListEnd className="mr-1 h-4 w-4" /> Bottom

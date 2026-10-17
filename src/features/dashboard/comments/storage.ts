@@ -1,71 +1,32 @@
-const COLLAPSED_STORAGE_KEY = "commentsDialog.collapsed";
-const STALE_TIME = 48 * 60 * 60 * 1000;
+const STORAGE_KEY_PREFIX = "commentsDialog.collapsed";
+const MAX_AGE = 48 * 60 * 60 * 1000;
 
-interface CollapsedData {
-  collapsedIds: string[];
-  timestamp: number;
-}
+const getStorageKey = (queryKey: unknown[]) => `${STORAGE_KEY_PREFIX}.${JSON.stringify(queryKey)}`;
 
-function getStorageKey(queryKey: unknown[]): string {
-  return `${COLLAPSED_STORAGE_KEY}.${JSON.stringify(queryKey)}`;
-}
-
-function isDataExpired(timestamp: number): boolean {
-  return Date.now() - timestamp >= STALE_TIME;
-}
-
+/** Loads the comments that the user collapsed (after forgetting any that were collapsed too long ago). */
 export function loadCollapsedIds(queryKey: unknown[]): string[] {
-  try {
-    const key = getStorageKey(queryKey);
-    const stored = localStorage.getItem(key);
-    if (!stored) return [];
+  for (const key of Object.keys(localStorage)) {
+    if (!key.startsWith(STORAGE_KEY_PREFIX)) continue;
 
-    const data: CollapsedData = JSON.parse(stored);
-    if (isDataExpired(data.timestamp)) {
+    try {
+      const { timestamp } = JSON.parse(localStorage.getItem(key)!);
+      if (Date.now() - timestamp >= MAX_AGE) localStorage.removeItem(key);
+    } catch {
+      // Remove corrupted data
       localStorage.removeItem(key);
-      return [];
     }
-
-    return data.collapsedIds || [];
-  } catch {
-    return [];
   }
+
+  return JSON.parse(localStorage.getItem(getStorageKey(queryKey)) ?? "{}").collapsedIds ?? [];
 }
 
 export function saveCollapsedIds(queryKey: unknown[], collapsedIds: string[]) {
   try {
-    const key = getStorageKey(queryKey);
-    const data: CollapsedData = {
-      collapsedIds,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(
+      getStorageKey(queryKey),
+      JSON.stringify({ collapsedIds, timestamp: Date.now() }),
+    );
   } catch {
-    // Ignore storage errors
-  }
-}
-
-export function gcOldCollapsedData() {
-  try {
-    const keys = Object.keys(localStorage);
-
-    keys.forEach((key) => {
-      if (key.startsWith(COLLAPSED_STORAGE_KEY)) {
-        try {
-          const stored = localStorage.getItem(key);
-          if (stored) {
-            const data: CollapsedData = JSON.parse(stored);
-            if (isDataExpired(data.timestamp)) {
-              localStorage.removeItem(key);
-            }
-          }
-        } catch {
-          // Remove corrupted data
-          localStorage.removeItem(key);
-        }
-      }
-    });
-  } catch {
-    // Ignore GC errors
+    // Ignore storage errors (e.g. when it's full)
   }
 }

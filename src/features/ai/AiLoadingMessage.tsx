@@ -27,13 +27,6 @@ const LOADING_MESSAGES = [
   "Brightening dim passages",
 ];
 
-/** Splits a reasoning summary into its (bolded) title, and its details. */
-function parseReasoningSummary(summary: string | undefined) {
-  const [titlePart = "", ...detailParts] = summary?.split(/\n\n/) ?? [];
-  const title = titlePart.match(/\*\*(.+)\*\*/)?.[1];
-  return title ? { title, details: detailParts.join("\n\n").trim() } : null;
-}
-
 const MESSAGE_INTERVAL = 4000;
 
 /** An animated loading message, which displays the AI's reasoning (when it's available). */
@@ -42,29 +35,31 @@ export function AiLoadingMessage({
   showCompactDetails = false,
   isWebSearching = false,
 }: {
-  reasoningSummary?: string;
+  reasoningSummary?: string | null;
   /** Displays the reasoning details as an icon next to the message (as opposed to a badge below it). */
   showCompactDetails?: boolean;
   isWebSearching?: boolean;
 }) {
-  const reasoning = parseReasoningSummary(reasoningSummary);
-  const hasReasoning = reasoning !== null;
+  // A reasoning summary starts with a (bolded) title, which is followed by its details.
+  const [titlePart = "", ...detailParts] = reasoningSummary?.split(/\n\n/) ?? [];
+  const title = titlePart.match(/\*\*(.+)\*\*/)?.[1];
 
   // Rotate through the loading messages (starting at a random one), until there's a reasoning summary.
   const [messageIndex, setMessageIndex] = useState(() =>
     Math.floor(Math.random() * LOADING_MESSAGES.length),
   );
   useEffect(() => {
-    if (hasReasoning) return;
+    if (title) return;
 
     const intervalId = setInterval(
       () => setMessageIndex((index) => (index + 1) % LOADING_MESSAGES.length),
       MESSAGE_INTERVAL,
     );
     return () => clearInterval(intervalId);
-  }, [hasReasoning]);
+  }, [title]);
 
-  const details = reasoning?.details && (
+  const details = title && detailParts.join("\n\n").trim();
+  const detailsPopover = details && (
     <Popover>
       <PopoverTrigger
         className={
@@ -90,8 +85,8 @@ export function AiLoadingMessage({
         initialFocus={false}
         side={showCompactDetails ? "top" : "bottom"}
       >
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <MarkdownPreview isReadOnly>{reasoning.details}</MarkdownPreview>
+        <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none">
+          <MarkdownPreview isReadOnly>{details}</MarkdownPreview>
         </div>
       </PopoverContent>
     </Popover>
@@ -107,11 +102,11 @@ export function AiLoadingMessage({
       </div>
       <div className="flex items-center justify-center gap-2">
         <span className="ai-gradient-text text-lg font-medium flex-1">
-          {reasoning?.title ?? LOADING_MESSAGES[messageIndex]}
+          {title ?? LOADING_MESSAGES[messageIndex]}
         </span>
-        {showCompactDetails && details}
+        {showCompactDetails && detailsPopover}
       </div>
-      {!showCompactDetails && details}
+      {!showCompactDetails && detailsPopover}
     </div>
   );
 }

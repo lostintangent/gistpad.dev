@@ -6,10 +6,7 @@ interface Serializer<T> {
 }
 
 /** Stores strings as-is (rather than as JSON), which is how some older settings were stored. */
-export const RAW_STRING: Serializer<string> = {
-  parse: (value) => value,
-  stringify: (value) => value,
-};
+export const RAW_STRING: Serializer<string> = { parse: String, stringify: String };
 
 /** An atom whose value is persisted to localStorage (and kept in sync across tabs). */
 export function persistedAtom<T>(

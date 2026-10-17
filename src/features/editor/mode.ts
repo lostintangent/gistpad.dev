@@ -2,8 +2,6 @@ import { editorRoute, type EditorMode } from "@/router";
 import { useNavigate } from "@tanstack/react-router";
 import { useIsMobile } from "@/shared/useMediaQuery";
 
-const isWideScreen = () => window.screen.width > 1500;
-
 /**
  * The editor's view mode (edit, preview or split), which is stored in the URL (when it differs
  * from the default), so that it can be shared and restored.
@@ -14,7 +12,7 @@ export function useEditorMode() {
   const isMobile = useIsMobile();
 
   // Wide screens have room for the editor and preview side by side, but mobile screens don't.
-  const defaultMode: EditorMode = !isMobile && isWideScreen() ? "split" : "edit";
+  const defaultMode: EditorMode = !isMobile && window.screen.width > 1500 ? "split" : "edit";
   const mode: EditorMode = isMobile && view === "split" ? "preview" : (view ?? defaultMode);
 
   const setMode = (mode: EditorMode) =>

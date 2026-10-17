@@ -14,7 +14,7 @@ import performResearchTool from "./perform-research";
 import reviewContentTool from "./review-content";
 import toggleCommentSidebarTool from "./toggle-comment-sidebar";
 
-const tools = [
+const tools: Tool[] = [
   endConversationTool,
   muteMicrophoneTool,
   openGistFileTool,
@@ -31,9 +31,8 @@ const tools = [
   toggleCommentSidebarTool,
 ];
 
-const handlers = Object.fromEntries(tools.map((tool) => [tool.definition.name, tool.handler]));
-
-export const getToolHandler = (name: string): Tool["handler"] | undefined => handlers[name];
+export const getToolHandler = (name: string) =>
+  tools.find(({ definition }) => definition.name === name)?.handler;
 
 /** The tools that the voice assistant can call (which only includes edit tools, if the user can edit). */
 export const getToolDefinitions = ({ canEdit }: { canEdit: boolean }) =>

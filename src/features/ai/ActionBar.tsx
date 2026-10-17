@@ -21,15 +21,16 @@ import {
 } from "@/features/editor/document";
 import { useEditorMode } from "@/features/editor/mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { parseFrontMatter, updateFrontMatter, type FrontMatter } from "@/shared/frontMatter";
+import { parseFrontMatter, updateFrontMatter } from "@/shared/frontMatter";
 import { useGists } from "@/features/gists/queries";
 import {
   parseGlobalFrontMatter,
   usePreferences,
   useUpdatePreferences,
-} from "@/features/session/queries";
+} from "@/features/account/queries";
 import {
   aiStore,
+  showPendingAiDiffsAtom,
   updateAiState,
   useAiEdit,
   useIsAiInProgress,
@@ -37,8 +38,8 @@ import {
   type AiAnswer,
 } from "./store";
 import { draftAtom, editorStatusAtom, updateDraft, useDraft } from "@/features/editor/store";
-import { showPendingAiDiffsAtom } from "./store";
 import { useSelector } from "@tanstack/react-store";
+import { cn } from "cn";
 import {
   BookOpen,
   Check,
@@ -76,16 +77,14 @@ import { FollowUpButton } from "./FollowUpButton";
 import type { AiCommands } from "./useAiCommands";
 import type { VoiceConversation } from "./voice/useVoiceConversation";
 
-const MODE_ICONS: Record<ActionBarMode, LucideIcon> = {
-  auto: Lightbulb,
-  talk: Mic,
-  ask: MessageCircleQuestion,
-  edit: Pencil,
-  discuss: ClipboardList,
-  research: Telescope,
+const MODES: Record<ActionBarMode, { icon: LucideIcon; label: string }> = {
+  auto: { icon: Lightbulb, label: "Auto" },
+  talk: { icon: Mic, label: "Talk" },
+  ask: { icon: MessageCircleQuestion, label: "Ask" },
+  edit: { icon: Pencil, label: "Edit" },
+  discuss: { icon: ClipboardList, label: "Review" },
+  research: { icon: Telescope, label: "Research" },
 };
-
-const MODE_LABELS: Partial<Record<ActionBarMode, string>> = { discuss: "Review" };
 
 // The modes that are available when a document is open (or not), where `null` is a separator.
 const DOCUMENT_MODES: (ActionBarMode | null)[] = [
@@ -100,30 +99,15 @@ const DOCUMENT_MODES: (ActionBarMode | null)[] = [
 ];
 const GLOBAL_MODES: (ActionBarMode | null)[] = ["auto", null, "ask", "research"];
 
-function getPlaceholder(mode: ActionBarMode, hasSelection: boolean) {
-  switch (mode) {
-    case "auto":
-      return "What would you like to know or do?";
-    case "talk":
-      return "Ask a question or propose a change...";
-    case "ask":
-      return hasSelection
-        ? "What question do you have about the selection?"
-        : "What would you like to know?";
-    case "edit":
-      return hasSelection
-        ? "How should we edit the selection?"
-        : "What change would you like to make?";
-    case "research":
-      return hasSelection
-        ? "How should we research the selection?"
-        : "What would you like to research?";
-    case "discuss":
-      return hasSelection
-        ? "How should we review the selection?"
-        : "What would you like to review?";
-  }
-}
+// The command input's placeholder in each mode (and when there's a selection, if it differs).
+const PLACEHOLDERS: Record<ActionBarMode, [placeholder: string, selectionPlaceholder?: string]> = {
+  auto: ["What would you like to know or do?"],
+  talk: ["Ask a question or propose a change..."],
+  ask: ["What would you like to know?", "What question do you have about the selection?"],
+  edit: ["What change would you like to make?", "How should we edit the selection?"],
+  discuss: ["What would you like to review?", "How should we review the selection?"],
+  research: ["What would you like to research?", "How should we research the selection?"],
+};
 
 type Dialog = "document-settings" | "global-settings" | "model-settings" | "analyze-style";
 
@@ -211,11 +195,7 @@ function AnswerPanel({
         >
           {answer.text ? (
             <>
-              <MarkdownPreview
-                gists={gists}
-                onOpenGist={(gistId) => openDocument(gistId)}
-                isReadOnly
-              >
+              <MarkdownPreview gists={gists} onOpenGist={openDocument} isReadOnly>
                 {answer.text}
               </MarkdownPreview>
               {answer.followUp?.question && (
@@ -229,7 +209,7 @@ function AnswerPanel({
           ) : (
             <div className="flex items-center justify-center py-8">
               <AiLoadingMessage
-                reasoningSummary={answer.reasoningSummary ?? undefined}
+                reasoningSummary={answer.reasoningSummary}
                 isWebSearching={answer.isWebSearching}
                 showCompactDetails
               />
@@ -329,12 +309,12 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
 
   const hasDocument = !!doc.gistId;
   const mode: ActionBarMode = voice.isActive && hasDocument ? "talk" : selectedMode;
-  const frontMatter: FrontMatter | null = parseFrontMatter(content).frontMatter;
+  const { frontMatter } = parseFrontMatter(content);
   const globalFrontMatter = parseGlobalFrontMatter(preferences);
   const commands = hasDocument ? getCustomCommands(mode, frontMatter, globalFrontMatter) : [];
 
-  const hasPendingEdit = !!draft?.hasPendingAiEdit || (isEditing && !!edit);
-  const showEditPanel = hasPendingEdit && editorMode !== "preview";
+  const showEditPanel =
+    (!!draft?.hasPendingAiEdit || (isEditing && !!edit)) && editorMode !== "preview";
 
   // When there isn't an open document, the action bar is centered (rather than at the bottom)
   const isCentered = !hasDocument && answer === null;
@@ -374,16 +354,6 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
     run(command);
   };
 
-  const updateDocumentFrontMatter = (frontMatter: FrontMatter) => {
-    const hadChanges = !!draftAtom.get();
-    updateDraft(doc.documentKey, doc.savedContent, {
-      content: updateFrontMatter(content, frontMatter),
-    });
-
-    // If the document didn't have unsaved changes, then save the settings right away.
-    if (!hadChanges && !doc.isReadOnly) save();
-  };
-
   const openDialog = (name: Dialog) => {
     menuFinalFocus.current = false;
     setDialog(name);
@@ -394,14 +364,8 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
     onOpenChange: (open: boolean) => setDialog(open ? name : null),
   });
 
-  const ModeIcon = MODE_ICONS[mode];
-  const modeIconClasses = [
-    "h-4 w-4",
-    voice.isActive && (voice.isMicMuted ? "text-red-500" : "text-green-500"),
-    voice.isActive && voice.whoIsSpeaking === "assistant" && "animate-pulse",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const ModeIcon = voice.isActive && voice.isMicMuted ? MicOff : MODES[mode].icon;
+  const [placeholder, selectionPlaceholder = placeholder] = PLACEHOLDERS[mode];
 
   return (
     <div
@@ -432,11 +396,13 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
               className="flex items-center justify-center px-2 hover:bg-muted rounded"
               aria-label="Select mode"
             >
-              {voice.isActive && voice.isMicMuted ? (
-                <MicOff className={modeIconClasses} />
-              ) : (
-                <ModeIcon className={modeIconClasses} />
-              )}
+              <ModeIcon
+                className={cn(
+                  "h-4 w-4",
+                  voice.isActive && (voice.isMicMuted ? "text-red-500" : "text-green-500"),
+                  voice.isActive && voice.whoIsSpeaking === "assistant" && "animate-pulse",
+                )}
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
@@ -462,7 +428,7 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
                   {(hasDocument ? DOCUMENT_MODES : GLOBAL_MODES).map((mode, index) => {
                     if (!mode) return <DropdownMenuSeparator key={index} />;
 
-                    const Icon = MODE_ICONS[mode];
+                    const { icon: Icon, label } = MODES[mode];
                     return (
                       <DropdownMenuItem
                         key={mode}
@@ -476,7 +442,7 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
                         }}
                       >
                         <Icon />
-                        {MODE_LABELS[mode] ?? `${mode[0].toUpperCase()}${mode.slice(1)}`}
+                        {label}
                       </DropdownMenuItem>
                     );
                   })}
@@ -522,7 +488,7 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
             files={Object.keys(doc.gist?.files ?? {})
               .filter((file) => file !== doc.filename && file.endsWith(".md"))
               .map((file) => file.replace(/\.md$/, ""))}
-            placeholder={getPlaceholder(mode, hasSelection)}
+            placeholder={hasSelection ? selectionPlaceholder : placeholder}
             disabled={isAiInProgress}
           />
 
@@ -556,7 +522,14 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
         {...dialogProps("document-settings")}
         scope="document"
         frontMatter={frontMatter ?? {}}
-        onSave={updateDocumentFrontMatter}
+        onSave={(frontMatter) => {
+          // If the document didn't have unsaved changes, then save the settings right away.
+          const hadChanges = !!draftAtom.get();
+          updateDraft(doc.documentKey, doc.savedContent, {
+            content: updateFrontMatter(content, frontMatter),
+          });
+          if (!hadChanges && !doc.isReadOnly) save();
+        }}
       />
       <ConfigureAiDialog {...dialogProps("model-settings")} />
       <AnalyzeStyleDialog {...dialogProps("analyze-style")} gists={gists} />

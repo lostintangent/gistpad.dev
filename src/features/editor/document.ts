@@ -1,8 +1,8 @@
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { getDefaultFile, type Gist } from "@/shared/github";
 import { useForkGist, useGist, useSaveGistFiles } from "@/features/gists/queries";
-import { useSession } from "@/features/session/queries";
-import { discardDraft, draftAtom, focusRequestAtom, useDraft } from "./store";
+import { useSession } from "@/features/account/queries";
+import { draftAtom, focusRequestAtom, useDraft } from "./store";
 import { commentsPanelOpenAtom } from "@/features/comments/store";
 import { mobileSidebarOpenAtom } from "./store";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -40,8 +40,7 @@ export type GistDocument = ReturnType<typeof useDocument>;
 
 /** The content of the open document, including any unsaved changes. */
 export function useDocumentContent(doc: GistDocument) {
-  const draft = useDraft(doc.documentKey);
-  return draft?.content ?? doc.savedContent;
+  return useDraft(doc.documentKey)?.content ?? doc.savedContent;
 }
 
 /** Reads the content of the open document (e.g. in an event handler), including any unsaved changes. */
@@ -69,9 +68,7 @@ export function useOpenDocument() {
   return (gistId?: string, filename?: string, { focus = false } = {}) => {
     prepareToOpenDocument(isMobile);
 
-    if (gistId && focus) {
-      focusRequestAtom.set({ gistId, filename });
-    }
+    if (gistId && focus) focusRequestAtom.set({ gistId, filename });
 
     return navigate({
       to: "/{-$gistId}/{-$filePath}",
@@ -135,7 +132,7 @@ export function useForkAndSave(doc: GistDocument) {
     const fork = await forkGist(doc.gistId);
     await saveFiles({ gistId: fork.id, files: changes.files });
 
-    discardDraft();
+    draftAtom.set(null);
     await openDocument(fork.id, doc.filename);
   };
 }

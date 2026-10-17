@@ -6,48 +6,67 @@
 
 @plugin "@tailwindcss/typography";
 
-/* The app's theme follows the OS (light or dark), via `light-dark()`. Its variables are named like
-   shadcn's (since its components refer to them), and are mapped to Tailwind's colors below. */
+/* The app's theme follows the OS (light or dark), via `light-dark()`, and matches Toy Box's. Its
+   variables are named like shadcn's (since its components refer to them), and are mapped to
+   Tailwind's colors below. */
 :root {
   color-scheme: light dark;
 
-  --background: light-dark(hsl(0 0% 100%), hsl(222.2 84% 4.9%));
-  --foreground: light-dark(hsl(222.2 84% 4.9%), hsl(210 40% 98%));
+  --radius: 0.625rem;
+  --background: light-dark(oklch(1 0 0), oklch(0.145 0 0));
+  --foreground: light-dark(oklch(0.145 0 0), oklch(0.985 0 0));
+  --card: light-dark(oklch(1 0 0), oklch(0.205 0 0));
+  --card-foreground: light-dark(oklch(0.145 0 0), oklch(0.985 0 0));
+  --popover: light-dark(oklch(1 0 0), oklch(0.205 0 0));
+  --popover-foreground: light-dark(oklch(0.145 0 0), oklch(0.985 0 0));
+  --primary: light-dark(oklch(0.205 0 0), oklch(0.922 0 0));
+  --primary-foreground: light-dark(oklch(0.985 0 0), oklch(0.205 0 0));
+  --secondary: light-dark(oklch(0.97 0 0), oklch(0.269 0 0));
+  --secondary-foreground: light-dark(oklch(0.205 0 0), oklch(0.985 0 0));
+  --muted: light-dark(oklch(0.97 0 0), oklch(0.269 0 0));
+  --muted-foreground: light-dark(oklch(0.556 0 0), oklch(0.708 0 0));
+  /* The default accent color (which the user can change, via an inline style on `<html>`) */
+  --accent: #facc15;
+  --destructive: light-dark(oklch(0.577 0.245 27.325), oklch(0.704 0.191 22.216));
+  --border: light-dark(oklch(0.922 0 0), oklch(0.3 0 0));
+  --input: light-dark(oklch(0.922 0 0), oklch(1 0 0 / 15%));
+  --ring: light-dark(oklch(0.708 0 0), oklch(0.556 0 0));
 
-  --primary: light-dark(hsl(222.2 47.4% 11.2%), hsl(210 40% 98%));
-  --primary-foreground: light-dark(hsl(210 40% 98%), hsl(222.2 47.4% 11.2%));
+  /* The window surface that cards float over */
+  --backdrop: light-dark(oklch(0.96 0 0), oklch(0.17 0 0));
+  /* Lifts those cards off the backdrop */
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.05);
 
-  --muted: light-dark(hsl(210 40% 96.1%), hsl(217.2 32.6% 17.5%));
-  --muted-foreground: light-dark(hsl(215.4 16.3% 46.9%), hsl(215 20.2% 65.1%));
+  /* The accent that a resize handle shows (along its length) while it's hovered or dragged */
+  --resize-accent: transparent 0%, var(--accent) 20%, var(--accent) 80%, transparent 100%;
+  --resize-accent-y: linear-gradient(to bottom, var(--resize-accent));
+  --resize-accent-x: linear-gradient(to right, var(--resize-accent));
+}
 
-  /* (Destructive actions use red text on a tinted background, so it's the same in both themes) */
-  --destructive: hsl(0 84.2% 60.2%);
-
-  --border: light-dark(hsl(214.3 31.8% 91.4%), hsl(217.2 32.6% 17.5%));
-  --ring: light-dark(hsl(222.2 84% 4.9%), hsl(212.7 26.8% 83.9%));
-  --radius: 0.5rem;
-
-  /* Surfaces use the page's colors, and subtle backgrounds (e.g. for hover) use the muted color */
-  --card: var(--background);
-  --card-foreground: var(--foreground);
-  --popover: var(--background);
-  --popover-foreground: var(--foreground);
-  --secondary: var(--muted);
-  --secondary-foreground: light-dark(hsl(222.2 47.4% 11.2%), hsl(210 40% 98%));
-  --accent: var(--muted);
-  --accent-foreground: var(--secondary-foreground);
-  --input: var(--border);
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark cards are separated by tone rather than shadow */
+    --card-shadow: none;
+  }
 }
 
 @layer base {
-  *,
-  ::before,
-  ::after {
-    @apply border-border;
+  * {
+    @apply border-border outline-ring/50;
   }
 
+  /* On desktop, the app's cards float over a backdrop (and on mobile, they fill the screen) */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background md:bg-backdrop text-foreground;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+      "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
   }
 
   button:not(:disabled),
@@ -75,18 +94,32 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-background: --alpha(var(--muted) / 50%);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  /* An opaque equivalent of `bg-muted/50` over the app's background */
+  --color-panel: color-mix(in srgb, var(--muted) 50%, var(--background));
+  --color-backdrop: var(--backdrop);
+  --shadow-card: var(--card-shadow);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  /* (Black or white, whichever is most legible on the user's accent color) */
+  --color-accent-foreground: contrast-color(var(--accent));
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
+  /* A micro label size, below `text-xs` (12px), for badges, counts and eyebrow headings */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
   --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 
   --shadow-dark-xl: 0 0 10px 0 rgb(147 51 234 / 0.3);
   --shadow-centered-action-bar: 0 0 30px 0 rgb(147 51 234 / 0.4);

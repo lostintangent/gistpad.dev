@@ -2,14 +2,13 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Dialog, DialogContent } from "@/shared/ui/dialog";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { getHighlightClasses, type QuotedCommentThread } from "@/features/comments/threads";
+import { emojisQuery, type Emoji } from "@/shared/emojis";
 import { getGistDisplayName, type Gist } from "@/shared/github";
 import { useTransientState } from "@/shared/useTransientState";
 import { cn } from "cn";
 import { Bookmark, Check, Copy, Link } from "lucide-react";
 import {
-  Children,
   createContext,
-  isValidElement,
   use,
   useEffect,
   useRef,
@@ -17,13 +16,12 @@ import {
   type ComponentProps,
   type ReactNode,
 } from "react";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown, { type Components, type ExtraProps, type Options } from "react-markdown";
 import rehypeSlug from "rehype-slug";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkGithubAlerts from "remark-github-alerts";
-import { useEmojiMap } from "./emojis";
 import Mermaid from "./Mermaid";
 import rehypeCommentHighlights from "./rehypeCommentHighlights";
 import rehypeToc from "./rehypeToc";
@@ -182,10 +180,10 @@ function CommentHighlight({ commentId, children }: { commentId: number; children
   );
 }
 
-function Heading({ level, id, children }: { level: number; id?: string; children?: ReactNode }) {
+function Heading({ node, id, children }: ElementProps<"h1">) {
   const { onSelectHeading } = use(MarkdownContext);
   const [isLinkCopied, setIsLinkCopied] = useTransientState(false);
-  const Tag = `h${level}` as "h1";
+  const Tag = node!.tagName as "h1";
 
   if (!onSelectHeading || !id) return <Tag id={id}>{children}</Tag>;
 
@@ -210,14 +208,13 @@ function Heading({ level, id, children }: { level: number; id?: string; children
 function Blockquote({ children, node: _, className, ...props }: ElementProps<"blockquote">) {
   const { enableBlockquoteCopying = true } = use(MarkdownContext);
   const [isCopied, setIsCopied] = useTransientState(false);
-  const ref = useRef<HTMLQuoteElement>(null);
 
   return (
-    <blockquote {...props} ref={ref} className={cn("relative group", className)}>
+    <blockquote {...props} className={cn("relative group", className)}>
       {enableBlockquoteCopying && (
         <button
-          onClick={() => {
-            navigator.clipboard.writeText(ref.current?.innerText ?? "");
+          onClick={(e) => {
+            navigator.clipboard.writeText(e.currentTarget.parentElement!.innerText);
             setIsCopied(true);
           }}
           className="absolute top-1 right-1 hidden group-hover:inline-flex items-center rounded bg-muted p-2 text-xs shadow"
@@ -235,20 +232,14 @@ function Blockquote({ children, node: _, className, ...props }: ElementProps<"bl
   );
 }
 
-function ListItem({ children, node, ...props }: ElementProps<"li">) {
+function ListItem({ node, ...props }: ElementProps<"li">) {
   const { onToggleTask, isReadOnly } = use(MarkdownContext);
-  if (!props.className?.includes("task-list-item")) return <li {...props}>{children}</li>;
+  const isTask = props.className?.includes("task-list-item");
+  if (!isTask || !onToggleTask || isReadOnly) return <li {...props} />;
 
-  const canToggle = !!onToggleTask && !isReadOnly;
-  // Tasks are identified by their text (which follows their checkbox)
-  const text = node?.children[1];
-  const toggle = () => canToggle && onToggleTask(text?.type === "text" ? text.value.trim() : "");
-
-  return (
-    <li {...props} onClick={toggle}>
-      {children}
-    </li>
-  );
+  // Tasks are identified by their text (which follows their checkbox, in one or more text nodes)
+  const text = node?.children.map((child) => (child.type === "text" ? child.value : "")).join("");
+  return <li {...props} onClick={() => onToggleTask(text?.trim() ?? "")} />;
 }
 
 function Input({ type, checked, node: _, ...props }: ElementProps<"input">) {
@@ -292,12 +283,11 @@ function Image({ src, alt, node: _, ...props }: ElementProps<"img">) {
 
 const EMBED_LANGUAGES = ["language-mermaid", "language-tldraw"];
 
-function Pre({ children, node: _, ...props }: ElementProps<"pre">) {
+function Pre({ children, node, ...props }: ElementProps<"pre">) {
   // Embedded content (e.g. diagrams) renders its own container
-  const isEmbed = Children.toArray(children).some(
+  const isEmbed = node?.children.some(
     (child) =>
-      isValidElement<{ className?: string }>(child) &&
-      EMBED_LANGUAGES.includes(child.props.className ?? ""),
+      child.type === "element" && EMBED_LANGUAGES.includes(String(child.properties.className)),
   );
 
   return isEmbed ? (
@@ -350,34 +340,22 @@ const components: Components = {
   pre: Pre,
   code: Code,
   table: Table,
-  h1: (props) => <Heading level={1} {...props} />,
-  h2: (props) => <Heading level={2} {...props} />,
-  h3: (props) => <Heading level={3} {...props} />,
-  h4: (props) => <Heading level={4} {...props} />,
-  h5: (props) => <Heading level={5} {...props} />,
-  h6: (props) => <Heading level={6} {...props} />,
+  h1: Heading,
+  h2: Heading,
+  h3: Heading,
+  h4: Heading,
+  h5: Heading,
+  h6: Heading,
 };
 
 // Preview
 
-/**
- * The plugin for rendering HTML in markdown, which is large (since it includes an HTML parser),
- * and so it's only loaded for documents that appear to contain HTML.
- */
-const rehypeRawQuery = queryOptions({
-  queryKey: ["rehype-raw"],
-  queryFn: async () => (await import("rehype-raw")).default,
-  staleTime: "static",
-  gcTime: Infinity,
-  meta: { persist: false },
-});
-
 const HTML_TAG = /<[a-z!/]/i;
 
-export interface MarkdownPreviewProps extends Omit<MarkdownOptions, "onExpand"> {
+const toEmojiMap = (emojis: Emoji[]) => new Map(emojis.map((emoji) => [emoji.id, emoji.native]));
+
+interface MarkdownPreviewProps extends Omit<MarkdownOptions, "onExpand"> {
   children: string;
-  parseMentions?: boolean;
-  parseEmojis?: boolean;
   /** Adds space at the end of the document, so the action bar doesn't cover it. */
   scrollPastEnd?: boolean;
   /** Whether to invert the colors in dark mode (which isn't needed on an inverted background). */
@@ -390,8 +368,6 @@ export interface MarkdownPreviewProps extends Omit<MarkdownOptions, "onExpand"> 
 
 export function MarkdownPreview({
   children,
-  parseMentions = true,
-  parseEmojis = true,
   scrollPastEnd = false,
   shouldInvert = true,
   onAddComment,
@@ -399,18 +375,28 @@ export function MarkdownPreview({
   ...options
 }: MarkdownPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const emojis = useEmojiMap(parseEmojis);
   const [expandDialog] = useState(() => DialogPrimitive.createHandle<ExpandedMedia>());
 
+  // Emojis by their shortcode (e.g. `tada`), once the emoji data has loaded
+  const { data: emojis } = useQuery({ ...emojisQuery, select: toEmojiMap });
   const remarkPlugins: Options["remarkPlugins"] = [
     remarkGfm,
     remarkGithubAlerts,
     remarkFrontmatter,
-    [remarkInlineSyntax, { emojis, parseMentions }],
+    [remarkInlineSyntax, { emojis }],
   ];
 
+  // The plugin for rendering HTML in markdown is large (since it includes an HTML parser), and so
+  // it's only loaded for documents that appear to contain HTML.
   const hasHtml = HTML_TAG.test(children);
-  const { data: rehypeRaw } = useQuery({ ...rehypeRawQuery, enabled: hasHtml });
+  const { data: rehypeRaw } = useQuery({
+    queryKey: ["rehype-raw"],
+    queryFn: async () => (await import("rehype-raw")).default,
+    staleTime: "static",
+    gcTime: Infinity,
+    meta: { persist: false },
+    enabled: hasHtml,
+  });
 
   // Raw HTML is parsed first, so that its headings get IDs (and are included in tables of contents).
   const rehypePlugins: NonNullable<Options["rehypePlugins"]> = [rehypeSlug, rehypeToc];
@@ -421,7 +407,7 @@ export function MarkdownPreview({
     <div
       ref={containerRef}
       className={cn(
-        "prose prose-sm max-w-none break-words markdown-container relative min-w-0",
+        "prose prose-sm prose-neutral max-w-none break-words markdown-container relative min-w-0",
         shouldInvert ? "dark:prose-invert" : "prose-invert dark:prose dark:prose-sm",
         scrollPastEnd && "pb-[100px]",
       )}

@@ -1,24 +1,9 @@
-/* Emoji completions */
-
-.cm-emoji-completion {
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.cm-emoji-completion:hover {
-  background-color: var(--accent);
-}
-
 /* Clickable URLs/wikilinks */
 
 .cm-url-link {
   color: var(--primary);
   text-decoration: underline;
   cursor: pointer;
-}
-
-.cm-url-link:hover {
-  text-decoration: underline;
 }
 
 .cm-wikilink-brackets {
@@ -35,14 +20,8 @@
 }
 
 .cm-wikilink-content:hover {
-  background: var(--accent);
+  background: color-mix(in oklab, var(--accent) 50%, transparent);
   text-decoration: underline;
-}
-
-.cm-image-url {
-  color: var(--primary);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 /* Image preview tooltip */
@@ -63,33 +42,27 @@
 
 .cm-image-preview-tooltip img {
   display: block;
-  max-width: 400px;
+  max-width: 300px;
   height: auto;
   margin: 0 auto;
 }
 
-/* Asset URLs */
+/* Asset URLs (whose button's font, margin and border are reset by Tailwind's preflight) */
 
 .cm-supabase-url {
   color: var(--primary);
-  cursor: pointer;
   background: var(--muted);
   padding: 0 4px;
   border-radius: 4px;
   user-select: none;
   -webkit-user-select: none;
-  border: none;
-  font: inherit;
-  margin: 0;
   display: inline;
   text-align: left;
   outline: none;
-  line-height: inherit;
-  height: auto;
 }
 
 .cm-supabase-url:hover {
-  background: var(--accent);
+  background: color-mix(in oklab, var(--accent) 50%, transparent);
   text-decoration: underline;
 }
 
@@ -99,10 +72,6 @@
   border-radius: 4px;
   user-select: none;
   -webkit-user-select: none;
-  margin: 0;
-  display: inline;
-  text-align: left;
-  line-height: inherit;
   font-weight: 500;
 }
 
@@ -122,20 +91,10 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  padding: 0;
-  border: none;
   border-radius: 50%;
   background: var(--primary);
   color: var(--primary-foreground);
-  cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 100;
-  opacity: 1;
   transition: all 0.2s ease;
-}
-
-/* When the formatting toolbar is shown, add a little
-bit of padding in the editor, so it doesn't look cramped. */
-#cm-formatting-toolbar + .cm-theme .cm-editor {
-  padding-top: 3px;
 }

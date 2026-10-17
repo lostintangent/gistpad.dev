@@ -2,13 +2,10 @@ import { Badge } from "@/shared/ui/badge";
 
 function isLightColor(hex: string) {
   const rgb = parseInt(hex.replace("#", ""), 16);
-  const r = (rgb >> 16) & 0xff;
-  const g = (rgb >> 8) & 0xff;
-  const b = rgb & 0xff;
+  const [r, g, b] = [16, 8, 0].map((shift) => (rgb >> shift) & 0xff);
 
-  // weighted perceived brightness
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  return yiq >= 128;
+  // Weighted perceived brightness (YIQ)
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
 }
 
 interface TagBadgeProps {

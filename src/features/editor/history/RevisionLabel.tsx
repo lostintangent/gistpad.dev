@@ -1,4 +1,4 @@
-import { GistRevision } from "@/shared/github";
+import type { GistRevision } from "@/shared/github";
 import { formatDistanceToNow } from "date-fns";
 
 export function RevisionLabel({
@@ -10,26 +10,21 @@ export function RevisionLabel({
   gistCreatedAt?: string;
   showChangeStats?: boolean;
 }) {
+  const { additions, deletions } = revision.change_status;
+  const isCreation =
+    !!gistCreatedAt && Date.parse(revision.committed_at) === Date.parse(gistCreatedAt);
+
   return (
     <>
-      {formatDistanceToNow(new Date(revision.committed_at), {
-        addSuffix: true,
-      })}
+      {formatDistanceToNow(revision.committed_at, { addSuffix: true })}
       {showChangeStats &&
-        (gistCreatedAt &&
-        new Date(revision.committed_at).getTime() === new Date(gistCreatedAt).getTime() ? (
+        (isCreation ? (
           <span className="ml-2 text-muted-foreground">(Created)</span>
-        ) : revision.change_status.additions || revision.change_status.deletions ? (
+        ) : additions || deletions ? (
           <span className="ml-2">
-            (
-            {revision.change_status.additions > 0 && (
-              <span className="text-green-500">+{revision.change_status.additions}</span>
-            )}
-            {revision.change_status.additions > 0 && revision.change_status.deletions > 0 && " "}
-            {revision.change_status.deletions > 0 && (
-              <span className="text-red-500">-{revision.change_status.deletions}</span>
-            )}
-            )
+            ({additions > 0 && <span className="text-green-500">+{additions}</span>}
+            {additions > 0 && deletions > 0 && " "}
+            {deletions > 0 && <span className="text-red-500">-{deletions}</span>})
           </span>
         ) : null)}
     </>

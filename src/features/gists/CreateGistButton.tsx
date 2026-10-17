@@ -2,25 +2,39 @@ import { CountBadge } from "@/shared/ui/count-badge";
 import { EmojiInput } from "@/shared/EmojiInput";
 import TagBadge from "./TagBadge";
 import { Button } from "@/shared/ui/button";
-import { ButtonGroup, ButtonGroupSeparator } from "@/shared/ui/button-group";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupButton } from "@/shared/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { useCreateAndOpenGist, useOpenTodaysNote } from "./actions";
-import { usePreferences } from "@/features/session/queries";
+import { useGists } from "./queries";
+import { usePreferences } from "@/features/account/queries";
+import { queryClient } from "@/shared/query-client";
 import { Toggle } from "@base-ui/react/toggle";
-import { ArrowUp, Calendar, ChevronDown, Globe, Plus, Tag as TagIcon } from "lucide-react";
+import { cn } from "cn";
+import {
+  ArrowUp,
+  Calendar,
+  ChevronDown,
+  Globe,
+  Plus,
+  RefreshCw,
+  Tag as TagIcon,
+} from "lucide-react";
 import { useRef, useState } from "react";
 
 const LONG_PRESS_DURATION = 300;
 
-const SPLIT_BUTTON_CLASSES = "select-none bg-green-700 text-white hover:bg-green-700/85";
+// In the sidebar's rail, the menu is a tab that's revealed beneath the button (while it's hovered,
+// focused or open), rather than taking up room in the rail.
+const RAIL_MENU_CLASSES =
+  "absolute left-0 top-full h-3 w-8 rounded-t-none border-t border-background pointer-events-none opacity-0 transition-opacity group-hover/create:pointer-events-auto group-hover/create:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 data-popup-open:pointer-events-auto data-popup-open:opacity-100";
 
 function CreateGistForm({ onCreated }: { onCreated: () => void }) {
   const { tags } = usePreferences();
@@ -57,7 +71,7 @@ function CreateGistForm({ onCreated }: { onCreated: () => void }) {
           <Toggle
             pressed={isPublic}
             onPressedChange={setIsPublic}
-            render={<InputGroupButton size="icon-xs" className="aria-pressed:bg-muted" />}
+            render={<InputGroupButton size="icon-xs" className="aria-pressed:bg-accent/50" />}
             aria-label="Public"
             title={isPublic ? "Public" : "Private"}
           >
@@ -69,7 +83,7 @@ function CreateGistForm({ onCreated }: { onCreated: () => void }) {
                 render={
                   <InputGroupButton
                     size="icon-xs"
-                    className={`relative${tagIds.length > 0 ? " bg-muted" : ""}`}
+                    className={`relative${tagIds.length > 0 ? " bg-accent/50" : ""}`}
                     aria-label="Tags"
                   />
                 }
@@ -109,13 +123,15 @@ function CreateGistForm({ onCreated }: { onCreated: () => void }) {
 }
 
 /**
- * A split button for creating a new gist (which opens a composer for its title and settings below
- * it), or opening today's note. And when it's long-pressed, it immediately creates an untitled gist.
+ * A split button for creating a new gist (which opens a composer for its title and settings beside
+ * it), whose menu opens today's note or refreshes the gist list. And when it's long-pressed, it
+ * immediately creates an untitled gist.
  */
-export default function CreateGistButton() {
+export default function CreateGistButton({ isRail = false }: { isRail?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const createGist = useCreateAndOpenGist();
   const openTodaysNote = useOpenTodaysNote();
+  const { isFetching } = useGists();
   const groupRef = useRef<HTMLDivElement>(null);
 
   const longPressTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -123,8 +139,12 @@ export default function CreateGistButton() {
 
   const cancelLongPress = () => clearTimeout(longPressTimeout.current);
 
+  // The composer and menu open toward the editor: beside the rail, or below the sidebar's header
+  const side = isRail ? "right" : "bottom";
+  const align = isRail ? "start" : "end";
+
   return (
-    <ButtonGroup ref={groupRef} className="ml-1 mr-2">
+    <div ref={groupRef} className={cn("flex", isRail && "group/create relative")}>
       <Popover
         open={isOpen}
         onOpenChange={(open, { reason, event }) => {
@@ -141,8 +161,15 @@ export default function CreateGistButton() {
         <PopoverTrigger
           render={
             <Button
-              size="sm"
-              className={`${SPLIT_BUTTON_CLASSES} max-md:px-2`}
+              variant="accent"
+              size="icon-sm"
+              className={cn(
+                // (Matching the height of the sidebar header's filter input)
+                "select-none size-8",
+                isRail
+                  ? "group-hover/create:rounded-b-none group-has-data-popup-open/create:rounded-b-none"
+                  : "rounded-r-none",
+              )}
               title="Create new gist"
             />
           }
@@ -157,32 +184,45 @@ export default function CreateGistButton() {
           onPointerLeave={cancelLongPress}
         >
           <Plus />
-          <span className="hidden md:inline">New</span>
         </PopoverTrigger>
         {/* The composer is the popover's (visible) surface, which is aligned with the whole button */}
         <PopoverContent
           anchor={groupRef}
-          align="end"
+          side={side}
+          align={align}
           className="w-80 p-0 border-0 bg-transparent shadow-none"
         >
           <CreateGistForm onCreated={() => setIsOpen(false)} />
         </PopoverContent>
       </Popover>
-      <ButtonGroupSeparator className="bg-white/25" />
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button size="icon-sm" className={`${SPLIT_BUTTON_CLASSES} w-6`} aria-label="More" />
+            <Button
+              variant="accent"
+              size="icon-sm"
+              className={
+                isRail ? RAIL_MENU_CLASSES : "h-8 w-4 rounded-l-none border-l border-background"
+              }
+              aria-label="More"
+            />
           }
         >
-          <ChevronDown />
+          <ChevronDown className={isRail ? "size-2.5" : "size-3"} />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent side={side} align={align}>
           <DropdownMenuItem onClick={openTodaysNote}>
             <Calendar /> Open today's note
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={isFetching}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["gists"] })}
+          >
+            <RefreshCw className={isFetching ? "animate-spin" : ""} /> Refresh gists
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </ButtonGroup>
+    </div>
   );
 }

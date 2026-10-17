@@ -17,29 +17,17 @@ export function withFrontMatter(content: string, frontMatterYaml?: string) {
 }
 
 export function playAiChime() {
-  const audio = new Audio(chimeUrl);
-  return audio.play();
-}
-
-export function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  return new Audio(chimeUrl).play();
 }
 
 export function evaluateMathExpression(
   expr: string,
   previousResult: string | null = null,
   variables: Map<string, string> = new Map(),
-): string | null {
-  if (previousResult !== null) {
-    expr = expr.replace(/_/g, previousResult);
-  }
+) {
+  if (previousResult !== null) expr = expr.replace(/_/g, previousResult);
 
-  for (const [varName, value] of variables.entries()) {
+  for (const [varName, value] of variables) {
     try {
       expr = expr.replace(new RegExp(`\\$?${varName}`, "gi"), value);
     } catch {
@@ -47,48 +35,27 @@ export function evaluateMathExpression(
     }
   }
 
-  let containsDollar = false;
-  let containsMagnitude = false;
-
   // Replace numbers that may include commas, a leading $, and/or trailing k or M
+  // (and format the result as currency, and/or compactly, to match them)
+  const options: Intl.NumberFormatOptions = {};
   const normalized = expr.replace(
     /\$?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)([km])?/gi,
     (match, num, suffix) => {
-      if (match.startsWith("$")) {
-        containsDollar = true;
-      }
-      if (suffix) {
-        containsMagnitude = true;
-      }
-
-      const n = parseFloat(num.replace(/,/g, ""));
-      if (isNaN(n)) {
-        return match;
-      }
+      if (match.startsWith("$")) Object.assign(options, { style: "currency", currency: "USD" });
+      if (suffix) options.notation = "compact";
 
       const multiplier =
         suffix?.toLowerCase() === "k" ? 1000 : suffix?.toLowerCase() === "m" ? 1_000_000 : 1;
-      return (n * multiplier).toString();
+      return (parseFloat(num.replace(/,/g, "")) * multiplier).toString();
     },
   );
 
   // Only allow numbers, operators and parentheses after normalization
-  if (!/^[-+*/().\d\s]+$/.test(normalized)) {
-    return null;
-  }
+  if (!/^[-+*/().\d\s]+$/.test(normalized)) return null;
 
   try {
     const result = Function(`"use strict"; return (${normalized})`)();
     if (typeof result === "number" && isFinite(result)) {
-      const options: Intl.NumberFormatOptions = {};
-      if (containsDollar) {
-        options.style = "currency";
-        options.currency = "USD";
-      }
-      if (containsMagnitude) {
-        options.notation = "compact";
-      }
-
       return new Intl.NumberFormat(undefined, options).format(result);
     }
   } catch {
@@ -97,20 +64,17 @@ export function evaluateMathExpression(
   return null;
 }
 
-export function extractVariableAssignments(text: string): Map<string, string> {
+export function extractVariableAssignments(text: string) {
   const assignments = new Map<string, string>();
   const lineOnlyAssignment =
     /^(?:\s*[-*]\s+)?(?:[^:]+:=\s*\$?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[km]?\s*)+$/i;
-  if (!lineOnlyAssignment.test(text.trim())) {
-    return assignments;
-  }
+  if (!lineOnlyAssignment.test(text.trim())) return assignments;
 
   const cleaned = text.replace(/^\s*[-*]\s+/, "");
   const regex = /([^:]+):=\s*(\$?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[km]?)/gi;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(cleaned))) {
-    const name = match[1].trim();
-    const value = evaluateMathExpression(match[2], null, new Map());
+  for (const [, rawName, rawValue] of cleaned.matchAll(regex)) {
+    const name = rawName.trim();
+    const value = evaluateMathExpression(rawValue);
     if (value !== null) {
       assignments.set(name, value);
       assignments.set(name.replace(/\s+/g, "-"), value);

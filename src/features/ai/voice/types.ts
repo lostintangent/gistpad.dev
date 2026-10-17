@@ -1,19 +1,9 @@
 import type { GistDocument } from "@/features/editor/document";
 import type { EditorMode } from "@/router";
+import type { RealtimeFunctionTool } from "openai/resources/realtime/realtime";
 import type { AiMode } from "../useAiCommands";
 
-export interface ToolDefinition {
-  type?: "function";
-  name: string;
-  description: string;
-  parameters?: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required: string[];
-  };
-}
-
-export interface ToolResult {
+interface ToolResult {
   successMessage?: string;
   requestResponse?: boolean;
 }
@@ -34,7 +24,7 @@ export interface VoiceToolContext {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Each tool has its own arguments
 export interface Tool<T = any> {
-  definition: ToolDefinition;
+  definition: RealtimeFunctionTool;
   /** Performs the tool call, and throws if it fails (so the assistant can let the user know). */
   handler: (
     args: T,

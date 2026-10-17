@@ -26,7 +26,7 @@ export default function Mermaid({
   onExpand,
 }: {
   content: string;
-  onExpand?: (svg: string) => void;
+  onExpand: (svg: string) => void;
 }) {
   const isDarkMode = useIsDarkMode();
 
@@ -45,7 +45,7 @@ export default function Mermaid({
     <div
       className="cursor-pointer hover:opacity-90 transition-opacity"
       dangerouslySetInnerHTML={{ __html: svg ?? "" }}
-      onClick={() => svg && onExpand?.(svg)}
+      onClick={() => svg && onExpand(svg)}
     />
   );
 }

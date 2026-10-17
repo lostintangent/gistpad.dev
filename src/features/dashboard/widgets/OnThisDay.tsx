@@ -1,23 +1,30 @@
+import { format } from "date-fns";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { WidgetDefinition, WidgetProps } from "../types";
 
-export interface EventItem {
+interface EventItem {
   text: string;
-  html: string;
+  year: number;
+  pages: { content_urls: { desktop: { page: string } } }[];
 }
 
+// Wikipedia's feed API (which allows cross-origin requests, so it doesn't need a CORS proxy)
 async function fetchData(): Promise<EventItem[]> {
-  const endpoint = "https://today.zenquotes.io/api";
-  const response = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(endpoint)}`);
+  const date = format(new Date(), "MM/dd");
+  const response = await fetch(
+    `https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${date}`,
+  );
   if (!response.ok) {
     throw new Error("Failed to fetch events");
   }
-  const data = await response.json();
-  return data.data?.Events?.slice(0, 10) || [];
+  const { events }: { events: EventItem[] } = await response.json();
+
+  // (Events are listed newest first, so this shows the 10 oldest, in chronological order)
+  return events.slice(-10).reverse();
 }
 
-export function OnThisDayWidget({ data, isLoading }: WidgetProps<EventItem[]>) {
-  if (isLoading || !data) {
+function OnThisDayWidget({ data }: WidgetProps<EventItem[]>) {
+  if (!data) {
     return (
       <div className="space-y-2">
         {[...Array(10)].map((_, index) => (
@@ -31,12 +38,16 @@ export function OnThisDayWidget({ data, isLoading }: WidgetProps<EventItem[]>) {
     <div className="space-y-3">
       {data.map((event, index) => (
         <div key={index}>
-          <div
-            className="prose dark:prose-invert text-sm"
-            dangerouslySetInnerHTML={{
-              __html: event.html.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" '),
-            }}
-          />
+          <p className="prose prose-neutral dark:prose-invert text-sm">
+            <a
+              href={event.pages[0]?.content_urls.desktop.page}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {event.year}
+            </a>{" "}
+            – {event.text}
+          </p>
           {index < data.length - 1 && <hr className="mt-3 border-border" />}
         </div>
       ))}

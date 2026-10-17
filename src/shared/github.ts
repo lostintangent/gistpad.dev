@@ -1,14 +1,14 @@
-import { generateDateFilename, getMostRecentDatedFilename, isDateBasedGist } from "@/shared/dates";
+import { generateDateFilename, getMostRecentDatedFilename } from "@/shared/dates";
 
 // Types
 
-export interface GistOwner {
+interface GistOwner {
   id: number;
   login: string;
   avatar_url: string;
 }
 
-export interface GistFile {
+interface GistFile {
   filename: string;
   /** Not included when listing gists (only when fetching an individual gist). */
   content?: string;
@@ -70,7 +70,7 @@ export class GitHubError extends Error {
 
 const API_URL = "https://api.github.com";
 
-async function send(url: string, method = "GET", body?: unknown): Promise<Response> {
+async function send(url: string, method = "GET", body?: unknown) {
   const token = githubToken.get();
   const response = await fetch(url, {
     method,
@@ -98,7 +98,7 @@ async function request<T>(path: string, method?: string, body?: unknown): Promis
 }
 
 /** Fetches every page of a paginated collection, by following the `Link` header. */
-async function requestAll<T>(path: string): Promise<T[]> {
+async function requestAll<T>(path: string) {
   const items: T[] = [];
   let url: string | undefined = `${API_URL}${path}`;
 
@@ -146,13 +146,11 @@ export function getGistDisplayName(gist: Gist) {
 }
 
 export function getDefaultFile(gist: Gist) {
-  if (isDateBasedGist(gist)) {
-    const filenames = Object.keys(gist.files).filter((f) => f.endsWith(".md"));
-    const recent = getMostRecentDatedFilename(filenames);
-    if (recent) return recent;
-  }
-
-  return gist.files["README.md"] ? "README.md" : (Object.keys(gist.files)[0] ?? "README.md");
+  const filenames = Object.keys(gist.files);
+  return (
+    getMostRecentDatedFilename(filenames.filter((f) => f.endsWith(".md"))) ??
+    (gist.files["README.md"] ? "README.md" : (filenames[0] ?? "README.md"))
+  );
 }
 
 export function getTodayNoteFilename() {
@@ -174,14 +172,14 @@ const byMostRecentlyUpdated = (a: Gist, b: Gist) =>
 // Gists
 
 /** All of the user's markdown gists (including archived gists and daily notes), most recent first. */
-export async function listGists(): Promise<Gist[]> {
+export async function listGists() {
   const gists = await requestAll<Gist>("/gists?per_page=100");
   return gists
     .filter((gist) => isMarkdownGist(gist, { allowImages: true }))
     .sort(byMostRecentlyUpdated);
 }
 
-export async function listStarredGists(): Promise<Gist[]> {
+export async function listStarredGists() {
   const gists = await requestAll<Gist>("/gists/starred?per_page=100");
   return gists.filter((gist) => isMarkdownGist(gist)).sort(byMostRecentlyUpdated);
 }
@@ -216,31 +214,28 @@ export function deleteGist(gistId: string) {
   return request<void>(`/gists/${gistId}`, "DELETE");
 }
 
-function setGistDescription(gistId: string, description: string) {
-  return request<Gist>(`/gists/${gistId}`, "PATCH", { description });
+type FileChange = { content: string } | { filename: string } | null;
+
+function updateGist(
+  gistId: string,
+  changes: { description?: string; files?: Record<string, FileChange> },
+) {
+  return request<Gist>(`/gists/${gistId}`, "PATCH", changes);
 }
 
 /** Updates a gist's description (while preserving whether it's archived). */
 export function updateGistDescription(gist: Gist, description: string) {
-  return setGistDescription(
-    gist.id,
-    isArchived(gist) ? `${description.trim()} [Archived]` : description,
-  );
-}
-
-type FileChange = { content: string } | { filename: string } | null;
-
-function updateGistFiles(gistId: string, files: Record<string, FileChange>) {
-  return request<Gist>(`/gists/${gistId}`, "PATCH", { files });
+  return updateGist(gist.id, {
+    description: isArchived(gist) ? `${description.trim()} [Archived]` : description,
+  });
 }
 
 export function saveGistFiles(gistId: string, files: { filename: string; content: string }[]) {
-  return updateGistFiles(
-    gistId,
-    Object.fromEntries(
+  return updateGist(gistId, {
+    files: Object.fromEntries(
       files.map(({ filename, content }) => [filename, { content: content || EMPTY_CONTENT }]),
     ),
-  );
+  });
 }
 
 export function addGistFile(
@@ -248,23 +243,23 @@ export function addGistFile(
   filename: string,
   content = `# ${filename.replace(/\.md$/, "")}\n\n`,
 ) {
-  return updateGistFiles(gistId, { [filename]: { content } });
+  return updateGist(gistId, { files: { [filename]: { content } } });
 }
 
 export function renameGistFile(gistId: string, filename: string, newFilename: string) {
-  return updateGistFiles(gistId, { [filename]: { filename: newFilename } });
+  return updateGist(gistId, { files: { [filename]: { filename: newFilename } } });
 }
 
 export function deleteGistFile(gistId: string, filename: string) {
-  return updateGistFiles(gistId, { [filename]: null });
+  return updateGist(gistId, { files: { [filename]: null } });
 }
 
 export function archiveGist(gist: Gist) {
-  return setGistDescription(gist.id, `${getGistDisplayName(gist).trim()} [Archived]`);
+  return updateGist(gist.id, { description: `${getGistDisplayName(gist).trim()} [Archived]` });
 }
 
 export function unarchiveGist(gist: Gist) {
-  return setGistDescription(gist.id, getGistDescription(gist));
+  return updateGist(gist.id, { description: getGistDescription(gist) });
 }
 
 export async function duplicateGist(gistId: string) {
@@ -293,16 +288,13 @@ export function unstarGist(gistId: string) {
 /** Adds today's note to the daily notes gist (creating the gist if needed), based on its template. */
 export function createDailyNote(dailyNotes: Gist | undefined) {
   const date = generateDateFilename("YYYY-MM-DD");
+  const filename = getTodayNoteFilename();
   const template = dailyNotes?.files[TEMPLATE_FILENAME]?.content;
   const content = template ? template.replace(/\{\{date\}\}/g, date) : `# ${date}\n\n`;
 
   return dailyNotes
-    ? addGistFile(dailyNotes.id, getTodayNoteFilename(), content)
-    : createGist({
-        description: DAILY_NOTES_DESCRIPTION,
-        filename: getTodayNoteFilename(),
-        content,
-      });
+    ? addGistFile(dailyNotes.id, filename, content)
+    : createGist({ description: DAILY_NOTES_DESCRIPTION, filename, content });
 }
 
 // Comments

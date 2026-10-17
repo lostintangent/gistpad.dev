@@ -6,14 +6,9 @@ export async function researchTopic(
   description?: string,
   context?: string,
   userComments?: GistComment[],
-): Promise<string> {
-  const openai = createOpenAIClient();
-
-  const userCommentsContext = userCommentsAsContext(userComments);
-
-  const modelProperties = getModelProperties("research");
-  const response = await openai.responses.create({
-    ...modelProperties,
+) {
+  const response = await createOpenAIClient().responses.create({
+    ...getModelProperties("research"),
     instructions: `# Objective
 * Your objective is to support a user research a provided topic.
 * Think deeply about the requirements of the research topic, search the web for relevant sources, synthesize your findings, and then generate a markdown file with the appropriate content/analysis. ${description ? `Also note that this research topic is contained within a project with the following description, so take that context into account: "${description}"` : ""}.
@@ -39,7 +34,7 @@ When generating the markdown results, make sure to follow these guidelines:
 * As needed, make use of markdown formatting, such as bold, italics, underline (<ins></ins>), lists, and tables, to enhance readability and structure.
 
 In addition to the research content, also generate a title for the research analysis, and a file name that will be used if the user chooses to save this analysis. Favor concise names that use sentence casing and spaces (e.g. "Historical Examples.md" vs. "historical-examples.md")`,
-    input: `The topic I'd like you to research is:\n\n<research_topic>${topic}</research_topic>${context ? `\n\nAdditionally, here is some content for a document that I'm currently working on/viewing, and is likely relevant to my request, so please take it into account:\n\n<referenced_context>${context}</referenced_context>` : ""}${userCommentsContext}`,
+    input: `The topic I'd like you to research is:\n\n<research_topic>${topic}</research_topic>${context ? `\n\nAdditionally, here is some content for a document that I'm currently working on/viewing, and is likely relevant to my request, so please take it into account:\n\n<referenced_context>${context}</referenced_context>` : ""}${userCommentsAsContext(userComments)}`,
     text: {
       format: {
         type: "json_schema",
@@ -95,7 +90,7 @@ In addition to the research content, also generate a title for the research anal
   return response.id;
 }
 
-export interface ResearchResult {
+interface ResearchResult {
   title: string;
   filename: string;
   content: string;

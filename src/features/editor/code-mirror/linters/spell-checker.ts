@@ -1,8 +1,5 @@
-import { linter, type Action, type Diagnostic } from "@codemirror/lint";
+import { linter, type Diagnostic } from "@codemirror/lint";
 import nspell from "nspell";
-
-// Custom dictionary for words the user has added
-const userDictionary = new Set<string>();
 
 // Common programming terms to exclude from spell checking
 const codeWords = new Set([
@@ -206,9 +203,6 @@ const codeWords = new Set([
   "title",
   "aria",
   "data",
-  "href",
-  "src",
-  "alt",
   "width",
   "height",
   "type",
@@ -243,12 +237,10 @@ const codeWords = new Set([
   "lang",
   "dir",
   "defer",
-  "async",
   "crossorigin",
   "integrity",
   "media",
   "preload",
-  "rel",
   "sizes",
   "srcset",
 ]);
@@ -270,135 +262,55 @@ function loadDictionary() {
   return dictionary;
 }
 
-// Extract words from text, respecting markdown formatting and HTML
-function extractWords(text: string): { word: string; from: number; to: number }[] {
-  const words: { word: string; from: number; to: number }[] = [];
-  // Include straight and curly apostrophes so contractions are matched as a
-  // single word (e.g. "didn't" or "doesn’t").
-  const regex = /\b[a-zA-Z'’]+\b/g;
+// Code (both inline and fenced), HTML tags (and their attributes) and HTML entities (like &nbsp;)
+// aren't spell checked
+const excludedPatterns = [/```[\s\S]*?```|`[\s\S]*?`/g, /<[^>]*>/g, /&[a-zA-Z0-9#]+;/g];
 
-  // Regions to exclude from spell checking
-  const excludedRegions: { from: number; to: number }[] = [];
+// Words include straight and curly apostrophes, so that contractions are matched as a single word
+// (e.g. "didn't" or "doesn’t").
+const wordPattern = /\b[a-zA-Z'’]+\b/g;
 
-  // 1. Skip checking within code blocks (both inline and fenced blocks)
-  const codeBlockRegex = /```[\s\S]*?```|`[\s\S]*?`/g;
-  let match;
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    excludedRegions.push({ from: match.index, to: match.index + match[0].length });
-  }
+// Words that are likely camelCase or PascalCase identifiers, all-uppercase words (likely constants
+// or acronyms) and their plural or possessive forms (e.g. APIs, PRs, JC's), and capitalized words
+// (likely proper nouns) aren't spell checked.
+const ignoredWordPattern = /^[A-Z]?[a-z]+[A-Z]|^[A-Z]{2,}(?:['’]?s)?$|^[A-Z][a-z]+$/;
 
-  // 2. Skip checking within HTML tags (both opening and closing tags, and their attributes)
-  const htmlTagRegex = /<[^>]*>/g;
-  while ((match = htmlTagRegex.exec(text)) !== null) {
-    excludedRegions.push({ from: match.index, to: match.index + match[0].length });
-  }
-
-  // 3. Skip checking within HTML entities (like &nbsp;)
-  const htmlEntityRegex = /&[a-zA-Z0-9#]+;/g;
-  while ((match = htmlEntityRegex.exec(text)) !== null) {
-    excludedRegions.push({ from: match.index, to: match.index + match[0].length });
-  }
-
-  // Extract words outside excluded regions
-  while ((match = regex.exec(text)) !== null) {
-    const from = match.index;
-    const to = from + match[0].length;
-
-    // Check if this word is inside an excluded region
-    const inExcludedRegion = excludedRegions.some(
-      (region) =>
-        (from >= region.from && from < region.to) ||
-        (to > region.from && to <= region.to) ||
-        (from <= region.from && to >= region.to),
-    );
-
-    if (!inExcludedRegion) {
-      words.push({ word: match[0], from, to });
-    }
-  }
-
-  return words;
-}
-
-// The actual spell checker linter
 export const spellChecker = linter(async (view) => {
   const dictionary = await loadDictionary();
-  const { state } = view;
-  const diagnostics: Diagnostic[] = [];
+  const { doc } = view.state;
 
   // Process only if the document isn't too large
-  if (state.doc.length > 100000) return [];
+  if (doc.length > 100000) return [];
 
-  // Process each line of the document
-  for (let i = 1; i <= state.doc.lines; i++) {
-    const line = state.doc.line(i);
-    const lineText = line.text;
+  const diagnostics: Diagnostic[] = [];
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i);
+    const excludedRegions = excludedPatterns.flatMap((pattern) =>
+      Array.from(line.text.matchAll(pattern), ({ 0: text, index }) => [index, index + text.length]),
+    );
 
-    // Extract words from the line
-    const words = extractWords(lineText);
-
-    // Check each word
-    for (const { word, from, to } of words) {
-      const lowercaseWord = word.toLowerCase();
-
-      // First check against our user dictionary
-      if (userDictionary.has(lowercaseWord)) continue;
-
-      // Skip checking words that are likely code-related
-      if (codeWords.has(lowercaseWord)) continue;
-
-      // Skip checking words that contain numbers or special characters. Apostrophes
-      // are allowed so that contractions can be spell checked.
-      if (/[0-9@#$%^&*()_+\-=[\]{};:"\\|,.<>/?]/.test(word)) continue;
-
-      // Skip checking words that are likely camelCase or PascalCase identifiers
-      if (/^[a-z]+[A-Z]/.test(word) || /^[A-Z][a-z]+[A-Z]/.test(word)) continue;
-
-      // Skip very short words
-      // if (word.length <= 2) continue;
-
-      // Skip all-uppercase words (likely constants or acronyms) and their
-      // optional plural or possessive forms (e.g. APIs, PRs, JC's)
-      if (/^[A-Z][A-Z]+(?:s|'s|’s)?$/.test(word)) continue;
-
-      // Skip words that start with a capital letter (likely proper nouns)
-      if (/^[A-Z][a-z]+$/.test(word)) continue;
-
-      // Skip words that look like HTML tags or attributes
-      if (word.startsWith("</") || word.startsWith("<") || word.includes("=")) continue;
-
-      // Skip words that might be HTML entities
-      if (word.startsWith("&") && word.endsWith(";")) continue;
+    for (const { 0: word, index: from } of line.text.matchAll(wordPattern)) {
+      const to = from + word.length;
+      if (excludedRegions.some(([start, end]) => from < end && to > start)) continue;
+      if (codeWords.has(word.toLowerCase()) || ignoredWordPattern.test(word)) continue;
 
       // Normalize curly apostrophes to straight ones before checking
-      const normalizedWord = word.replace(/’/g, "'");
+      const normalizedWord = word.replaceAll("’", "'");
+      if (dictionary.correct(normalizedWord)) continue;
 
-      // Use nspell to check for misspellings
-      if (!dictionary.correct(normalizedWord)) {
-        // Get suggestions from the dictionary
-        const suggestions = dictionary.suggest(normalizedWord).slice(0, 3); // Limit to top 3 suggestions
-
-        // Create actions for each suggestion
-        const suggestionActions = suggestions.map((suggestion): Action => ({
-          name: `"${suggestion}"`,
-          apply(view, from, to) {
-            view.dispatch({
-              changes: { from, to, insert: suggestion },
-            });
-          },
-        }));
-
-        // Create a diagnostic with the suggestions
-        diagnostics.push({
-          from: line.from + from,
-          to: line.from + to,
-          severity: "warning",
-          message: `Possible spelling error: "${word}".`,
-          actions: suggestionActions,
-        });
-
-        continue;
-      }
+      diagnostics.push({
+        from: line.from + from,
+        to: line.from + to,
+        severity: "warning",
+        message: `Possible spelling error: "${word}".`,
+        actions: dictionary
+          .suggest(normalizedWord)
+          .slice(0, 3)
+          .map((suggestion) => ({
+            name: `"${suggestion}"`,
+            apply: (view, from, to) => view.dispatch({ changes: { from, to, insert: suggestion } }),
+          })),
+      });
     }
   }
 

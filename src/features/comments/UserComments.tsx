@@ -22,20 +22,12 @@ import {
 } from "./threads";
 import type { GistComment } from "@/shared/github";
 import { useCreateComment, useDeleteComment, useUpdateComment } from "@/features/gists/queries";
-import { useSession } from "@/features/session/queries";
+import { useSession } from "@/features/account/queries";
 import { commentsStore, openComments, updateComments } from "./store";
 import { useSelector } from "@tanstack/react-store";
+import { Collapsible } from "@base-ui/react/collapsible";
 import { formatDistanceToNow } from "date-fns";
-import {
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  MoreHorizontal,
-  Pencil,
-  Reply,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowUp, ChevronRight, MoreHorizontal, Pencil, Reply, Trash2, X } from "lucide-react";
 import { createContext, use, useEffect, useRef, useState } from "react";
 import { useCommentThreads } from "./useCommentThreads";
 
@@ -70,25 +62,23 @@ function CommentActions({
   const canDelete = canEdit || isGistOwner;
   const reply = () => openComments({ commentId: comment.id, reply: true });
 
-  // Other people's comments have a dedicated reply button (rather than a menu item).
-  const replyButton = canReply && !canEdit && (
-    <Button
-      variant="ghost"
-      size="icon-xs"
-      onClick={(e) => {
-        e.stopPropagation();
-        reply();
-      }}
-      className="text-muted-foreground hover:text-primary"
-      title="Reply to comment"
-    >
-      <Reply />
-    </Button>
-  );
-
   return (
     <div className="flex gap-1">
-      {replyButton}
+      {/* Other people's comments have a dedicated reply button (rather than a menu item). */}
+      {canReply && !canEdit && (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            reply();
+          }}
+          className="text-muted-foreground hover:text-primary"
+          title="Reply to comment"
+        >
+          <Reply />
+        </Button>
+      )}
       {canDelete && (
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -165,18 +155,17 @@ function CommentEditor({ comment, onDone }: { comment: GistComment; onDone: () =
   );
 }
 
+/** Scrolls the selected comment into view, whenever it's (newly) selected. */
+const scrollIntoView = (element: HTMLElement | null) =>
+  element?.scrollIntoView({ behavior: "smooth", block: "center" });
+
 function CommentItem({ comment, depth }: { comment: GistComment; depth: number }) {
   const isSelected = useSelector(commentsStore, (state) => state.selectedCommentId === comment.id);
   const [isEditing, setIsEditing] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isSelected) ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [isSelected]);
 
   return (
     <div
-      ref={ref}
+      ref={isSelected ? scrollIntoView : undefined}
       data-comment-id={comment.id}
       onClick={() =>
         !isEditing && updateComments({ selectedCommentId: isSelected ? null : comment.id })
@@ -184,7 +173,7 @@ function CommentItem({ comment, depth }: { comment: GistComment; depth: number }
       className={`flex gap-2 rounded-md p-2 ${
         isEditing
           ? ""
-          : `cursor-pointer transition-colors ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`
+          : `cursor-pointer transition-colors ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-accent/50 hover:text-accent-foreground"}`
       }`}
       style={{ marginLeft: depth * INDENT_PX || undefined }}
     >
@@ -222,28 +211,27 @@ function CommentItem({ comment, depth }: { comment: GistComment; depth: number }
 
 /** A comment and its replies (where replies to replies are collapsed by default). */
 function CommentThreadView({ thread, depth }: { thread: CommentThread; depth: number }) {
-  const [isCollapsed, setIsCollapsed] = useState(depth >= 1);
   const replyCount = thread.replies.length;
 
   return (
-    <div>
+    <Collapsible.Root defaultOpen={depth === 0}>
       <CommentItem comment={thread.comment} depth={depth} />
       {replyCount > 0 && (
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground my-1"
+        <Collapsible.Trigger
+          className="group flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground my-1"
           // Aligns the toggle with the comment's text (i.e. after its avatar)
           style={{ marginLeft: depth * INDENT_PX + 40 }}
         >
-          {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <ChevronRight className="h-3 w-3 group-data-panel-open:rotate-90" />
           {replyCount} {replyCount === 1 ? "reply" : "replies"}
-        </button>
+        </Collapsible.Trigger>
       )}
-      {!isCollapsed &&
-        thread.replies.map((reply) => (
+      <Collapsible.Panel>
+        {thread.replies.map((reply) => (
           <CommentThreadView key={reply.comment.id} thread={reply} depth={depth + 1} />
         ))}
-    </div>
+      </Collapsible.Panel>
+    </Collapsible.Root>
   );
 }
 

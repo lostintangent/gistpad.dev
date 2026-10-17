@@ -1,28 +1,16 @@
 import diagramPlaceholderUrl from "@/assets/diagram-placeholder.svg";
-import type { Tool } from "@openai/agents";
 import { z } from "zod";
-import type { AgentRequest } from "../openai";
-import { runStreamingAgent, type AgentProgressHandlers } from "./base";
+import { runStreamingAgent, type QaAgentOptions } from "./base";
 
 const MERMAID_PLACEHOLDER = `![Mermaid diagram in progress](${diagramPlaceholderUrl})`;
 
 // Streaming responses can contain an unfinished mermaid diagram at the end
 // of the output. Since only one unfinished diagram can exist at a time,
 // simply swap it with a placeholder until the closing \````\` arrives.
-function replaceIncompleteMermaid(text: string): string {
-  if (!text) return text;
-
+function replaceIncompleteMermaid(text: string) {
   const openIndex = text.lastIndexOf("```mermaid");
-  if (openIndex === -1) {
-    return text;
-  }
-
-  const closeIndex = text.indexOf("```", openIndex + "```mermaid".length);
-  if (closeIndex === -1) {
-    return text.slice(0, openIndex) + MERMAID_PLACEHOLDER;
-  }
-
-  return text;
+  const isIncomplete = openIndex !== -1 && !text.includes("```", openIndex + "```mermaid".length);
+  return isIncomplete ? text.slice(0, openIndex) + MERMAID_PLACEHOLDER : text;
 }
 
 const systemPrompt = `# Objective
@@ -40,13 +28,12 @@ const systemPrompt = `# Objective
    - If a graph node's label needs to include parentheses, make sure to wrap the entire label in double quotes (e.g. \`M --> N["TLS Shutdown (if any)"]\`). If you don't do this, the diagram will fail to render.
 `;
 
-export interface AskOptions extends AgentRequest, AgentProgressHandlers {
-  tools?: Tool[];
+interface AskOptions extends QaAgentOptions {
   /** Called with the (markdown) answer, as it's streamed. */
   onAnswer: (answer: string) => void;
 }
 
-export default async function askContent(options: AskOptions): Promise<string | null> {
+export default async function askContent(options: AskOptions) {
   let title = "";
   return runStreamingAgent({
     ...options,

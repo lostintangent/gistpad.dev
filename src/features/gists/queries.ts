@@ -1,7 +1,7 @@
 import * as github from "@/shared/github";
 import { isArchived, isDailyNote, type Gist, type GistComment } from "@/shared/github";
 import { queryClient } from "@/shared/query-client";
-import { useSession, useUpdatePreferences } from "@/features/session/queries";
+import { useSession, useUpdatePreferences } from "@/features/account/queries";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 
 const MINUTE = 1000 * 60;
@@ -55,21 +55,13 @@ export const gistQueries = {
     }),
 };
 
-interface GistLists {
-  gists: Gist[];
-  archivedGists: Gist[];
-  dailyNotes: Gist | undefined;
-}
+const partitionGists = (gists: Gist[]) => ({
+  gists: gists.filter((gist) => !isDailyNote(gist) && !isArchived(gist)),
+  archivedGists: gists.filter((gist) => !isDailyNote(gist) && isArchived(gist)),
+  dailyNotes: gists.find(isDailyNote),
+});
 
-const EMPTY_LISTS: GistLists = { gists: [], archivedGists: [], dailyNotes: undefined };
-
-function partitionGists(gists: Gist[]): GistLists {
-  return {
-    gists: gists.filter((gist) => !isDailyNote(gist) && !isArchived(gist)),
-    archivedGists: gists.filter((gist) => !isDailyNote(gist) && isArchived(gist)),
-    dailyNotes: gists.find(isDailyNote),
-  };
-}
+const EMPTY_LISTS = partitionGists([]);
 
 /** The signed-in user's gists, partitioned into their regular gists, archived gists and daily notes. */
 export function useGists() {
@@ -147,11 +139,6 @@ export function setGistData(gist: Gist) {
   }
 }
 
-function removeGistData(gistId: string) {
-  updateGistLists((gists) => gists.filter(({ id }) => id !== gistId));
-  queryClient.removeQueries({ queryKey: gistQueries.detail(gistId).queryKey });
-}
-
 function updateCommentCount(gistId: string, delta: number) {
   const update = (gist: Gist) =>
     gist.id === gistId ? { ...gist, comments: Math.max(0, gist.comments + delta) } : gist;
@@ -174,9 +161,10 @@ export function useDeleteGist() {
   const updatePreferences = useUpdatePreferences();
 
   return useMutation({
-    mutationFn: (gistId: string) => github.deleteGist(gistId),
+    mutationFn: github.deleteGist,
     onSuccess: (_, gistId) => {
-      removeGistData(gistId);
+      updateGistLists((gists) => gists.filter(({ id }) => id !== gistId));
+      queryClient.removeQueries({ queryKey: gistQueries.detail(gistId).queryKey });
       updatePreferences(({ pinnedGists, recentlyViewedGistFiles, gistTags }) => {
         const { [gistId]: _, ...remainingGistTags } = gistTags;
         return {
@@ -190,10 +178,11 @@ export function useDeleteGist() {
   });
 }
 
+type FileVariables = { gistId: string; filename: string };
+
 export function useDeleteGistFile() {
   return useMutation({
-    mutationFn: ({ gistId, filename }: { gistId: string; filename: string }) =>
-      github.deleteGistFile(gistId, filename),
+    mutationFn: ({ gistId, filename }: FileVariables) => github.deleteGistFile(gistId, filename),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to delete file" },
   });
@@ -201,15 +190,8 @@ export function useDeleteGistFile() {
 
 export function useAddGistFile() {
   return useMutation({
-    mutationFn: ({
-      gistId,
-      filename,
-      content,
-    }: {
-      gistId: string;
-      filename: string;
-      content?: string;
-    }) => github.addGistFile(gistId, filename, content),
+    mutationFn: ({ gistId, filename, content }: FileVariables & { content?: string }) =>
+      github.addGistFile(gistId, filename, content),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to add file" },
   });
@@ -217,15 +199,8 @@ export function useAddGistFile() {
 
 export function useRenameGistFile() {
   return useMutation({
-    mutationFn: ({
-      gistId,
-      filename,
-      newFilename,
-    }: {
-      gistId: string;
-      filename: string;
-      newFilename: string;
-    }) => github.renameGistFile(gistId, filename, newFilename),
+    mutationFn: ({ gistId, filename, newFilename }: FileVariables & { newFilename: string }) =>
+      github.renameGistFile(gistId, filename, newFilename),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to rename file" },
   });
@@ -269,9 +244,8 @@ export function useToggleStarred() {
   const updatePreferences = useUpdatePreferences();
 
   return useMutation({
-    mutationFn: async ({ gist, isStarred }: { gist: Gist; isStarred: boolean }) => {
-      await (isStarred ? github.unstarGist(gist.id) : github.starGist(gist.id));
-    },
+    mutationFn: ({ gist, isStarred }: { gist: Gist; isStarred: boolean }) =>
+      (isStarred ? github.unstarGist : github.starGist)(gist.id),
     onSuccess: (_, { gist, isStarred }) => {
       queryClient.setQueryData(gistQueries.starred().queryKey, (gists = []) =>
         isStarred ? gists.filter(({ id }) => id !== gist.id) : [toListEntry(gist), ...gists],
@@ -292,13 +266,8 @@ export function useToggleStarred() {
 export function useSaveGistFiles() {
   return useMutation({
     mutationKey: ["saveGistFiles"],
-    mutationFn: ({
-      gistId,
-      files,
-    }: {
-      gistId: string;
-      files: { filename: string; content: string }[];
-    }) => github.saveGistFiles(gistId, files),
+    mutationFn: (variables: { gistId: string; files: { filename: string; content: string }[] }) =>
+      github.saveGistFiles(variables.gistId, variables.files),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to save gist" },
   });

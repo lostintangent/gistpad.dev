@@ -5,16 +5,18 @@ import { codeFenceMarker } from "./code-mirror/decorations/code-fence-marker";
 import { commentQuotes } from "./code-mirror/decorations/comment-quotes";
 import { mathEquationResult } from "./code-mirror/decorations/math-equations";
 import { imagePreview } from "./code-mirror/hoverTooltips/image-preview";
-import { createEditorKeybindings } from "./code-mirror/keybindings";
+import { emdash } from "./code-mirror/keybindings/emdash";
+import { selectionFormatting } from "./code-mirror/keybindings/selection-formatting";
 import { spellChecker } from "./code-mirror/linters/spell-checker";
 import { selectionComment } from "./code-mirror/widgets/selection-comment";
 import { useOpenDocument, useSaveOrFork, type GistDocument } from "./document";
+import { useEditorMode } from "./mode";
 import { useEditorThemes } from "./themes";
 import { splitFrontMatter, withFrontMatter } from "@/shared/utils";
 import { uploadImage } from "@/shared/supabase";
-import { usePreferences } from "@/features/session/queries";
+import { usePreferences } from "@/features/account/queries";
 import { useIsAiEnabled } from "@/features/ai/settings";
-import { updateAiState } from "@/features/ai/store";
+import { showPendingAiDiffsAtom, updateAiState } from "@/features/ai/store";
 import { commentsStore, openComments } from "@/features/comments/store";
 import {
   draftAtom,
@@ -24,7 +26,6 @@ import {
   updateDraft,
   useDraft,
 } from "./store";
-import { showPendingAiDiffsAtom } from "@/features/ai/store";
 import { redo, undo } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { yamlFrontmatter } from "@codemirror/lang-yaml";
@@ -67,7 +68,6 @@ export function EditorPane({
   originalContent,
   revisionId,
   previewRef,
-  isSplitMode,
 }: {
   doc: GistDocument;
   /** The content to display (which may be a past revision). */
@@ -76,7 +76,6 @@ export function EditorPane({
   originalContent: string;
   revisionId: string | null;
   previewRef: RefObject<HTMLDivElement | null>;
-  isSplitMode: boolean;
 }) {
   const preferences = usePreferences();
   const editorThemes = useEditorThemes();
@@ -88,6 +87,7 @@ export function EditorPane({
   const selectedCommentId = useSelector(commentsStore, (state) => state.selectedCommentId);
   const showPendingAiDiffs = useSelector(showPendingAiDiffsAtom);
   const view = useSelector(editorViewAtom);
+  const isSplitMode = useEditorMode()[0] === "split";
   const focusRequest = useSelector(focusRequestAtom);
   const [dragOverlay, setDragOverlay] = useState<"image" | "unsupported" | null>(null);
 
@@ -160,11 +160,8 @@ export function EditorPane({
 
   const openWikilink = (link: string) => {
     const filename = `${link}.md`;
-    if (doc.gist?.files[filename]) {
-      openDocument(doc.gistId, filename);
-    } else {
-      toast.error(`No file named "${link}" exists in this gist`);
-    }
+    if (doc.gist?.files[filename]) openDocument(doc.gistId, filename);
+    else toast.error(`No file named "${link}" exists in this gist`);
   };
 
   const otherFiles = Object.keys(doc.gist?.files ?? {}).filter((name) => name !== doc.filename);
@@ -174,32 +171,31 @@ export function EditorPane({
     markdown(),
     EditorView.lineWrapping,
     createEditorCompletions(otherFiles, isAiEnabled),
-    assetUrlShortener(),
+    assetUrlShortener,
     codeFenceMarker([
       { type: "tldraw", color: "purple" },
       { type: "toc", color: "blue" },
     ]),
     clickableLinks(openWikilink),
-    imagePreview(),
-    createEditorKeybindings(),
-    ...(preferences.isSpellcheckEnabled ? [spellChecker] : []),
-    ...(showDiff
-      ? [
-          unifiedMergeView({
-            original: getVisibleContent(originalContent),
-            mergeControls: !isViewingRevision,
-            collapseUnchanged: draft?.hasPendingAiEdit || isViewingRevision ? {} : undefined,
-            allowInlineDiffs: true,
-          }),
-        ]
-      : []),
+    imagePreview,
+    emdash,
+    selectionFormatting,
+    preferences.isSpellcheckEnabled ? spellChecker : [],
+    showDiff
+      ? unifiedMergeView({
+          original: getVisibleContent(originalContent),
+          mergeControls: !isViewingRevision,
+          collapseUnchanged: draft?.hasPendingAiEdit || isViewingRevision ? {} : undefined,
+          allowInlineDiffs: true,
+        })
+      : [],
     commentQuotes(
       quotedThreads,
       selectedCommentId,
       preferences.showInlineComments && !isViewingRevision,
     ),
     selectionComment((text) => openComments({ quote: text })),
-    mathEquationResult(),
+    mathEquationResult,
     scrollPastEnd(),
   ];
 

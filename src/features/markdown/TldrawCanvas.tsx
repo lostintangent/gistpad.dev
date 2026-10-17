@@ -17,40 +17,6 @@ import "tldraw/tldraw.css";
 
 // The whiteboard itself, which is loaded on demand (since tldraw is large).
 
-function WhiteboardMenu({
-  isFullscreen,
-  onCollapse,
-  onToggleFullscreen,
-}: {
-  isFullscreen: boolean;
-  onCollapse: () => void;
-  onToggleFullscreen: () => void;
-}) {
-  return (
-    <DefaultMainMenu>
-      <TldrawUiMenuGroup id="custom">
-        {!isFullscreen && (
-          <TldrawUiMenuItem
-            id="collapse"
-            label="Collapse whiteboard"
-            icon="minimize"
-            readonlyOk
-            onSelect={onCollapse}
-          />
-        )}
-        <TldrawUiMenuItem
-          id="expand"
-          label={isFullscreen ? "Exit fullscreen" : "Expand fullscreen"}
-          icon={isFullscreen ? "minimize" : "maximize"}
-          readonlyOk
-          onSelect={onToggleFullscreen}
-        />
-      </TldrawUiMenuGroup>
-      <DefaultMainMenuContent />
-    </DefaultMainMenu>
-  );
-}
-
 export default function TldrawCanvas({
   snapshot,
   isReadOnly,
@@ -88,11 +54,27 @@ export default function TldrawCanvas({
       onMount={setEditor}
       components={{
         MainMenu: () => (
-          <WhiteboardMenu
-            isFullscreen={isFullscreen}
-            onCollapse={onCollapse}
-            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-          />
+          <DefaultMainMenu>
+            <TldrawUiMenuGroup id="custom">
+              {!isFullscreen && (
+                <TldrawUiMenuItem
+                  id="collapse"
+                  label="Collapse whiteboard"
+                  icon="minimize"
+                  readonlyOk
+                  onSelect={onCollapse}
+                />
+              )}
+              <TldrawUiMenuItem
+                id="expand"
+                label={isFullscreen ? "Exit fullscreen" : "Expand fullscreen"}
+                icon={isFullscreen ? "minimize" : "maximize"}
+                readonlyOk
+                onSelect={() => setIsFullscreen(!isFullscreen)}
+              />
+            </TldrawUiMenuGroup>
+            <DefaultMainMenuContent />
+          </DefaultMainMenu>
         ),
       }}
     />

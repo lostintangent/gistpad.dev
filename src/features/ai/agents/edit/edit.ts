@@ -4,7 +4,7 @@ import {
   referencesAsContext,
   type AgentRequest,
 } from "../openai";
-import { process_patch } from "./apply-patch";
+import { applyPatch } from "./apply-patch";
 
 const systemPrompt = `
 You are a writing assistant/copy editor/thought partner who is helping a user edit a markdown document. You must follow the workflow and instructions below to ensure that you make the requested changes correctly and efficiently.
@@ -84,7 +84,7 @@ CRITICAL: When referencing a context line that isn't changing, don't also mark i
 const fixInvalidPatchPrompt =
   "The patch you generated was invalid, and failed to be applied. Please fix the following error and generate another patch for the previous request:\n\n";
 
-export interface EditOptions extends AgentRequest {
+interface EditOptions extends AgentRequest {
   content: string;
   /** Called with the edited content, once the AI's changes have been applied. */
   onEdit: (content: string) => void;
@@ -92,8 +92,8 @@ export interface EditOptions extends AgentRequest {
 
 /** Edits a document, and returns the response ID (which can be used to refine the edit). */
 export default async function editContent(options: EditOptions): Promise<string | undefined> {
-  const { prompt, description, instructions, references, signal, previousResponseId } = options;
-  let { content } = options;
+  const { prompt, content, description, instructions, references, signal, previousResponseId } =
+    options;
 
   const input = [
     `<request>${prompt}</request>`,
@@ -115,14 +115,7 @@ export default async function editContent(options: EditOptions): Promise<string 
   );
 
   try {
-    process_patch(
-      response.output_text,
-      () => content,
-      (_, patched) => (content = patched),
-      () => {},
-    );
-
-    options.onEdit(content);
+    options.onEdit(applyPatch(response.output_text, content));
     return response.id;
   } catch (error) {
     // Only attempt to fix an invalid patch once.

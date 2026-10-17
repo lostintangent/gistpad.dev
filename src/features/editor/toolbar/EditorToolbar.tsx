@@ -1,8 +1,8 @@
 import { useAiReview, useIsAiInProgress } from "@/features/ai/store";
 import { closeComments, commentsPanelOpenAtom, openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
-import { useAddAndOpenFile } from "@/features/gists/actions";
-import { confirmDeleteFile } from "@/features/gists/dialogs/DeleteGistDialog";
+import { deletesGist, useAddAndOpenFile } from "@/features/gists/actions";
+import { deleteGistDialog } from "@/features/gists/dialogs/DeleteGistDialog";
 import {
   useRenameGistFile,
   useStarredGists,
@@ -56,6 +56,7 @@ import {
   Link,
   MessageSquare,
   MoreHorizontal,
+  PanelLeftOpen,
   Pencil,
   Plus,
   Save,
@@ -65,7 +66,6 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { deletesGist } from "@/features/gists/actions";
 import AddFileDialog from "../dialogs/AddFileDialog";
 import {
   readDocumentContent,
@@ -74,11 +74,9 @@ import {
   useSaveDocument,
   type GistDocument,
 } from "../document";
-import { RevisionMenu, RevisionSubmenu } from "../history/RevisionSelector";
+import { RevisionItems } from "../history/RevisionSelector";
 import { useEditorMode } from "../mode";
-import { revisionAtom, useDraft, zenModeAtom } from "../store";
-
-const SELECTED_ITEM_CLASSES = "bg-primary text-primary-foreground";
+import { mobileSidebarOpenAtom, revisionAtom, useDraft, zenModeAtom } from "../store";
 
 /** The state and actions that both the desktop and mobile toolbars use. */
 function useToolbar(doc: GistDocument) {
@@ -123,11 +121,10 @@ function useToolbar(doc: GistDocument) {
         to: "/share/$gistId/{-$filePath}",
         params: { gistId: doc.gistId!, filePath: doc.filename },
       }),
-    requestDelete: () => doc.gist && confirmDeleteFile(doc.gist, doc.filename),
+    requestDelete: () =>
+      doc.gist && deleteGistDialog.openWithPayload({ gist: doc.gist, filename: doc.filename }),
   };
 }
-
-type Toolbar = ReturnType<typeof useToolbar>;
 
 /** Selects one of the gist's files (grouping date-based files by year and month). */
 function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
@@ -139,11 +136,15 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
   const dateGroups = groupFilesByDate(filenames);
   const dateFormat = detectDateFormat(filenames);
 
-  const fileItem = (filename: string, label: ReactNode, icon = <FileText />) => (
+  const fileItem = (
+    filename: string,
+    label: ReactNode = filename.replace(/\.md$/, ""),
+    icon = <FileText />,
+  ) => (
     <DropdownMenuItem
       key={filename}
       onClick={() => openDocument(doc.gistId, filename)}
-      className={filename === doc.filename ? SELECTED_ITEM_CLASSES : ""}
+      className={filename === doc.filename ? "bg-primary text-primary-foreground" : ""}
     >
       {icon}
       {label}
@@ -168,48 +169,39 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
           {title}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          {dateGroups
-            ? [
-                ...Object.entries(dateGroups.groups)
-                  .sort(([a], [b]) => byDescendingNumber(a, b))
-                  .map(([year, months]) => (
-                    <DropdownMenuSub key={year}>
-                      <DropdownMenuSubTrigger
-                        className={containsOpenFile(Object.values(months).flat())}
-                      >
-                        <Calendar /> {year}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {Object.entries(months)
-                          .sort(([a], [b]) => byDescendingNumber(a, b))
-                          .map(([month, files]) => (
-                            <DropdownMenuSub key={month}>
-                              <DropdownMenuSubTrigger className={containsOpenFile(files)}>
-                                <Calendar />
-                                {new Date(Number(year), Number(month) - 1).toLocaleString(
-                                  undefined,
-                                  { month: "long" },
-                                )}
-                              </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent className="min-w-0">
-                                {files.map((filename) =>
-                                  fileItem(
-                                    filename,
-                                    parseDateFilename(filename, dateFormat!)?.day,
-                                    <Calendar />,
-                                  ),
-                                )}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
-                          ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )),
-                ...dateGroups.otherFiles
-                  .sort()
-                  .map((filename) => fileItem(filename, filename.replace(/\.md$/, ""))),
-              ]
-            : filenames.map((filename) => fileItem(filename, filename.replace(/\.md$/, "")))}
+          {Object.entries(dateGroups?.groups ?? {})
+            .sort(([a], [b]) => byDescendingNumber(a, b))
+            .map(([year, months]) => (
+              <DropdownMenuSub key={year}>
+                <DropdownMenuSubTrigger className={containsOpenFile(Object.values(months).flat())}>
+                  <Calendar /> {year}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {Object.entries(months)
+                    .sort(([a], [b]) => byDescendingNumber(a, b))
+                    .map(([month, files]) => (
+                      <DropdownMenuSub key={month}>
+                        <DropdownMenuSubTrigger className={containsOpenFile(files)}>
+                          <Calendar />
+                          {new Date(Number(year), Number(month) - 1).toLocaleString(undefined, {
+                            month: "long",
+                          })}
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="min-w-0">
+                          {files.map((filename) =>
+                            fileItem(
+                              filename,
+                              parseDateFilename(filename, dateFormat!)?.day,
+                              <Calendar />,
+                            ),
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ))}
+          {(dateGroups?.otherFiles.sort() ?? filenames).map((filename) => fileItem(filename))}
           {!doc.isReadOnly && (
             <>
               {filenames.length > 0 && <DropdownMenuSeparator />}
@@ -252,10 +244,7 @@ function TitleEditor({
 
   const submit = async () => {
     onDone();
-    if (isReadme) {
-      updateDescription({ gist: doc.gist!, description: value });
-      return;
-    }
+    if (isReadme) return updateDescription({ gist: doc.gist!, description: value });
 
     const newFilename = value.endsWith(".md") ? value : `${value}.md`;
     if (!value || newFilename === doc.filename) return;
@@ -299,15 +288,8 @@ function TitleEditor({
   );
 }
 
-function DesktopActions({
-  doc,
-  toolbar,
-  onSave,
-}: {
-  doc: GistDocument;
-  toolbar: Toolbar;
-  onSave: () => void;
-}) {
+function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void }) {
+  const toolbar = useToolbar(doc);
   const isSaving = useIsSaving(doc);
   const { mode, setMode, isDisabled, isViewingRevision } = toolbar;
 
@@ -321,21 +303,15 @@ function DesktopActions({
         onValueChange={([value]) => value && setMode(value as EditorMode)}
         disabled={isDisabled}
       >
-        {(
-          [
-            ["edit", Pencil],
-            ["split", Columns2],
-            ["preview", Eye],
-          ] as const
-        ).map(([value, Icon]) => (
-          <ToggleGroupItem
-            key={value}
-            value={value}
-            title={`${value[0].toUpperCase()}${value.slice(1)} mode`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </ToggleGroupItem>
-        ))}
+        <ToggleGroupItem value="edit" title="Edit mode">
+          <Pencil className="h-3.5 w-3.5" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="split" title="Split mode">
+          <Columns2 className="h-3.5 w-3.5" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="preview" title="Preview mode">
+          <Eye className="h-3.5 w-3.5" />
+        </ToggleGroupItem>
       </ToggleGroup>
 
       {toolbar.isCommentsEnabled && (
@@ -353,20 +329,24 @@ function DesktopActions({
       )}
 
       {toolbar.canViewHistory && (
-        <RevisionMenu
-          doc={doc}
-          disabled={isDisabled}
-          trigger={
-            <Toggle
-              size="sm"
-              pressed={isViewingRevision}
-              className="-mr-2 -ml-1"
-              aria-label="History"
-            >
-              <History />
-            </Toggle>
-          }
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={isDisabled}
+            render={
+              <Toggle
+                size="sm"
+                pressed={isViewingRevision}
+                className="-mr-2 -ml-1"
+                aria-label="History"
+              />
+            }
+          >
+            <History />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-auto min-w-60">
+            <RevisionItems doc={doc} />
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       <DropdownMenu>
@@ -420,15 +400,14 @@ function DesktopActions({
 
 function MobileActions({
   doc,
-  toolbar,
   onSave,
   onEditTitle,
 }: {
   doc: GistDocument;
-  toolbar: Toolbar;
   onSave: () => void;
   onEditTitle: () => void;
 }) {
+  const toolbar = useToolbar(doc);
   const { mode, setMode, isCommentsOpen, isDisabled, isViewingRevision } = toolbar;
 
   return (
@@ -480,9 +459,14 @@ function MobileActions({
             </DropdownMenuItem>
           )}
           {toolbar.canViewHistory && (
-            <RevisionSubmenu doc={doc}>
-              <History /> History
-            </RevisionSubmenu>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <History /> History
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-auto min-w-60">
+                <RevisionItems doc={doc} />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={isViewingRevision} onClick={toolbar.copyUrl}>
@@ -512,7 +496,6 @@ function MobileActions({
 }
 
 export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSave: () => void }) {
-  const toolbar = useToolbar(doc);
   const isMobile = useIsMobile();
   const isAiInProgress = useIsAiInProgress();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -547,6 +530,17 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
   return (
     <div className="border-b p-2.5 flex justify-between items-center gap-2 bg-muted/30">
       <div className="flex items-center gap-1 flex-1 min-w-0">
+        {/* On mobile, the gist list replaces the editor (rather than being beside it) */}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => mobileSidebarOpenAtom.set(true)}
+            title="Show gists"
+          >
+            <PanelLeftOpen />
+          </Button>
+        )}
         {gist &&
           (isEditingTitle ? (
             <TitleEditor doc={doc} initialValue={name} onDone={() => setIsEditingTitle(false)} />
@@ -566,9 +560,7 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
                     onClick={() => toggleStarred({ gist, isStarred })}
                     title={isStarred ? "Unstar gist" : "Star gist"}
                   >
-                    <Star
-                      className={isStarred ? "fill-yellow-400 text-yellow-400" : "text-yellow-400"}
-                    />
+                    <Star className={`text-yellow-400 ${isStarred ? "fill-yellow-400" : ""}`} />
                   </Button>
                 ) : (
                   <Button
@@ -587,15 +579,10 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
       <div className="flex gap-2 items-center shrink-0">
         {isMobile ? (
           !isEditingTitle && (
-            <MobileActions
-              doc={doc}
-              toolbar={toolbar}
-              onSave={onSave}
-              onEditTitle={() => setIsEditingTitle(true)}
-            />
+            <MobileActions doc={doc} onSave={onSave} onEditTitle={() => setIsEditingTitle(true)} />
           )
         ) : (
-          <DesktopActions doc={doc} toolbar={toolbar} onSave={onSave} />
+          <DesktopActions doc={doc} onSave={onSave} />
         )}
       </div>
     </div>

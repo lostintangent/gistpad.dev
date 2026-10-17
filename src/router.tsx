@@ -10,12 +10,13 @@ import {
 import { queryClient } from "@/shared/query-client";
 import ErrorCard from "@/shared/cards/ErrorCard";
 import LoadingCard from "@/shared/cards/LoadingCard";
-import SignInCard from "@/features/session/SignInCard";
+import SignInCard from "@/features/account/SignInCard";
 import NotFoundCard from "@/shared/cards/NotFoundCard";
 import { gistQueries, openDailyNote, setGistData } from "@/features/gists/queries";
-import { sessionQuery, useSession } from "@/features/session/queries";
+import { sessionQuery, usePreferences, useSession } from "@/features/account/queries";
 import { openComments } from "@/features/comments/store";
 import { resetDocumentState } from "@/features/editor/store";
+import { useEffect } from "react";
 import {
   createHashHistory,
   createRootRoute,
@@ -28,6 +29,16 @@ import {
 } from "@tanstack/react-router";
 
 const root = createRootRoute({
+  component: function Root() {
+    // The user's accent color is applied to the whole page (e.g. to its primary actions)
+    const { accentColor } = usePreferences();
+    useEffect(
+      () => document.documentElement.style.setProperty("--accent", accentColor),
+      [accentColor],
+    );
+
+    return <Outlet />;
+  },
   notFoundComponent: NotFoundCard,
   // GitHub rejects expired (or revoked) tokens, which requires the user to sign in again
   errorComponent: (props) =>
@@ -73,18 +84,16 @@ interface EditorSearch {
   replyTo?: number;
 }
 
-const validateEditorSearch = (search: Record<string, unknown>): EditorSearch => ({
-  view: EDITOR_MODES.find((mode) => mode === search.view),
-  heading: optionalString(search.heading),
-  quote: optionalString(search.quote),
-  replyTo: Number(search.replyTo) || undefined,
-});
-
 export const editorRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/{-$gistId}/{-$filePath}",
   params: { stringify: omitReadmeFilePath },
-  validateSearch: validateEditorSearch,
+  validateSearch: (search: Record<string, unknown>): EditorSearch => ({
+    view: EDITOR_MODES.find((mode) => mode === search.view),
+    heading: optionalString(search.heading),
+    quote: optionalString(search.quote),
+    replyTo: Number(search.replyTo) || undefined,
+  }),
   // When the app is opened without a gist (on desktop), open the most recently updated one.
   beforeLoad: async ({ params, cause, context }) => {
     if (cause !== "enter" || params.gistId || window.matchMedia(MOBILE_MEDIA_QUERY).matches) return;

@@ -3,7 +3,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { getGistDisplayName, type Gist } from "@/shared/github";
 import { formatDistanceToNow } from "date-fns";
 import { Globe } from "lucide-react";
-import { useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import type { CustomCommand } from "./commands";
 
 // Commands can reference gists (`@[Gist]`) and files in the open gist (`#[File]`), which are
@@ -11,14 +11,7 @@ import type { CustomCommand } from "./commands";
 
 const REFERENCE_PATTERN = /([@#])\[([^\]]+)]/g;
 
-interface Reference {
-  start: number;
-  end: number;
-  symbol: string;
-  name: string;
-}
-
-const findReferences = (text: string): Reference[] =>
+const findReferences = (text: string) =>
   [...text.matchAll(REFERENCE_PATTERN)].map((match) => ({
     start: match.index,
     end: match.index + match[0].length,
@@ -27,11 +20,11 @@ const findReferences = (text: string): Reference[] =>
   }));
 
 /** The command's text, with its references highlighted (where their brackets are invisible). */
-function HighlightedText({ text, references }: { text: string; references: Reference[] }) {
+function HighlightedText({ text }: { text: string }) {
   const parts: ReactNode[] = [];
   let index = 0;
 
-  for (const { start, end, symbol, name } of references) {
+  for (const { start, end, symbol, name } of findReferences(text)) {
     parts.push(text.slice(index, start));
     parts.push(
       <span key={start} className="text-blue-100 bg-blue-700 rounded">
@@ -48,21 +41,13 @@ function HighlightedText({ text, references }: { text: string; references: Refer
   return parts;
 }
 
-type CompletionType = "command" | "gist" | "file";
-
 /** The completion for the text before the cursor (i.e. a slash command, or a gist/file reference). */
 function getCompletion(textBeforeCursor: string, allowCommands: boolean) {
   const command = allowCommands ? textBeforeCursor.match(/^\/(\S*)$/) : null;
-  if (command) return { type: "command" as CompletionType, query: command[1] };
+  if (command) return { type: "command", query: command[1] };
 
   const reference = textBeforeCursor.match(/(?:^|\s)([@#])([^\s[\]]*)$/);
-  if (reference)
-    return {
-      type: (reference[1] === "@" ? "gist" : "file") as CompletionType,
-      query: reference[2],
-    };
-
-  return null;
+  return reference && { type: reference[1] === "@" ? "gist" : "file", query: reference[2] };
 }
 
 function CommandName({ command, query }: { command: CustomCommand; query: string }) {
@@ -102,9 +87,8 @@ export function CommandInput({
   files: string[];
   placeholder: string;
   disabled: boolean;
-  ref: Ref<HTMLTextAreaElement>;
+  ref: RefObject<HTMLTextAreaElement | null>;
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
 
   // The cursor position (for the text it was measured in). And when the text is changed
@@ -122,11 +106,9 @@ export function CommandInput({
   const completion =
     value === dismissedText ? null : getCompletion(value.slice(0, cursor), commands.length > 0);
 
-  const references = findReferences(value);
-
   /** Replaces the text that's being completed (including its trigger character). */
   const insertCompletion = (text: string) => {
-    const textarea = textareaRef.current;
+    const textarea = ref.current;
     if (!textarea || !completion) return;
 
     textarea.setRangeText(text, cursor - completion.query.length - 1, cursor, "end");
@@ -183,7 +165,7 @@ export function CommandInput({
 
     const isForward = event.key === "ArrowRight" || event.key === "Delete";
     const isBackward = event.key === "ArrowLeft" || event.key === "Backspace";
-    const reference = references.find(({ start, end }) =>
+    const reference = findReferences(value).find(({ start, end }) =>
       isForward ? start === position : isBackward && end === position,
     );
     if (!reference) return false;
@@ -229,14 +211,10 @@ export function CommandInput({
         className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-sm px-2 py-1 overflow-hidden"
         aria-hidden
       >
-        <HighlightedText text={value} references={references} />
+        <HighlightedText text={value} />
       </div>
       <Textarea
-        ref={(element) => {
-          textareaRef.current = element;
-          if (typeof ref === "function") ref(element);
-          else if (ref) ref.current = element;
-        }}
+        ref={ref}
         value={value}
         onChange={(e) => {
           updateText(e.target);

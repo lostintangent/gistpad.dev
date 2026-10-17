@@ -7,13 +7,7 @@ import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 
 // Types
 
-export interface User {
-  login: string;
-  avatarUrl: string;
-  initial: string;
-}
-
-export interface RecentlyViewedGistFile {
+interface RecentlyViewedGistFile {
   id: string;
   description: string;
   owner: string;
@@ -42,6 +36,8 @@ export interface ResearchTask {
 // Note: These are persisted as the user's Supabase metadata, so they
 // need to remain backwards compatible with previously saved values.
 export interface Preferences {
+  /** The color of the app's primary actions (e.g. creating a gist). */
+  accentColor: string;
   isAutoSaveEnabled: boolean;
   showDiffs: boolean;
   showFrontmatter: boolean;
@@ -62,12 +58,13 @@ export interface Preferences {
   researchTasks: ResearchTask[];
 }
 
-export interface Session {
-  user: User;
+interface Session {
+  user: { login: string; avatarUrl: string; initial: string };
   preferences: Preferences;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
+  accentColor: "#facc15",
   isAutoSaveEnabled: true,
   showDiffs: false,
   showFrontmatter: false,
@@ -173,15 +170,11 @@ const LOCAL_PREFERENCES_KEY = "gistpad-local-preferences";
 const localSource = (token: string): SessionSource => ({
   async load() {
     githubToken.set(token);
-    const user = await getAuthenticatedUser();
+    const { login, avatar_url, name } = await getAuthenticatedUser();
     const preferences = JSON.parse(localStorage.getItem(LOCAL_PREFERENCES_KEY) ?? "{}");
 
     return {
-      user: {
-        login: user.login,
-        avatarUrl: user.avatar_url,
-        initial: (user.name || user.login)[0].toUpperCase(),
-      },
+      user: { login, avatarUrl: avatar_url, initial: (name || login)[0].toUpperCase() },
       preferences: { ...DEFAULT_PREFERENCES, ...preferences },
     };
   },
@@ -202,7 +195,7 @@ const source = localToken ? localSource(localToken) : supabaseSource;
  * Completes a GitHub sign-in redirect (if there is one), and returns the
  * app path that the user was on when they started signing in.
  */
-export async function completeSignIn(): Promise<string | undefined> {
+export async function completeSignIn() {
   // Supabase returns the sign-in result as `#access_token=...` (or `#error=...`), which would
   // otherwise be mistaken for an app route. So let Supabase process it before routing.
   if (!/^#(access_token|error)=/.test(location.hash)) return;
@@ -214,7 +207,7 @@ export async function completeSignIn(): Promise<string | undefined> {
   const redirect = sessionStorage.getItem(AUTH_REDIRECT_KEY);
   sessionStorage.removeItem(AUTH_REDIRECT_KEY);
 
-  const { url = "", timestamp = 0 } = redirect ? JSON.parse(redirect) : {};
+  const { url = "", timestamp = 0 } = JSON.parse(redirect ?? "{}");
   const isRecent = Date.now() - timestamp < 1000 * 60 * 5;
   return (isRecent && url.replace(/^#/, "")) || "/";
 }
@@ -254,13 +247,10 @@ export const signOut = () => source.signOut();
 
 // Preferences
 
-export function usePreferences(): Preferences {
+export function usePreferences() {
   const { data } = useQuery({ ...sessionQuery, select: (session) => session?.preferences });
   return data ?? DEFAULT_PREFERENCES;
 }
-
-type PreferencesUpdate =
-  Partial<Preferences> | ((preferences: Preferences) => Partial<Preferences>);
 
 /** Updates the user's preferences, optimistically applying them to the session cache. */
 export function useUpdatePreferences() {
@@ -270,7 +260,7 @@ export function useUpdatePreferences() {
     meta: { errorMessage: "Failed to save your settings" },
   });
 
-  return (update: PreferencesUpdate) => {
+  return (update: Partial<Preferences> | ((preferences: Preferences) => Partial<Preferences>)) => {
     const session = queryClient.getQueryData(sessionQuery.queryKey);
     if (!session) return;
 
@@ -301,27 +291,18 @@ export function useRecordRecentlyViewed() {
   const updatePreferences = useUpdatePreferences();
   return (gist: Gist, filename: string) =>
     updatePreferences(({ recentlyViewedGistFiles }) => ({
-      recentlyViewedGistFiles: addRecentlyViewedFile(recentlyViewedGistFiles, gist, filename),
+      recentlyViewedGistFiles: [
+        {
+          id: gist.id,
+          description: gist.description || filename.replace(/\.md$/, ""),
+          owner: gist.owner?.login ?? "unknown",
+          ownerId: gist.owner?.id ?? 0,
+          filename,
+          viewedDate: new Date().toISOString(),
+        },
+        ...recentlyViewedGistFiles.filter(
+          (file) => file.id !== gist.id || file.filename !== filename,
+        ),
+      ].slice(0, 5),
     }));
-}
-
-/** Moves the gist file to the top of the user's recently viewed list. */
-function addRecentlyViewedFile(
-  files: RecentlyViewedGistFile[],
-  gist: Gist,
-  filename: string,
-): RecentlyViewedGistFile[] {
-  const entry: RecentlyViewedGistFile = {
-    id: gist.id,
-    description: gist.description || filename.replace(/\.md$/, ""),
-    owner: gist.owner?.login ?? "unknown",
-    ownerId: gist.owner?.id ?? 0,
-    filename,
-    viewedDate: new Date().toISOString(),
-  };
-
-  return [
-    entry,
-    ...files.filter((file) => file.id !== gist.id || file.filename !== filename),
-  ].slice(0, 5);
 }

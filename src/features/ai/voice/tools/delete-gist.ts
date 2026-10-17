@@ -1,4 +1,4 @@
-import { confirmDeleteFile } from "@/features/gists/dialogs/DeleteGistDialog";
+import { deleteGistDialog } from "@/features/gists/dialogs/DeleteGistDialog";
 import type { Tool } from "../types";
 
 export default {
@@ -9,7 +9,7 @@ export default {
   },
   // Deleting requires confirmation, so this only opens the delete dialog
   handler: (_, { doc }) => {
-    if (doc.gist) confirmDeleteFile(doc.gist, doc.filename);
+    if (doc.gist) deleteGistDialog.openWithPayload({ gist: doc.gist, filename: doc.filename });
   },
   isEditTool: true,
 } as Tool<void>;

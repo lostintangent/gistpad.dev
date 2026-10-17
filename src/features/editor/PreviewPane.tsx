@@ -4,7 +4,7 @@ import { ScrollToTop } from "@/features/markdown/ScrollToTop";
 import { readDocumentContent, useOpenDocument, type GistDocument } from "./document";
 import { useSelectedHeading } from "./mode";
 import { useGists } from "@/features/gists/queries";
-import { usePreferences } from "@/features/session/queries";
+import { usePreferences } from "@/features/account/queries";
 import { commentsStore, openComments } from "@/features/comments/store";
 import { updateDraft } from "./store";
 import { useSelector } from "@tanstack/react-store";
@@ -51,9 +51,7 @@ export function PreviewPane({
   const scrollToLinkedHeading = useEffectEvent(() => {
     if (heading) scrollToHeading(ref.current, heading);
   });
-  useEffect(() => {
-    scrollToLinkedHeading();
-  }, [doc.documentKey]);
+  useEffect(() => scrollToLinkedHeading(), [doc.documentKey]);
 
   return (
     <div ref={ref} className="overflow-y-auto p-4 h-full">

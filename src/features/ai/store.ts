@@ -17,7 +17,7 @@ export interface AiAnswer {
 }
 
 /** An AI edit of the open document. */
-export interface AiEdit {
+interface AiEdit {
   documentKey: string;
   stats: { additions: number; deletions: number } | null;
   /** Allows follow-up edits to refine the previous ones. */
@@ -57,14 +57,12 @@ export function updateAiState(changes: Partial<AiState>) {
   aiStore.setState((state) => ({ ...state, ...changes }));
 }
 
-type AiResults = Pick<AiState, "answer" | "edit" | "review">;
+type AiResult<Key extends keyof AiState> = NonNullable<AiState[Key]>;
 
 /** Updates the answer, edit or review (if there is one). */
-export function updateAiResult<Key extends keyof AiResults>(
+export function updateAiResult<Key extends "answer" | "edit" | "review">(
   key: Key,
-  changes:
-    | Partial<NonNullable<AiResults[Key]>>
-    | ((result: NonNullable<AiResults[Key]>) => Partial<NonNullable<AiResults[Key]>>),
+  changes: Partial<AiResult<Key>> | ((result: AiResult<Key>) => Partial<AiResult<Key>>),
 ) {
   aiStore.setState((state) => {
     const result = state[key];

@@ -18,46 +18,27 @@ const VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "v
 );
 const DEFAULT_VOICE = "alloy";
 
-interface CommandRow {
-  id: number;
-  name: string;
-  prompt: string;
-  /** Commands can also be an object with a description, which is preserved when they're saved. */
-  description?: string;
-}
-
-interface CommandSection {
-  commands: CommandRow[];
-  instructions: string;
-  overridesGlobalSettings: boolean;
-}
-
-interface Settings {
-  general: { instructions: string };
-  discuss: CommandSection;
-  edit: CommandSection;
-  talk: { voice: string; persona: string; instructions: string };
-}
-
 const asString = (value: unknown) => (typeof value === "string" ? value : "");
 
 let nextRowId = 0;
-const createRow = (name = "", prompt = "", description?: string): CommandRow => ({
+// Commands can also be an object with a description, which is preserved when they're saved.
+const createRow = (name = "", prompt = "", description?: string) => ({
   id: nextRowId++,
   name,
   prompt,
   description,
 });
 
-function toCommandSection(section: FrontMatter | undefined): CommandSection {
-  const commands = Object.entries(section?.commands ?? {}).map(([name, value]) =>
-    typeof value === "string"
-      ? createRow(name, value)
-      : createRow(
-          name,
-          asString((value as FrontMatter)?.prompt),
-          asString((value as FrontMatter)?.description) || undefined,
-        ),
+type CommandRow = ReturnType<typeof createRow>;
+type CommandSection = ReturnType<typeof toCommandSection>;
+type Settings = ReturnType<typeof toSettings>;
+
+function toCommandSection(section: FrontMatter | undefined) {
+  const commands = Object.entries<string | FrontMatter>(section?.commands ?? {}).map(
+    ([name, value]) =>
+      typeof value === "string"
+        ? createRow(name, value)
+        : createRow(name, asString(value?.prompt), asString(value?.description) || undefined),
   );
 
   return {
@@ -67,7 +48,7 @@ function toCommandSection(section: FrontMatter | undefined): CommandSection {
   };
 }
 
-function toSettings(frontMatter: FrontMatter): Settings {
+function toSettings(frontMatter: FrontMatter) {
   return {
     general: { instructions: asString(frontMatter.general?.instructions) },
     discuss: toCommandSection(frontMatter.discuss),
@@ -187,9 +168,8 @@ function CommandSectionFields({
       </div>
 
       <Button
-        variant="outline"
+        variant="accent"
         size="sm"
-        className="bg-green-700 hover:bg-green-800"
         onClick={() => {
           const row = createRow();
           setAddedRowId(row.id);

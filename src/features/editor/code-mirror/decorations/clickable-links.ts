@@ -1,163 +1,90 @@
-import { RangeSetBuilder } from "@codemirror/state";
-import {
-  Decoration,
-  type DecorationSet,
-  type EditorView,
-  ViewPlugin,
-  type ViewUpdate,
-  WidgetType,
-} from "@codemirror/view";
+import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import { decorationsPlugin } from "./plugin";
 
 // URL regex pattern that matches http(s), file, and ftp protocols
-const urlPattern = /\b((?:https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/gi;
+const urlPattern = /\b(?:https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|]/gi;
 
 // Wikilink pattern that matches [[something]] (but not images ![[ ]])
 const wikilinkPattern = /(?<!!)\[\[([^\]]+)\]\]/g;
 
+const wikilinkBrackets = Decoration.mark({ class: "cm-wikilink-brackets" });
+
 class LinkWidget extends WidgetType {
-  constructor(
-    private url: string,
-    private isWikilink: boolean = false,
-    private onWikilinkClick?: (link: string) => void,
-  ) {
+  constructor(private url: string) {
     super();
   }
 
   toDOM() {
     const link = document.createElement("a");
-    link.href = this.isWikilink ? "#" : this.url;
-    link.textContent = this.isWikilink ? this.url : this.url;
-    link.target = this.isWikilink ? "_self" : "_blank";
+    link.href = this.url;
+    link.textContent = this.url;
+    link.target = "_blank";
     link.rel = "noopener noreferrer";
-    link.className = this.isWikilink ? "cm-wikilink-link" : "cm-url-link";
+    link.className = "cm-url-link";
     link.onclick = (e) => {
       e.preventDefault();
-      if (this.isWikilink) {
-        this.onWikilinkClick?.(this.url);
-      } else {
-        window.open(this.url, "_blank");
-      }
+      window.open(this.url, "_blank");
     };
     return link;
   }
 
   eq(other: LinkWidget) {
-    return other.url === this.url && other.isWikilink === this.isWikilink;
+    return other.url === this.url;
   }
 }
 
-export const clickableLinks = (onWikilinkClick?: (link: string) => void) =>
-  ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
+const decorateLinks = (view: EditorView) => {
+  const decorations = [];
 
-      constructor(view: EditorView) {
-        this.decorations = this.buildDecorations(view);
-      }
+  for (const { from, to } of view.visibleRanges) {
+    const text = view.state.doc.sliceString(from, to);
 
-      update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged) {
-          this.decorations = this.buildDecorations(update.view);
-        }
-      }
+    for (const { 0: url, index } of text.matchAll(urlPattern)) {
+      const start = from + index;
+      decorations.push(
+        Decoration.replace({ widget: new LinkWidget(url) }).range(start, start + url.length),
+      );
+    }
 
-      buildDecorations(view: EditorView) {
-        const builder = new RangeSetBuilder<Decoration>();
+    for (const { 0: match, 1: link, index } of text.matchAll(wikilinkPattern)) {
+      const start = from + index;
+      const end = start + match.length;
+      decorations.push(
+        wikilinkBrackets.range(start, start + 2),
+        Decoration.mark({
+          class: "cm-wikilink-content",
+          // The link is stored as data (and handled by the event handlers below), since building
+          // inline event handlers from document text would allow script injection.
+          attributes: {
+            role: "link",
+            "aria-label": `Navigate to ${link}`,
+            tabindex: "0",
+            "data-wikilink": link,
+          },
+        }).range(start + 2, end - 2),
+        wikilinkBrackets.range(end - 2, end),
+      );
+    }
+  }
 
-        interface Range {
-          from: number;
-          to: number;
-          decoration: Decoration;
-        }
+  return Decoration.set(decorations, true);
+};
 
-        for (const { from, to } of view.visibleRanges) {
-          const text = view.state.doc.sliceString(from, to);
-          const ranges: Range[] = [];
+export const clickableLinks = (onWikilinkClick: (link: string) => void) => {
+  const openWikilink = (e: Event) => {
+    const link = (e.target as HTMLElement).closest<HTMLElement>("[data-wikilink]");
+    if (!link) return false;
 
-          // Collect URL ranges
-          let match;
-          while ((match = urlPattern.exec(text))) {
-            const start = from + match.index;
-            const url = match[0];
-            ranges.push({
-              from: start,
-              to: start + url.length,
-              decoration: Decoration.replace({
-                widget: new LinkWidget(url),
-              }),
-            });
-          }
+    e.preventDefault();
+    onWikilinkClick(link.dataset.wikilink!);
+    return true;
+  };
 
-          // Collect wikilink ranges
-          wikilinkPattern.lastIndex = 0; // Reset the regex index
-          while ((match = wikilinkPattern.exec(text))) {
-            const innerContent = match[1];
-            const matchStart = from + match.index;
-            const innerStart = matchStart + 2;
-
-            // Opening brackets
-            ranges.push({
-              from: matchStart,
-              to: matchStart + 2,
-              decoration: Decoration.mark({
-                class: "cm-wikilink-brackets",
-              }),
-            });
-
-            // Inner content
-            ranges.push({
-              from: innerStart,
-              to: innerStart + innerContent.length,
-              decoration: Decoration.mark({
-                class: "cm-wikilink-content",
-                // The link is stored as data (and handled by the plugin's event handlers below), since
-                // building inline event handlers from document text would allow script injection.
-                attributes: {
-                  role: "link",
-                  "aria-label": `Navigate to ${innerContent}`,
-                  tabindex: "0",
-                  "data-wikilink": innerContent,
-                },
-              }),
-            });
-
-            // Closing brackets
-            ranges.push({
-              from: innerStart + innerContent.length,
-              to: innerStart + innerContent.length + 2,
-              decoration: Decoration.mark({
-                class: "cm-wikilink-brackets",
-              }),
-            });
-          }
-
-          // Sort ranges by 'from' position and add them to the builder
-          ranges.sort((a, b) => a.from - b.from);
-          for (const range of ranges) {
-            builder.add(range.from, range.to, range.decoration);
-          }
-        }
-
-        return builder.finish();
-      }
-    },
-    {
-      decorations: (v) => v.decorations,
-      eventHandlers: {
-        click(e: MouseEvent) {
-          const link = (e.target as HTMLElement).closest<HTMLElement>("[data-wikilink]");
-          if (!link) return;
-
-          e.preventDefault();
-          onWikilinkClick?.(link.dataset.wikilink!);
-        },
-        keydown(e: KeyboardEvent) {
-          const link = (e.target as HTMLElement).closest<HTMLElement>("[data-wikilink]");
-          if (!link || (e.key !== "Enter" && e.key !== " ")) return;
-
-          e.preventDefault();
-          onWikilinkClick?.(link.dataset.wikilink!);
-        },
-      },
-    },
-  );
+  return [
+    decorationsPlugin(decorateLinks, (update) => update.docChanged || update.viewportChanged),
+    EditorView.domEventHandlers({
+      click: openWikilink,
+      keydown: (e) => (e.key === "Enter" || e.key === " ") && openWikilink(e),
+    }),
+  ];
+};

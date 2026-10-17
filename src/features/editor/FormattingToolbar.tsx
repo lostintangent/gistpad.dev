@@ -34,24 +34,6 @@ import { useState } from "react";
 import { formatSelection } from "./code-mirror/keybindings/selection-formatting";
 import { LinkDialog, readClipboardUrl } from "./dialogs/LinkDialog";
 
-function ToolbarButton({
-  icon: Icon,
-  title,
-  onClick,
-  disabled,
-}: {
-  icon: LucideIcon;
-  title: string;
-  onClick: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <Button variant="ghost" size="icon-sm" title={title} onClick={onClick} disabled={disabled}>
-      <Icon />
-    </Button>
-  );
-}
-
 export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) {
   const view = useSelector(editorViewAtom);
   const { hasSelection, canUndo, canRedo } = useSelector(editorStatusAtom);
@@ -74,6 +56,8 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
       selection: { anchor: position + text.length },
     });
 
+  const insertLink = async () =>
+    setLink({ text: getSelectedText(), url: await readClipboardUrl() });
   const addTask = () =>
     insert("- [ ] ", view.state.doc.lineAt(view.state.selection.main.from).from);
   const addBookmark = () => insert("{#}", view.state.selection.main.from);
@@ -82,100 +66,43 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
   const needsSelection = !hasSelection || disabled;
   const needsNoSelection = hasSelection || disabled;
 
+  const button = (Icon: LucideIcon, title: string, onClick: () => void, isDisabled: boolean) => (
+    <Button variant="ghost" size="icon-sm" title={title} onClick={onClick} disabled={isDisabled}>
+      <Icon />
+    </Button>
+  );
+
   return (
     <div className="bg-muted/40 p-1 border rounded-t-sm flex gap-1 items-center">
-      <ToolbarButton
-        icon={Undo}
-        title="Undo"
-        onClick={() => undo(view)}
-        disabled={!canUndo || disabled}
-      />
-      <ToolbarButton
-        icon={Redo}
-        title="Redo"
-        onClick={() => redo(view)}
-        disabled={!canRedo || disabled}
-      />
+      {button(Undo, "Undo", () => undo(view), !canUndo || disabled)}
+      {button(Redo, "Redo", () => redo(view), !canRedo || disabled)}
 
       <Separator orientation="vertical" className="h-6" />
 
-      <ToolbarButton
-        icon={Bold}
-        title="Bold"
-        onClick={() => format("bold")}
-        disabled={needsSelection}
-      />
-      <ToolbarButton
-        icon={Italic}
-        title="Italic"
-        onClick={() => format("italic")}
-        disabled={needsSelection}
-      />
-      <ToolbarButton
-        icon={Underline}
-        title="Underline"
-        onClick={() => format("underline")}
-        disabled={needsSelection}
-      />
-      {!isMobile && (
-        <ToolbarButton
-          icon={Strikethrough}
-          title="Strikethrough"
-          onClick={() => format("strikethrough")}
-          disabled={needsSelection}
-        />
-      )}
+      {button(Bold, "Bold", () => format("bold"), needsSelection)}
+      {button(Italic, "Italic", () => format("italic"), needsSelection)}
+      {button(Underline, "Underline", () => format("underline"), needsSelection)}
+      {!isMobile &&
+        button(Strikethrough, "Strikethrough", () => format("strikethrough"), needsSelection)}
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
-      <ToolbarButton
-        icon={Code}
-        title="Code"
-        onClick={() => format("code")}
-        disabled={needsSelection}
-      />
+      {button(Code, "Code", () => format("code"), needsSelection)}
       {!isMobile && (
         <>
-          <ToolbarButton
-            icon={Quote}
-            title="Block quote"
-            onClick={() => format("blockQuote")}
-            disabled={needsSelection}
-          />
+          {button(Quote, "Block quote", () => format("blockQuote"), needsSelection)}
           <Separator orientation="vertical" className="h-6 mx-1" />
         </>
       )}
 
-      <ToolbarButton
-        icon={Link}
-        title="Insert link"
-        onClick={async () => setLink({ text: getSelectedText(), url: await readClipboardUrl() })}
-        disabled={needsSelection}
-      />
-      {!isMobile && (
-        <ToolbarButton
-          icon={Bookmark}
-          title="Add bookmark"
-          onClick={addBookmark}
-          disabled={needsNoSelection}
-        />
-      )}
-      <ToolbarButton
-        icon={CheckSquare}
-        title="Add task"
-        onClick={addTask}
-        disabled={needsNoSelection}
-      />
+      {button(Link, "Insert link", insertLink, needsSelection)}
+      {!isMobile && button(Bookmark, "Add bookmark", addBookmark, needsNoSelection)}
+      {button(CheckSquare, "Add task", addTask, needsNoSelection)}
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {!isMobile ? (
-        <ToolbarButton
-          icon={MessageSquare}
-          title="Add comment"
-          onClick={addComment}
-          disabled={needsSelection}
-        />
+        button(MessageSquare, "Add comment", addComment, needsSelection)
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger

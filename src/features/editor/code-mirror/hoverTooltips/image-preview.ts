@@ -1,67 +1,38 @@
 import { hoverTooltip } from "@codemirror/view";
 
 // Matches both markdown image syntax ![alt](url) and HTML img tags <img src="url" ...>
-const markdownImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+const markdownImagePattern = /!\[[^\]]*\]\(([^)]+)\)/g;
 const htmlImagePattern = /<img[^>]+src=["']([^"']+)["'][^>]*>/g;
 
-function createTooltip(url: string) {
-  const tooltip = document.createElement("div");
-  tooltip.className = "cm-image-preview-tooltip";
-  const img = document.createElement("img");
-  img.src = url;
-  img.alt = "Preview";
-  img.style.maxWidth = "300px";
-  img.style.height = "auto";
-  tooltip.appendChild(img);
-  return tooltip;
-}
+export const imagePreview = hoverTooltip((view, pos) => {
+  const { from, text } = view.state.doc.lineAt(pos);
+  const images = [
+    ...Array.from(text.matchAll(markdownImagePattern), (match) => ({ match, url: match[1] })),
+    ...Array.from(text.matchAll(htmlImagePattern), (match) => ({
+      match,
+      // (The tag's first `src=` is used, rather than the pattern's greedy last one)
+      url: match[0].match(/src=["']([^"']+)["']/)![1],
+    })),
+  ];
 
-function imagePreviewTooltip() {
-  return hoverTooltip((view, pos) => {
-    const { from, text } = view.state.doc.lineAt(pos);
-    let match;
+  for (const { match, url } of images) {
+    const urlStart = from + match.index + match[0].indexOf(url);
+    const urlEnd = urlStart + url.length;
+    if (pos < urlStart || pos > urlEnd) continue;
 
-    // Reset both patterns before using them
-    markdownImagePattern.lastIndex = 0;
-    htmlImagePattern.lastIndex = 0;
+    return {
+      pos: urlStart,
+      end: urlEnd,
+      create() {
+        const dom = document.createElement("div");
+        dom.className = "cm-image-preview-tooltip";
+        const img = dom.appendChild(document.createElement("img"));
+        img.src = url;
+        img.alt = "Preview";
+        return { dom };
+      },
+    };
+  }
 
-    // Check for markdown images
-    while ((match = markdownImagePattern.exec(text))) {
-      const [, , url] = match;
-      const urlStart = from + match.index + match[0].indexOf(url);
-      const urlEnd = urlStart + url.length;
-      if (pos >= urlStart && pos <= urlEnd) {
-        return {
-          pos: urlStart,
-          end: urlEnd,
-          above: false,
-          create() {
-            return { dom: createTooltip(url) };
-          },
-        };
-      }
-    }
-
-    // Check for HTML images
-    while ((match = htmlImagePattern.exec(text))) {
-      const srcMatch = match[0].match(/src=["']([^"']+)["']/);
-      if (!srcMatch) continue;
-      const url = srcMatch[1];
-      const urlStart = from + match.index + match[0].indexOf(url);
-      const urlEnd = urlStart + url.length;
-      if (pos >= urlStart && pos <= urlEnd) {
-        return {
-          pos: urlStart,
-          end: urlEnd,
-          above: false,
-          create() {
-            return { dom: createTooltip(url) };
-          },
-        };
-      }
-    }
-    return null;
-  });
-}
-
-export const imagePreview = () => imagePreviewTooltip();
+  return null;
+});

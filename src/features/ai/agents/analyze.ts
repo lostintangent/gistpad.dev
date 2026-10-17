@@ -1,10 +1,7 @@
 import { Gist } from "@/shared/github";
 import { createOpenAIClient, getModelProperties } from "./openai";
 
-export async function analyzeStyle(gists: Gist[]): Promise<string> {
-  const openai = createOpenAIClient();
-
-  // Build array of gist contents
+export async function analyzeStyle(gists: Gist[]) {
   const gistContents = gists.map((gist) => ({
     description: gist.description,
     files: Object.entries(gist.files).map(([filename, file]) => ({
@@ -13,7 +10,7 @@ export async function analyzeStyle(gists: Gist[]): Promise<string> {
     })),
   }));
 
-  const response = await openai.responses.create({
+  const response = await createOpenAIClient().responses.create({
     ...getModelProperties("research"),
     instructions: `You are an expert writing style analyst. Your task is to analyze the contents of several markdown documents and identify common patterns, styles, and conventions that appear consistently across them. 
 

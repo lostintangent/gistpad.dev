@@ -1,4 +1,3 @@
-import { Extension } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 
 /*
@@ -9,43 +8,26 @@ import { keymap } from "@codemirror/view";
   2. Within inline code blocks (between backticks)
 */
 
-export const emdash: Extension = keymap.of([
+export const emdash = keymap.of([
   {
     key: "-",
     run: (view) => {
-      const { state } = view;
-      const { doc, selection } = state;
-      const { head } = selection.main;
+      const { head } = view.state.selection.main;
+      const line = view.state.doc.lineAt(head);
+      const textBefore = line.text.slice(0, head - line.from);
 
-      // If cursor isn't at the end of text, don't do anything special
-      if (head === 0) return false;
-
-      // Check if the previous character is a hyphen
-      const prevChar = doc.sliceString(head - 1, head);
-      if (prevChar !== "-") return false;
-
-      // Find the beginning of the current line
-      let lineStart = head - 1;
-      while (lineStart > 0 && doc.sliceString(lineStart - 1, lineStart) !== "\n") {
-        lineStart--;
+      // (An odd number of backticks before the cursor means it's inside a code block)
+      if (
+        !textBefore.endsWith("-") ||
+        textBefore.startsWith("-") ||
+        (textBefore.match(/`/g) ?? []).length % 2 !== 0
+      ) {
+        return false;
       }
-
-      // Check if the line starts with a dash
-      const firstCharOfLine = doc.sliceString(lineStart, lineStart + 1);
-      if (firstCharOfLine === "-") return false;
-
-      // Count backticks before the cursor position to determine if we're in a code block
-      const lineText = doc.sliceString(lineStart, head);
-      const backtickCount = (lineText.match(/`/g) || []).length;
-      if (backtickCount % 2 !== 0) return false; // We're inside a code block
 
       // Replace the previous hyphen and this one with an emdash
       view.dispatch({
-        changes: {
-          from: head - 1,
-          to: head,
-          insert: "—",
-        },
+        changes: { from: head - 1, to: head, insert: "—" },
         selection: { anchor: head },
       });
 

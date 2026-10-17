@@ -20,50 +20,6 @@ const MODEL_PICKERS: { type: ModelType; label: string; tooltip: string }[] = [
   },
 ];
 
-function ModelPicker({
-  label,
-  tooltip,
-  model,
-  onModelChange,
-}: {
-  label: string;
-  tooltip: string;
-  model: string;
-  onModelChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-2">
-      <div className="flex items-center gap-2">
-        <Label htmlFor={label}>{label}</Label>
-        <Tooltip>
-          <TooltipTrigger>
-            <Info className="h-4 w-4 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <Select
-        items={OPENAI_MODELS}
-        value={model}
-        onValueChange={(value) => value && onModelChange(value)}
-      >
-        <SelectTrigger id={label} className="w-full">
-          <SelectValue placeholder="Select a model..." />
-        </SelectTrigger>
-        <SelectContent>
-          {OPENAI_MODELS.map((model) => (
-            <SelectItem key={model.value} value={model.value}>
-              {model.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 function SettingsForm({ onSaved }: { onSaved: () => void }) {
   const [settings, setSettings] = useState(() => aiSettingsStore.state);
 
@@ -100,15 +56,38 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
         </div>
         <div className="grid grid-cols-2 gap-4 mt-4">
           {MODEL_PICKERS.map(({ type, label, tooltip }) => (
-            <ModelPicker
-              key={type}
-              label={label}
-              tooltip={tooltip}
-              model={settings.models[type]}
-              onModelChange={(model) =>
-                setSettings({ ...settings, models: { ...settings.models, [type]: model } })
-              }
-            />
+            <div key={type} className="grid gap-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor={label}>{label}</Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{tooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Select
+                items={OPENAI_MODELS}
+                value={settings.models[type]}
+                onValueChange={(model) =>
+                  model &&
+                  setSettings({ ...settings, models: { ...settings.models, [type]: model } })
+                }
+              >
+                <SelectTrigger id={label} className="w-full">
+                  <SelectValue placeholder="Select a model..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPENAI_MODELS.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ))}
         </div>
         <div className="flex items-center gap-2 mt-4">
@@ -116,7 +95,7 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
             id="show-reasoning-summaries"
             checked={settings.showReasoningSummaries}
             onCheckedChange={(checked) =>
-              setSettings({ ...settings, showReasoningSummaries: !!checked })
+              setSettings({ ...settings, showReasoningSummaries: checked })
             }
           />
           <label htmlFor="show-reasoning-summaries" className="text-sm cursor-pointer">

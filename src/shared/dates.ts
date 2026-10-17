@@ -3,7 +3,7 @@ import { format as formatDate } from "date-fns";
 // Gists can be organized as a series of dated files (e.g. a journal, with a file per day), and
 // so these helpers detect when a gist's files are named with a common date format.
 
-export type DateFormat = "YYYY-MM-DD" | "MM-DD-YYYY" | "YYYY-MM" | "YYYY";
+type DateFormat = "YYYY-MM-DD" | "MM-DD-YYYY" | "YYYY-MM" | "YYYY";
 
 const DATE_FORMATS: Record<DateFormat, { pattern: RegExp; template: string }> = {
   "YYYY-MM-DD": {
@@ -17,8 +17,6 @@ const DATE_FORMATS: Record<DateFormat, { pattern: RegExp; template: string }> = 
   "YYYY-MM": { pattern: /^(?<year>\d{4})-(?<month>\d{2})$/, template: "yyyy-MM" },
   YYYY: { pattern: /^(?<year>\d{4})$/, template: "yyyy" },
 };
-
-const isReadme = (filename: string) => filename.toLowerCase() === "readme.md";
 
 /** Parses a (markdown) filename as a date in the given format, if it's a valid date. */
 export function parseDateFilename(filename: string, format: DateFormat) {
@@ -36,8 +34,8 @@ export function parseDateFilename(filename: string, format: DateFormat) {
 }
 
 /** The date format that all of the (non-README) files are named with, if there is one. */
-export function detectDateFormat(filenames: string[]): DateFormat | null {
-  const names = filenames.filter((filename) => !isReadme(filename));
+export function detectDateFormat(filenames: string[]) {
+  const names = filenames.filter((filename) => filename.toLowerCase() !== "readme.md");
   if (names.length === 0) return null;
 
   const formats = Object.keys(DATE_FORMATS) as DateFormat[];
@@ -87,7 +85,7 @@ export function getMostRecentDatedFilename(filenames: string[]) {
   return latest?.filename ?? null;
 }
 
-/** The (extension-less) filename for a date, in the given format. */
-export function generateDateFilename(format: DateFormat, date = new Date()) {
-  return formatDate(date, DATE_FORMATS[format].template);
+/** The (extension-less) filename for today's date, in the given format. */
+export function generateDateFilename(format: DateFormat) {
+  return formatDate(new Date(), DATE_FORMATS[format].template);
 }

@@ -10,7 +10,7 @@ import {
   parseGlobalFrontMatter,
   usePreferences,
   useUpdatePreferences,
-} from "@/features/session/queries";
+} from "@/features/account/queries";
 import { aiStore, clearReview, updateAiResult, updateAiState } from "./store";
 import { draftAtom, editorViewAtom, updateDraft } from "@/features/editor/store";
 import { closeComments, openComments } from "@/features/comments/store";
@@ -79,10 +79,9 @@ export function useAiCommands() {
   }
 
   /** Combines the custom AI instructions from the document's frontmatter and the user's global settings. */
-  function getInstructions(mode: "edit" | "discuss" | "ask") {
+  function getInstructions(section: "edit" | "discuss") {
     const local = parseFrontMatter(content).frontMatter ?? {};
     const global = parseGlobalFrontMatter(preferences);
-    const section = mode === "edit" ? "edit" : "discuss";
 
     const instructions = [
       global.general?.instructions,
@@ -100,18 +99,15 @@ export function useAiCommands() {
    */
   function getCommandTarget() {
     const view = editorViewAtom.get();
-    const selection = view?.state.selection.main;
-    const selectedText = selection && view.state.sliceDoc(selection.from, selection.to);
-    const hasSelection = !!selectedText?.trim();
+    const { from, to } = view?.state.selection.main ?? { from: 0, to: 0 };
+    const selectedText = view?.state.sliceDoc(from, to) ?? "";
+    const hasSelection = !!selectedText.trim();
     const { content: body, frontMatterYaml } = parseFrontMatter(content);
-
-    const range = hasSelection
-      ? { from: selection!.from, to: selection!.to }
-      : { from: 0, to: view?.state.doc.length ?? 0 };
+    const range = hasSelection ? { from, to } : { from: 0, to: view?.state.doc.length ?? 0 };
 
     return {
       hasSelection,
-      targetContent: hasSelection ? selectedText! : body,
+      targetContent: hasSelection ? selectedText : body,
       replace: (updated: string) => {
         // The editor hides frontmatter (unless the user has opted to show it), so
         // when the entire document is replaced, only replace the visible content.
@@ -135,7 +131,7 @@ export function useAiCommands() {
     const agents = await import("./agents");
     const tools = agents.createGistTools({
       listGists: () => gists.map(({ description, id }) => ({ name: description, id })),
-      readGist: (gistId) => readGistFile(gistId),
+      readGist: readGistFile,
     });
     return { ...agents, tools };
   }
@@ -152,7 +148,8 @@ export function useAiCommands() {
       prompt,
       content: getCommandTarget().targetContent,
       description,
-      instructions: getInstructions("ask"),
+      // Questions share the "discuss" settings with reviews
+      instructions: getInstructions("discuss"),
       references,
       previousResponseId,
       signal,
@@ -227,9 +224,9 @@ export function useAiCommands() {
   ) {
     const { hasSelection, targetContent } = getCommandTarget();
     const previous = aiStore.state.review;
-    const isSameDocument = previous?.documentKey === doc.documentKey;
+    const previousResponseId =
+      previous?.documentKey === doc.documentKey ? previous.responseId : undefined;
 
-    const previousResponseId = isSameDocument ? previous.responseId : undefined;
     openComments({ tab: "ai" });
     updateAiState({
       review: {
@@ -385,7 +382,7 @@ It's important that you don't simply add the comment text to the document, but r
       const view = editorViewAtom.get();
       if (!view) return;
 
-      for (const chunk of [...(getChunks(view.state)?.chunks ?? [])].reverse()) {
+      for (const chunk of getChunks(view.state)?.chunks.toReversed() ?? []) {
         rejectChunk(view, chunk.fromB);
       }
 

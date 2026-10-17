@@ -1,4 +1,4 @@
-import { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
+import type { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 
 const frontmatterProperties = [
   { label: "edit", info: "Configure AI edit commands and settings" },
@@ -6,21 +6,22 @@ const frontmatterProperties = [
   { label: "talk", info: "Configure AI voice and conversation settings" },
 ];
 
-const editProperties = [
-  { label: "instructions", info: "Set default instructions for edit commands" },
-  { label: "commands", info: "Add custom slash commands to edit this file" },
-];
-
-const discussProperties = [
-  { label: "instructions", info: "Set default instructions for discuss commands" },
-  { label: "commands", info: "Add custom slash commands for this file" },
-];
-
-const talkProperties = [
-  { label: "persona", info: "Define the AI's personality and behavior" },
-  { label: "instructions", info: "Set the main goal(s) or task for the AI" },
-  { label: "voice", info: "Configure the AI voice to use for this document" },
-];
+// The properties that can be nested under each of the top-level properties
+const nestedProperties: Record<string, Completion[]> = {
+  edit: [
+    { label: "instructions", info: "Set default instructions for edit commands" },
+    { label: "commands", info: "Add custom slash commands to edit this file" },
+  ],
+  discuss: [
+    { label: "instructions", info: "Set default instructions for discuss commands" },
+    { label: "commands", info: "Add custom slash commands for this file" },
+  ],
+  talk: [
+    { label: "persona", info: "Define the AI's personality and behavior" },
+    { label: "instructions", info: "Set the main goal(s) or task for the AI" },
+    { label: "voice", info: "Configure the AI voice to use for this document" },
+  ],
+};
 
 const voiceValues = [
   { label: "alloy", info: "Easygoing and versatile" },
@@ -33,122 +34,44 @@ const voiceValues = [
   { label: "verse", info: "Bright and inquisitive" },
 ];
 
+const completeFrom = (from: number, options: Completion[]): CompletionResult => ({
+  from,
+  options: options.map((option) => ({ ...option, type: "frontmatter" })),
+  validFor: /^\w*$/,
+});
+
 export async function frontmatterCompletions(
   context: CompletionContext,
 ): Promise<CompletionResult | null> {
-  const line = context.state.doc.lineAt(context.pos);
-  const docStart = line.number <= 50;
-  const hasFrontmatterStart = context.state.doc.slice(0, 100).toString().startsWith("---");
-
-  if (!docStart || !hasFrontmatterStart) return null;
+  const { doc } = context.state;
+  const line = doc.lineAt(context.pos);
+  if (line.number > 50 || !doc.sliceString(0, 100).startsWith("---")) return null;
 
   // (The frontmatter parser is large, and so it's loaded on demand)
   const { parseFrontMatter } = await import("@/shared/frontMatter");
 
   // Check if we're after a "voice:" property within talk section
   const beforeCursor = line.text.slice(0, context.pos - line.from);
-  const isVoiceValue = /^\s*voice\s*:\s+\w*$/.test(beforeCursor);
-
-  if (isVoiceValue) {
-    const prefix = context.matchBefore(/\w*$/);
-    if (!prefix) return null;
-
-    return {
-      from: prefix.from,
-      options: voiceValues.map((opt) => ({
-        ...opt,
-        type: "frontmatter",
-      })),
-      validFor: /^\w*$/,
-    };
+  if (/^\s*voice\s*:\s+\w*$/.test(beforeCursor)) {
+    return completeFrom(context.matchBefore(/\w*$/)!.from, voiceValues);
   }
 
-  // Check if we're in a nested property context
-  const isEditProperty =
-    /^\s*edit\s*:\s*$/.test(beforeCursor) ||
-    (/^\s{2}(\w*)$/.test(beforeCursor) &&
-      context.state.doc
-        .lineAt(line.number - 1)
-        .text.trim()
-        .startsWith("edit:"));
+  // Check if we're in a nested property context (i.e. indented under a top-level property)
+  const parentLine = doc.lineAt(line.number - 1).text.trim();
+  const section = /^\s{2}(\w*)$/.test(beforeCursor)
+    ? Object.keys(nestedProperties).find((property) => parentLine.startsWith(`${property}:`))
+    : undefined;
 
-  const isDiscussProperty =
-    /^\s*discuss\s*:\s*$/.test(beforeCursor) ||
-    (/^\s{2}(\w*)$/.test(beforeCursor) &&
-      context.state.doc
-        .lineAt(line.number - 1)
-        .text.trim()
-        .startsWith("discuss:"));
-
-  const isTalkProperty =
-    /^\s*talk\s*:\s*$/.test(beforeCursor) ||
-    (/^\s{2}(\w*)$/.test(beforeCursor) &&
-      context.state.doc
-        .lineAt(line.number - 1)
-        .text.trim()
-        .startsWith("talk:"));
-
-  // Handle nested property completions
-  if (isEditProperty || isDiscussProperty || isTalkProperty) {
-    const prefix = context.matchBefore(/^\s{2}(\w*)$/);
-    if (!prefix) return null;
-
-    let propertyOptions = frontmatterProperties;
-    if (isEditProperty) {
-      propertyOptions = editProperties;
-    } else if (isDiscussProperty) {
-      propertyOptions = discussProperties;
-    } else if (isTalkProperty) {
-      propertyOptions = talkProperties;
-    }
-
-    // Get the current document content up to this point to filter out properties already defined
-    const docContent = context.state.doc.toString();
-    const { frontMatter } = parseFrontMatter(docContent);
-
-    let section = {};
-    if (isEditProperty && frontMatter?.edit) {
-      section = frontMatter.edit;
-    } else if (isDiscussProperty && frontMatter?.discuss) {
-      section = frontMatter.discuss;
-    } else if (isTalkProperty && frontMatter?.talk) {
-      section = frontMatter.talk;
-    }
-
-    // Filter out properties that are already defined in the section
-    const availableProperties = propertyOptions.filter(
-      (prop) => !section || !(prop.label in section),
-    );
-
-    return {
-      from: prefix.from,
-      options: availableProperties.map((prop) => ({
-        ...prop,
-        type: "frontmatter",
-      })),
-      validFor: /^\w*$/,
-    };
-  }
-
-  // Top-level property completion
-  const prefix = context.matchBefore(/^\s*(\w*)$/);
+  const prefix = context.matchBefore(section ? /^\s{2}(\w*)$/ : /^\s*(\w*)$/);
   if (!prefix) return null;
 
-  // Get the current document content up to this point
-  const docContent = context.state.doc.toString();
-  const { frontMatter } = parseFrontMatter(docContent);
+  // Filter out properties that are already defined
+  const { frontMatter } = parseFrontMatter(doc.toString());
+  const definedProperties = section ? frontMatter?.[section] || {} : frontMatter;
+  const properties = section ? nestedProperties[section] : frontmatterProperties;
 
-  // Filter out properties that are already defined in the frontmatter
-  const availableProperties = frontmatterProperties.filter(
-    (prop) => !frontMatter || !(prop.label in frontMatter),
+  return completeFrom(
+    prefix.from,
+    properties.filter(({ label }) => !definedProperties || !(label in definedProperties)),
   );
-
-  return {
-    from: prefix.from,
-    options: availableProperties.map((prop) => ({
-      ...prop,
-      type: "frontmatter",
-    })),
-    validFor: /^\w*$/,
-  };
 }

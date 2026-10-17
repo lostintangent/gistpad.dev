@@ -14,7 +14,9 @@ export const COMMENT_ID_ATTR = "data-comment-id";
 
 export function getHighlightClasses(isSelected: boolean) {
   return `${HIGHLIGHT_CLASS} rounded px-0.5 cursor-pointer hover:underline ${
-    isSelected ? "bg-primary text-primary-foreground" : "bg-green-400 text-black hover:bg-green-500"
+    isSelected
+      ? "bg-primary text-primary-foreground"
+      : "bg-accent/50 text-foreground hover:bg-accent"
   }`;
 }
 
@@ -23,12 +25,8 @@ export interface CommentThread {
   replies: CommentThread[];
 }
 
-/**
- * A comment thread where the top-level comment quotes document text.
- * Used for inline highlighting in the editor and preview.
- */
+/** A thread whose top-level comment quotes the document (so it's highlighted in the editor/preview). */
 export interface QuotedCommentThread extends CommentThread {
-  /** The text quoted from the document */
   quotedText: string;
 }
 
@@ -38,11 +36,6 @@ export interface QuotedCommentThread extends CommentThread {
 const getFirstLine = (body: string) => body.split("\n")[0].trim();
 const isReplyMarker = (line: string) => REPLY_MARKER_REGEX.test(line);
 const stripFirstLine = (body: string) => body.split("\n").slice(1).join("\n").trim();
-
-function getParentCommentId(body: string) {
-  const match = getFirstLine(body).match(REPLY_MARKER_REGEX);
-  return match ? Number(match[1]) : null;
-}
 
 /** The document text that a comment quotes (as opposed to a reply marker), if any. */
 function getQuotedText(comment: GistComment) {
@@ -61,73 +54,34 @@ export function getSidebarDisplayBody(body: string) {
 }
 
 /**
- * Get the hidden prefix from a comment body (reply marker or text quote).
- * Returns empty string if no prefix exists.
+ * A comment's hidden prefix (i.e. its quote or reply marker), which is its first line and any blank
+ * lines after it (or an empty string, if it doesn't have one).
  */
-export function getCommentPrefix(body: string): string {
-  const firstLine = getFirstLine(body);
-
-  if (firstLine.startsWith(">")) {
-    // Return the first line plus any following blank lines
-    const lines = body.split("\n");
-    let prefixEnd = 1;
-    while (prefixEnd < lines.length && lines[prefixEnd].trim() === "") {
-      prefixEnd++;
-    }
-    return lines.slice(0, prefixEnd).join("\n") + (prefixEnd < lines.length ? "\n" : "");
-  }
-  return "";
+export function getCommentPrefix(body: string) {
+  return getFirstLine(body).startsWith(">")
+    ? body.match(/^[^\n]*(?:\n[^\S\n]*(?=\n|$))*\n?/)![0]
+    : "";
 }
 
-/**
- * Build threaded comment structure from a flat comment list.
- * All comments (top-level and replies) are sorted newest first.
- */
-export function buildCommentThreads(comments: GistComment[]): CommentThread[] {
-  const threadById = new Map<number, CommentThread>();
+/** Organizes comments into threads, where comments (and their replies) are sorted newest first. */
+export function buildCommentThreads(comments: GistComment[]) {
+  const threads = new Map<number, CommentThread>(
+    comments
+      .toSorted((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+      .map((comment) => [comment.id, { comment, replies: [] }]),
+  );
+
+  // Replies whose parent doesn't exist (e.g. it was deleted) are treated as top-level comments.
   const topLevel: CommentThread[] = [];
-
-  // Create thread objects for all comments
-  for (const comment of comments) {
-    threadById.set(comment.id, { comment, replies: [] });
+  for (const thread of threads.values()) {
+    const parentId = getFirstLine(thread.comment.body).match(REPLY_MARKER_REGEX)?.[1];
+    (threads.get(Number(parentId))?.replies ?? topLevel).push(thread);
   }
-
-  // Build parent-child relationships
-  for (const comment of comments) {
-    const thread = threadById.get(comment.id)!;
-    const parentId = getParentCommentId(comment.body);
-
-    if (parentId && threadById.has(parentId)) {
-      threadById.get(parentId)!.replies.push(thread);
-    } else {
-      // Top-level comment (or orphaned reply treated as top-level)
-      topLevel.push(thread);
-    }
-  }
-
-  // Sort by date (newest first)
-  const byDateDescending = (a: CommentThread, b: CommentThread) =>
-    new Date(b.comment.created_at).getTime() - new Date(a.comment.created_at).getTime();
-
-  // Sort top-level (newest first)
-  topLevel.sort(byDateDescending);
-
-  // Recursively sort all replies (newest first)
-  const sortReplies = (thread: CommentThread) => {
-    thread.replies.sort(byDateDescending);
-    thread.replies.forEach(sortReplies);
-  };
-  topLevel.forEach(sortReplies);
 
   return topLevel;
 }
 
-/**
- * Create the reply marker prefix for a new reply.
- */
-export function createReplyMarker(parentCommentId: number): string {
-  return `> [comment:${parentCommentId}]\n\n`;
-}
+export const createReplyMarker = (parentCommentId: number) => `> [comment:${parentCommentId}]\n\n`;
 
 /** The threads whose top-level comment quotes the document. */
 export function getQuotedCommentThreads(threads: CommentThread[]): QuotedCommentThread[] {

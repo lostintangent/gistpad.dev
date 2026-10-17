@@ -68,7 +68,7 @@ const actionTriggerWords = {
   research: new Set(["find", "search", "investigate", "look", "explore"]),
 };
 
-export type AiAction = keyof typeof actionTriggerWords;
+type AiAction = keyof typeof actionTriggerWords;
 
 // In order to balance speed and accuracy, we leverage a two-step classification process,
 // which first attempts to statically classify the request based on high confidence heuristics,
@@ -82,9 +82,9 @@ export type AiAction = keyof typeof actionTriggerWords;
 
 export async function classifyAction(
   request: string,
-  hasGistSelected = true,
+  hasGistSelected: boolean,
   suspectedAction?: AiAction,
-): Promise<AiAction> {
+) {
   // Determine which actions are available based
   // on whether the user currently has a gist opened.
   const availableActions: AiAction[] = hasGistSelected
@@ -96,19 +96,13 @@ export async function classifyAction(
     .toLowerCase()
     .replace(/[-,]|(['’](s|re)\b)/g, "");
 
-  // If the request specifically starts with
-  // one of the action names, then return it directly
-  const namedAction = availableActions.find((action) => action === firstWord);
-  if (namedAction) {
-    return namedAction;
-  }
-
-  // Check whether the request starts with any of the trigger
-  // words for the available actions. And if so, return that action.
-  for (const action of availableActions) {
-    if (actionTriggerWords[action].has(firstWord)) {
-      return action;
-    }
+  // If the request starts with one of the available actions' names, or trigger words,
+  // then return that action directly. (None of the action names are trigger words.)
+  const staticAction = availableActions.find(
+    (action) => action === firstWord || actionTriggerWords[action].has(firstWord),
+  );
+  if (staticAction) {
+    return staticAction;
   }
 
   if (suspectedAction && availableActions.includes(suspectedAction)) {
@@ -117,9 +111,8 @@ export async function classifyAction(
     return suspectedAction;
   }
 
-  // None of the statuc heuristics matches, so perform semantic classification
-  const openai = createOpenAIClient();
-  const { output_text } = await openai.responses.create({
+  // None of the static heuristics matches, so perform semantic classification
+  const { output_text } = await createOpenAIClient().responses.create({
     prompt: {
       id: "pmpt_687ff9ab138c8194b622d673059b7f4e03ac6cc27dce819b",
     },

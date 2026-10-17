@@ -3,7 +3,6 @@
     "target": "ES2024",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "Preserve",
-    "moduleResolution": "Bundler",
     "moduleDetection": "force",
     "jsx": "react-jsx",
     "strict": true,
@@ -11,7 +10,6 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["bun"],
     "paths": {

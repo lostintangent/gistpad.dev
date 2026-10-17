@@ -1,20 +1,21 @@
-import { AppHeader } from "./AppHeader";
 import UnsavedChangesDialog from "./dialogs/UnsavedChangesDialog";
+import { RAIL_WIDTH, SIDEBAR_WIDTH, Sidebar } from "./Sidebar";
 import Workspace from "./Workspace";
-import GistList from "@/features/gists/list/GistList";
+import ResearchStatus from "@/features/ai/research/ResearchStatus";
 import { SpotifyPlayer } from "@/features/spotify/SpotifyPlayer";
+import { Button } from "@/shared/ui/button";
 import { Sheet, SheetContent } from "@/shared/ui/sheet";
 import { useDocument, useIsSaving, useSaveDocument, type GistDocument } from "./document";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { getGistDisplayName } from "@/shared/github";
 import { useStarredGists } from "@/features/gists/queries";
-import { useRecordRecentlyViewed } from "@/features/session/queries";
+import { usePreferences, useRecordRecentlyViewed } from "@/features/account/queries";
 import DeleteGistDialog from "@/features/gists/dialogs/DeleteGistDialog";
-import { usePreferences } from "@/features/session/queries";
-import { discardDraft, draftAtom, useDraft } from "./store";
+import { draftAtom, useDraft } from "./store";
 import { mobileSidebarOpenAtom, sidebarCollapsedAtom, zenModeAtom } from "./store";
 import { useBlocker } from "@tanstack/react-router";
 import { useSelector } from "@tanstack/react-store";
+import { EyeOff } from "lucide-react";
 import { useEffect, useEffectEvent, useState } from "react";
 
 const AUTO_SAVE_DELAY = 5000;
@@ -75,7 +76,7 @@ function UnsavedChangesGuard({ doc }: { doc: GistDocument }) {
       isSaving={isSaving}
       onCancel={() => blocker.reset?.()}
       onDiscard={() => {
-        discardDraft();
+        draftAtom.set(null);
         blocker.proceed?.();
       }}
       onSave={
@@ -108,7 +109,23 @@ function useRecentlyViewed(doc: GistDocument) {
   }, [shouldRecord, doc.documentKey]);
 }
 
-/** When the sidebar is collapsed, it can be revealed by hovering over the left edge of the screen. */
+/** Exits zen mode (whose only other chrome is the status of the user's research and changes). */
+function ZenModeControls() {
+  const hasUnsavedChanges = useSelector(draftAtom, (draft) => draft !== null);
+
+  return (
+    <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-2">
+      <ResearchStatus />
+      {hasUnsavedChanges && <span className="bg-blue-500 w-2 h-2 rounded-full" />}
+      <Button variant="outline" size="sm" onClick={() => zenModeAtom.set(false)}>
+        <EyeOff />
+        Exit zen mode
+      </Button>
+    </div>
+  );
+}
+
+/** In zen mode, the sidebar is hidden, but it can be revealed by hovering over the screen's left edge. */
 function SidebarHoverSheet() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -126,10 +143,11 @@ function SidebarHoverSheet() {
       <SheetContent
         side="left"
         showCloseButton={false}
-        className="w-[325px] border-r-0 p-0"
+        className="border-r-0 p-0"
+        style={{ width: SIDEBAR_WIDTH }}
         onPointerLeave={() => setIsOpen(false)}
       >
-        <GistList />
+        <Sidebar />
       </SheetContent>
     </Sheet>
   );
@@ -144,37 +162,43 @@ export default function EditorPage() {
 
   useRecentlyViewed(doc);
 
-  // On mobile, either the gist list or the editor fills the screen.
-  const showSidebar = isMobile
-    ? isMobileSidebarOpen || !doc.gistId
-    : !isSidebarCollapsed && !isZenMode;
+  // On mobile, either the gist list or the editor fills the screen. And on desktop, the sidebar
+  // is hidden in zen mode (and otherwise, it's either expanded or collapsed into a rail).
+  const showSidebar = isMobile ? isMobileSidebarOpen || !doc.gistId : !isZenMode;
+  const sidebarWidth = isSidebarCollapsed ? RAIL_WIDTH : SIDEBAR_WIDTH;
 
   return (
-    <div className="container h-screen grid grid-rows-[auto_1fr] gap-2">
+    <div className="container h-screen">
       <title>{doc.gist ? `GistPad - ${getGistDisplayName(doc.gist)}` : "GistPad"}</title>
 
-      {!isMobile && (isSidebarCollapsed || isZenMode) && <SidebarHoverSheet />}
-
-      <AppHeader isGistListVisible={showSidebar} />
+      {!isMobile && isZenMode && <SidebarHoverSheet />}
 
       <div
-        className={`grid grid-rows-[minmax(0,1fr)] flex-1 min-h-0 ${isMobile ? "" : "transition-[grid-template-columns] duration-200 ease-in-out"} ${showSidebar && !isMobile ? "gap-2" : ""}`}
+        className={`h-full grid grid-rows-[minmax(0,1fr)] ${isMobile ? "" : "transition-[grid-template-columns] duration-200 ease-in-out"} ${showSidebar && !isMobile ? "gap-2" : ""}`}
         style={{
           gridTemplateColumns: isMobile
             ? showSidebar
               ? "1fr 0px"
               : "0px 1fr"
-            : `${showSidebar ? "325px" : "0px"} 1fr`,
+            : `${showSidebar ? sidebarWidth : 0}px 1fr`,
         }}
       >
         <div
           className={`overflow-hidden ${isMobile ? "" : "transition-[opacity] duration-200 ease-in-out"} ${showSidebar ? "opacity-100" : "opacity-0"}`}
         >
-          <GistList onCollapse={() => sidebarCollapsedAtom.set(true)} />
+          {isMobile ? (
+            <Sidebar />
+          ) : (
+            <Sidebar
+              isCollapsed={isSidebarCollapsed}
+              onCollapsedChange={(isCollapsed) => sidebarCollapsedAtom.set(isCollapsed)}
+            />
+          )}
         </div>
 
-        <div className={isMobile && showSidebar ? "hidden" : "min-w-0"}>
+        <div className={isMobile && showSidebar ? "hidden" : "relative min-w-0"}>
           <Workspace />
+          {isZenMode && <ZenModeControls />}
         </div>
       </div>
 

@@ -9,7 +9,7 @@ function toThreads(comments: GistComment[]) {
   return { comments, threads, quotedThreads: getQuotedCommentThreads(threads) };
 }
 
-const EMPTY: ReturnType<typeof toThreads> = { comments: [], threads: [], quotedThreads: [] };
+const EMPTY = toThreads([]);
 
 /** The open gist's comments, organized into threads (and the threads that quote its content). */
 export function useCommentThreads(doc: Pick<GistDocument, "gist" | "gistId">) {

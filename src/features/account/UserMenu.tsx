@@ -60,8 +60,11 @@ const ADVANCED_SETTINGS: ([BooleanPreference, string] | null)[] = [
   ["pasteImagesAsHtml", "Paste images as HTML"],
 ];
 
-/** The user's avatar, which opens a menu with their settings and recently viewed files. */
-export function UserMenu() {
+/**
+ * The user's avatar, which opens a menu with their settings and recently viewed files (either
+ * above it, in the sidebar's footer, or beside it, in the collapsed sidebar's rail).
+ */
+export function UserMenu({ side }: { side: "top" | "right" }) {
   const { user } = useSession();
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
@@ -92,12 +95,12 @@ export function UserMenu() {
           render={<Button variant="ghost" size="icon-sm" className="rounded-full" />}
           aria-label="User menu"
         >
-          <Avatar className="h-8 w-8">
+          <Avatar className="size-6">
             <AvatarImage src={user?.avatarUrl} />
             <AvatarFallback>{user?.initial}</AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent side={side} align={side === "top" ? "start" : "end"} className="w-56">
           {recentlyViewedGistFiles.length > 0 && (
             <>
               <DropdownMenuSub>
@@ -156,6 +159,33 @@ export function UserMenu() {
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+
+          {/* The item is covered by a color input, so that clicking it opens the color picker */}
+          <DropdownMenuItem
+            closeOnClick={false}
+            className="relative"
+            onClick={(e) =>
+              e.target === e.currentTarget && e.currentTarget.querySelector("input")?.click()
+            }
+          >
+            <span className="size-4 rounded-full border border-black/10 bg-accent" />
+            Accent color
+            <input
+              type="color"
+              aria-label="Accent color"
+              defaultValue={preferences.accentColor}
+              className="absolute inset-0 size-full cursor-pointer opacity-0"
+              // The color is previewed while it's being picked, and saved once it's chosen
+              onInput={(e) =>
+                document.documentElement.style.setProperty("--accent", e.currentTarget.value)
+              }
+              ref={(input) => {
+                const save = () => input && updatePreferences({ accentColor: input.value });
+                input?.addEventListener("change", save);
+                return () => input?.removeEventListener("change", save);
+              }}
+            />
+          </DropdownMenuItem>
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>

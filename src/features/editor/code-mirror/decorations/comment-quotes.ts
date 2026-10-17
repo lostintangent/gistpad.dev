@@ -4,14 +4,8 @@ import {
   getHighlightClasses,
   type QuotedCommentThread,
 } from "@/features/comments/threads";
-import { RangeSetBuilder, type Extension } from "@codemirror/state";
-import {
-  Decoration,
-  ViewPlugin,
-  type DecorationSet,
-  type EditorView,
-  type ViewUpdate,
-} from "@codemirror/view";
+import { Decoration } from "@codemirror/view";
+import { decorationsPlugin } from "./plugin";
 
 /**
  * Highlights the text that comments quote (or only the selected comment's quote, when inline
@@ -21,41 +15,20 @@ export function commentQuotes(
   threads: QuotedCommentThread[],
   selectedId: number | null,
   showInline: boolean,
-): Extension {
+) {
   const visibleThreads = showInline
     ? threads
     : threads.filter(({ comment }) => comment.id === selectedId);
 
-  const buildDecorations = (view: EditorView) => {
-    const builder = new RangeSetBuilder<Decoration>();
-    const matches = findQuoteMatches(visibleThreads, [view.state.doc.toString()]);
-
-    for (const { thread, start, end } of matches.sort((a, b) => a.start - b.start)) {
-      builder.add(
-        start,
-        end,
+  return decorationsPlugin((view) =>
+    Decoration.set(
+      findQuoteMatches(visibleThreads, [view.state.doc.toString()]).map(({ thread, start, end }) =>
         Decoration.mark({
           class: getHighlightClasses(selectedId === thread.comment.id),
           attributes: { [COMMENT_ID_ATTR]: String(thread.comment.id) },
-        }),
-      );
-    }
-
-    return builder.finish();
-  };
-
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-
-      constructor(view: EditorView) {
-        this.decorations = buildDecorations(view);
-      }
-
-      update(update: ViewUpdate) {
-        if (update.docChanged) this.decorations = buildDecorations(update.view);
-      }
-    },
-    { decorations: (plugin) => plugin.decorations },
+        }).range(start, end),
+      ),
+      true,
+    ),
   );
 }
