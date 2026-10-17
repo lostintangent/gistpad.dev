@@ -98,7 +98,7 @@ export function GistListItem({
             <Tooltip>
               <TooltipTrigger>
                 <Pin
-                  className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-primary-foreground" : "text-purple-500 dark:text-purple-400"}`}
+                  className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-primary-foreground" : "text-accent"}`}
                 />
               </TooltipTrigger>
               <TooltipContent>

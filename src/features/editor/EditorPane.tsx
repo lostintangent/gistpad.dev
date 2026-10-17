@@ -200,10 +200,10 @@ export function EditorPane({
   ];
 
   return (
-    <div className="grid grid-rows-[auto_1fr] p-2 h-full min-h-0">
+    <div className="grid grid-rows-[auto_1fr] h-full min-h-0">
       {preferences.showFormattingToolbar && <FormattingToolbar disabled={isViewingRevision} />}
       <div
-        className="relative min-h-0"
+        className="relative min-h-0 p-2"
         onDragOver={(e) => {
           e.preventDefault();
           const hasFile = Array.from(e.dataTransfer.items).some((item) => item.kind === "file");

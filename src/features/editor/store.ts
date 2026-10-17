@@ -99,6 +99,24 @@ export function resetDocumentState() {
 /** Whether the gist list sidebar is collapsed (desktop only). */
 export const sidebarCollapsedAtom = persistedAtom("gistpad-sidebar-collapsed", false);
 
+// The sidebar is sized in pixels (rather than as a percentage), so its width survives window
+// resizes, and the workspace's panes divide whatever's left
+export const SIDEBAR_MIN_WIDTH = 300;
+export const SIDEBAR_MAX_WIDTH = 480;
+
+export const clampSidebarWidth = (width: number) =>
+  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
+
+/** The width of the expanded sidebar (desktop only), which is kept while it's collapsed. */
+export const sidebarWidthAtom = persistedAtom("gistpad-sidebar-width", 325, {
+  parse: (value) => {
+    const width = Number(value);
+    if (!Number.isFinite(width)) throw new Error(`Invalid sidebar width: ${value}`);
+    return clampSidebarWidth(width);
+  },
+  stringify: String,
+});
+
 /** Whether the gist list is being shown, instead of the editor (mobile only). */
 export const mobileSidebarOpenAtom = createAtom(false);
 

@@ -11,13 +11,12 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { CARD_CLASS } from "./card";
 
 /** The sidebar is a card, whose border is included in its width. */
-const SIDEBAR_BORDER = 2;
+export const SIDEBAR_BORDER = 2;
 
 /** The size of the sidebar's actions, which the rail is one of across. */
 const ACTION_SIZE = "size-6";
 
-/** The widths of the expanded sidebar, and of its collapsed rail (one action between two insets). */
-export const SIDEBAR_WIDTH = 325;
+/** The width of the collapsed rail (one action between two insets). */
 export const RAIL_WIDTH = 44 + SIDEBAR_BORDER;
 
 // The news dashboard is loaded on demand (and preloaded when the user is about to open it)
@@ -152,11 +151,13 @@ export function Sidebar({
         </Button>
       </div>
 
-      {/* The expanded layout keeps its width, so its content doesn't squeeze while collapsing */}
+      {/* The expanded layout keeps its width (from `SidebarResizer`), so its content doesn't squeeze while collapsing */}
       <div
         inert={isCollapsed}
-        style={{ width: SIDEBAR_WIDTH - SIDEBAR_BORDER }}
-        className={cn("absolute inset-y-0 left-0 flex flex-col", layerClass(!isCollapsed))}
+        className={cn(
+          "absolute inset-y-0 left-0 flex flex-col w-[var(--sidebar-width,100%)]",
+          layerClass(!isCollapsed),
+        )}
       >
         <GistList leadingSlot={<ActionSpacer />} />
         <SidebarFooter leadingSlot={<ActionSpacer />} />

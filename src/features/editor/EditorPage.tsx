@@ -1,5 +1,6 @@
 import UnsavedChangesDialog from "./dialogs/UnsavedChangesDialog";
-import { RAIL_WIDTH, SIDEBAR_WIDTH, Sidebar } from "./Sidebar";
+import { Sidebar } from "./Sidebar";
+import { SidebarResizer } from "./SidebarResizer";
 import Workspace from "./Workspace";
 import ResearchStatus from "@/features/ai/research/ResearchStatus";
 import { SpotifyPlayer } from "@/features/spotify/SpotifyPlayer";
@@ -12,9 +13,15 @@ import { useStarredGists } from "@/features/gists/queries";
 import { usePreferences, useRecordRecentlyViewed } from "@/features/account/queries";
 import DeleteGistDialog from "@/features/gists/dialogs/DeleteGistDialog";
 import { draftAtom, useDraft } from "./store";
-import { mobileSidebarOpenAtom, sidebarCollapsedAtom, zenModeAtom } from "./store";
+import {
+  mobileSidebarOpenAtom,
+  sidebarCollapsedAtom,
+  sidebarWidthAtom,
+  zenModeAtom,
+} from "./store";
 import { useBlocker } from "@tanstack/react-router";
 import { useSelector } from "@tanstack/react-store";
+import { cn } from "cn";
 import { EyeOff } from "lucide-react";
 import { useEffect, useEffectEvent, useState } from "react";
 
@@ -128,6 +135,7 @@ function ZenModeControls() {
 /** In zen mode, the sidebar is hidden, but it can be revealed by hovering over the screen's left edge. */
 function SidebarHoverSheet() {
   const [isOpen, setIsOpen] = useState(false);
+  const width = useSelector(sidebarWidthAtom);
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent) => {
@@ -144,7 +152,7 @@ function SidebarHoverSheet() {
         side="left"
         showCloseButton={false}
         className="border-r-0 p-0"
-        style={{ width: SIDEBAR_WIDTH }}
+        style={{ width }}
         onPointerLeave={() => setIsOpen(false)}
       >
         <Sidebar />
@@ -158,6 +166,7 @@ export default function EditorPage() {
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
   const isSidebarCollapsed = useSelector(sidebarCollapsedAtom);
+  const sidebarWidth = useSelector(sidebarWidthAtom);
   const isMobileSidebarOpen = useSelector(mobileSidebarOpenAtom);
 
   useRecentlyViewed(doc);
@@ -165,7 +174,6 @@ export default function EditorPage() {
   // On mobile, either the gist list or the editor fills the screen. And on desktop, the sidebar
   // is hidden in zen mode (and otherwise, it's either expanded or collapsed into a rail).
   const showSidebar = isMobile ? isMobileSidebarOpen || !doc.gistId : !isZenMode;
-  const sidebarWidth = isSidebarCollapsed ? RAIL_WIDTH : SIDEBAR_WIDTH;
 
   return (
     <div className="container h-screen">
@@ -174,29 +182,29 @@ export default function EditorPage() {
       {!isMobile && isZenMode && <SidebarHoverSheet />}
 
       <div
-        className={`h-full grid grid-rows-[minmax(0,1fr)] ${isMobile ? "" : "transition-[grid-template-columns] duration-200 ease-in-out"} ${showSidebar && !isMobile ? "gap-2" : ""}`}
-        style={{
-          gridTemplateColumns: isMobile
-            ? showSidebar
-              ? "1fr 0px"
-              : "0px 1fr"
-            : `${showSidebar ? sidebarWidth : 0}px 1fr`,
-        }}
+        className={cn("h-full", isMobile ? "grid grid-rows-[minmax(0,1fr)]" : "flex")}
+        style={isMobile ? { gridTemplateColumns: showSidebar ? "1fr 0px" : "0px 1fr" } : undefined}
       >
-        <div
-          className={`overflow-hidden ${isMobile ? "" : "transition-[opacity] duration-200 ease-in-out"} ${showSidebar ? "opacity-100" : "opacity-0"}`}
-        >
-          {isMobile ? (
+        {isMobile ? (
+          <div className={cn("overflow-hidden", !showSidebar && "opacity-0")}>
             <Sidebar />
-          ) : (
+          </div>
+        ) : (
+          <SidebarResizer
+            width={sidebarWidth}
+            isCollapsed={isSidebarCollapsed}
+            isHidden={!showSidebar}
+            onWidthChange={(width) => sidebarWidthAtom.set(width)}
+            onCollapsedChange={(isCollapsed) => sidebarCollapsedAtom.set(isCollapsed)}
+          >
             <Sidebar
               isCollapsed={isSidebarCollapsed}
               onCollapsedChange={(isCollapsed) => sidebarCollapsedAtom.set(isCollapsed)}
             />
-          )}
-        </div>
+          </SidebarResizer>
+        )}
 
-        <div className={isMobile && showSidebar ? "hidden" : "relative min-w-0"}>
+        <div className={isMobile && showSidebar ? "hidden" : "relative min-w-0 flex-1"}>
           <Workspace />
           {isZenMode && <ZenModeControls />}
         </div>

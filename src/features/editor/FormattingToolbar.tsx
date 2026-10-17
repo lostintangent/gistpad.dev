@@ -72,12 +72,17 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
     </Button>
   );
 
+  // (Vertical separators stretch by default, which would pin a fixed-height one to the top of the row)
+  const separator = (
+    <Separator orientation="vertical" className="mx-1 h-6 data-vertical:self-center" />
+  );
+
   return (
-    <div className="bg-muted/40 p-1 border rounded-t-sm flex gap-1 items-center">
+    <div className="border-b bg-muted/30 px-2 py-1 flex gap-1 items-center">
       {button(Undo, "Undo", () => undo(view), !canUndo || disabled)}
       {button(Redo, "Redo", () => redo(view), !canRedo || disabled)}
 
-      <Separator orientation="vertical" className="h-6" />
+      {separator}
 
       {button(Bold, "Bold", () => format("bold"), needsSelection)}
       {button(Italic, "Italic", () => format("italic"), needsSelection)}
@@ -85,13 +90,13 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
       {!isMobile &&
         button(Strikethrough, "Strikethrough", () => format("strikethrough"), needsSelection)}
 
-      <Separator orientation="vertical" className="h-6 mx-1" />
+      {separator}
 
       {button(Code, "Code", () => format("code"), needsSelection)}
       {!isMobile && (
         <>
           {button(Quote, "Block quote", () => format("blockQuote"), needsSelection)}
-          <Separator orientation="vertical" className="h-6 mx-1" />
+          {separator}
         </>
       )}
 
@@ -99,7 +104,7 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
       {!isMobile && button(Bookmark, "Add bookmark", addBookmark, needsNoSelection)}
       {button(CheckSquare, "Add task", addTask, needsNoSelection)}
 
-      <Separator orientation="vertical" className="h-6 mx-1" />
+      {separator}
 
       {!isMobile ? (
         button(MessageSquare, "Add comment", addComment, needsSelection)
