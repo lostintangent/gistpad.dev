@@ -41,7 +41,6 @@ export interface Preferences {
   isAutoSaveEnabled: boolean;
   showDiffs: boolean;
   showFrontmatter: boolean;
-  editorTheme: string;
   showLineNumbers: boolean;
   isSpellcheckEnabled: boolean;
   pasteImagesAsHtml: boolean;
@@ -68,7 +67,6 @@ const DEFAULT_PREFERENCES: Preferences = {
   isAutoSaveEnabled: true,
   showDiffs: false,
   showFrontmatter: false,
-  editorTheme: "GitHub",
   showLineNumbers: false,
   isSpellcheckEnabled: true,
   pasteImagesAsHtml: false,

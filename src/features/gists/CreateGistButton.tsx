@@ -34,7 +34,7 @@ const LONG_PRESS_DURATION = 300;
 // In the sidebar's rail, the menu is a tab that's revealed beneath the button (while it's hovered,
 // focused or open), rather than taking up room in the rail.
 const RAIL_MENU_CLASSES =
-  "absolute left-0 top-full h-3 w-8 rounded-t-none border-t border-background pointer-events-none opacity-0 transition-opacity group-hover/create:pointer-events-auto group-hover/create:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 data-popup-open:pointer-events-auto data-popup-open:opacity-100";
+  "absolute left-0 top-full h-3 w-6 rounded-t-none border-t border-background pointer-events-none opacity-0 transition-opacity group-hover/create:pointer-events-auto group-hover/create:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 data-popup-open:pointer-events-auto data-popup-open:opacity-100";
 
 function CreateGistForm({ onCreated }: { onCreated: () => void }) {
   const { tags } = usePreferences();
@@ -164,11 +164,11 @@ export default function CreateGistButton({ isRail = false }: { isRail?: boolean 
               variant="accent"
               size="icon-sm"
               className={cn(
-                // (Matching the height of the sidebar header's filter input)
-                "select-none size-8",
+                "select-none",
                 isRail
-                  ? "group-hover/create:rounded-b-none group-has-data-popup-open/create:rounded-b-none"
-                  : "rounded-r-none",
+                  ? "size-6 group-hover/create:rounded-b-none group-has-data-popup-open/create:rounded-b-none"
+                  : // (Matching the height of the sidebar header's filter input)
+                    "size-8 rounded-r-none",
               )}
               title="Create new gist"
             />

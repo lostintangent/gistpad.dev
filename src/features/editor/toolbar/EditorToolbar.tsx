@@ -128,6 +128,7 @@ function useToolbar(doc: GistDocument) {
 
 /** Selects one of the gist's files (grouping date-based files by year and month). */
 function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
+  const isMobile = useIsMobile();
   const openDocument = useOpenDocument();
   const [isAddingFile, setIsAddingFile] = useState(false);
   const addFile = useAddAndOpenFile();
@@ -165,7 +166,8 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
         <DropdownMenuTrigger
           render={<Button variant="ghost" size="sm" className="h-8 gap-2 px-1 min-w-0 shrink" />}
         >
-          <ChevronDown />
+          {/* On mobile, the chevron looks out of place beside the "Show gists" button */}
+          {!isMobile && <ChevronDown />}
           {title}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">

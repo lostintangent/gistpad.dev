@@ -74,7 +74,7 @@ export default function GistList({
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       {/* Header */}
-      <div className="border-b p-3 flex-none bg-muted/30 flex items-center gap-2">
+      <div className="border-b px-2.5 py-3 flex-none bg-muted/30 flex items-center gap-2">
         {leadingSlot}
         <InputGroup className="h-8 flex-1" data-disabled={gists.length === 0}>
           <InputGroupAddon>

@@ -12,12 +12,13 @@ import { formatDistanceToNow } from "date-fns";
 import { Bell, Check, CircleStop, Clipboard, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { cn } from "cn";
 import ResearchResultsDialog from "./ResearchResultsDialog";
 
 const POLLING_INTERVAL = 3000;
 
 /** The user's research tasks, which run in the background (and are polled for their results). */
-export default function ResearchStatus() {
+export default function ResearchStatus({ className }: { className?: string }) {
   const { researchTasks: tasks } = usePreferences();
   const updatePreferences = useUpdatePreferences();
 
@@ -77,12 +78,15 @@ export default function ResearchStatus() {
     <div className="flex flex-col gap-2">
       <Popover>
         <PopoverTrigger
-          className="relative flex items-center justify-center w-8 h-8 rounded-full cursor-pointer text-purple-500 bg-purple-600/15"
+          className={cn(
+            "relative flex items-center justify-center size-8 rounded-full cursor-pointer text-purple-500 bg-purple-600/15",
+            className,
+          )}
           aria-label="Research tasks"
         >
           {inProgressCount > 0 ? (
             <>
-              <Loader2 className="absolute h-6 w-6 animate-spin" />
+              <Loader2 className="absolute size-3/4 animate-spin" />
               <span className="font-medium text-xs text-white">{inProgressCount}</span>
             </>
           ) : (

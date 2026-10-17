@@ -10,12 +10,15 @@ import { Newspaper, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { lazy, Suspense, type ReactNode } from "react";
 import { CARD_CLASS } from "./card";
 
-/** The widths of the expanded sidebar, and of its collapsed rail (on desktop). */
-export const SIDEBAR_WIDTH = 325;
-export const RAIL_WIDTH = 58;
-
 /** The sidebar is a card, whose border is included in its width. */
 const SIDEBAR_BORDER = 2;
+
+/** The size of the sidebar's actions, which the rail is one of across. */
+const ACTION_SIZE = "size-6";
+
+/** The widths of the expanded sidebar, and of its collapsed rail (one action between two insets). */
+export const SIDEBAR_WIDTH = 325;
+export const RAIL_WIDTH = 44 + SIDEBAR_BORDER;
 
 // The news dashboard is loaded on demand (and preloaded when the user is about to open it)
 const loadWidgetDashboard = () => import("@/features/dashboard/WidgetDashboard");
@@ -25,7 +28,9 @@ function NewsDashboard() {
   return (
     <Sheet>
       <SheetTrigger
-        render={<Button variant="ghost" size="icon-sm" title="Open news dashboard" />}
+        render={
+          <Button variant="ghost" size="icon" className={ACTION_SIZE} title="Open news dashboard" />
+        }
         onPointerEnter={loadWidgetDashboard}
         onFocus={loadWidgetDashboard}
       >
@@ -43,11 +48,13 @@ function NewsDashboard() {
   );
 }
 
-/** A button-sized space, which an action that's pinned over both of the sidebar's layouts fills. */
-const ActionSpacer = () => <div className="size-8 shrink-0" aria-hidden />;
+/** An action-sized space, which an action that's pinned over both of the sidebar's layouts fills. */
+const ActionSpacer = ({ className }: { className?: string }) => (
+  <div className={cn("shrink-0", ACTION_SIZE, className)} aria-hidden />
+);
 
 /** The rail's separators are the footer's (vertical) separator, turned on its side. */
-const RAIL_SEPARATOR = "data-horizontal:w-4 bg-muted-foreground/50";
+const RAIL_SEPARATOR = "my-1.5 data-horizontal:w-4 bg-muted-foreground/50";
 
 /**
  * Crossfades one of the sidebar's layouts (expanded, or the collapsed rail). The leaving layout
@@ -62,7 +69,7 @@ const layerClass = (isVisible: boolean) =>
 
 function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
   return (
-    <div className="border-t px-3 py-1.5 bg-muted/30 flex items-center justify-between">
+    <div className="border-t px-2.5 py-3 bg-muted/30 flex items-center justify-between">
       <div className="flex items-center gap-2">
         {leadingSlot}
         <Separator
@@ -71,8 +78,8 @@ function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
         />
         <span className="font-semibold">GistPad</span>
       </div>
-      <div className="flex items-center gap-1">
-        <ResearchStatus />
+      <div className="flex items-center gap-3">
+        <ResearchStatus className={ACTION_SIZE} />
         <NewsDashboard />
       </div>
     </div>
@@ -90,15 +97,16 @@ function SidebarRail({ isVisible }: { isVisible: boolean }) {
       inert={!isVisible}
       style={{ width: RAIL_WIDTH - SIDEBAR_BORDER }}
       className={cn(
-        "absolute inset-y-0 left-0 flex flex-col items-center gap-2 pt-3 pb-1.5",
+        "absolute inset-y-0 left-0 flex flex-col items-center gap-3 py-3",
         layerClass(isVisible),
       )}
     >
-      <ActionSpacer />
+      {/* The collapse toggle is centered in the header's (taller) row, which leaves it a step lower */}
+      <ActionSpacer className="mt-1" />
       <Separator className={RAIL_SEPARATOR} />
       <CreateGistButton isRail />
       <div className="flex-1" />
-      <ResearchStatus />
+      <ResearchStatus className={ACTION_SIZE} />
       <NewsDashboard />
       <Separator className={RAIL_SEPARATOR} />
       <ActionSpacer />
@@ -131,10 +139,12 @@ export function Sidebar({
 
   return (
     <div className={cn(CARD_CLASS, "relative h-full")}>
-      <div className="absolute top-3 left-3 z-10">
+      {/* (Centered in the header's row, which is as tall as its filter input) */}
+      <div className="absolute top-3 left-2.5 z-10 flex h-8 items-center">
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
+          className={ACTION_SIZE}
           onClick={() => onCollapsedChange(!isCollapsed)}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -154,7 +164,7 @@ export function Sidebar({
 
       <SidebarRail isVisible={isCollapsed} />
 
-      <div className="absolute bottom-1.5 left-3 z-10">
+      <div className="absolute bottom-3 left-2.5 z-10 flex">
         <UserMenu side={isCollapsed ? "right" : "top"} />
       </div>
     </div>

@@ -11,7 +11,7 @@ import { spellChecker } from "./code-mirror/linters/spell-checker";
 import { selectionComment } from "./code-mirror/widgets/selection-comment";
 import { useOpenDocument, useSaveOrFork, type GistDocument } from "./document";
 import { useEditorMode } from "./mode";
-import { useEditorThemes } from "./themes";
+import { useEditorTheme } from "./themes";
 import { splitFrontMatter, withFrontMatter } from "@/shared/utils";
 import { uploadImage } from "@/shared/supabase";
 import { usePreferences } from "@/features/account/queries";
@@ -78,7 +78,7 @@ export function EditorPane({
   previewRef: RefObject<HTMLDivElement | null>;
 }) {
   const preferences = usePreferences();
-  const editorThemes = useEditorThemes();
+  const editorTheme = useEditorTheme();
   const isAiEnabled = useIsAiEnabled();
   const draft = useDraft(doc.documentKey);
   const saveOrFork = useSaveOrFork(doc);
@@ -247,7 +247,7 @@ export function EditorPane({
           value={preferences.showFrontmatter ? content : body}
           height="100%"
           className="h-full"
-          theme={editorThemes[preferences.editorTheme as keyof typeof editorThemes]}
+          theme={editorTheme}
           basicSetup={{
             lineNumbers: preferences.showLineNumbers,
             foldGutter: preferences.showLineNumbers,

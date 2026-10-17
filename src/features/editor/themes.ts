@@ -1,36 +1,13 @@
-import {
-  githubDark,
-  githubLight,
-  materialDark,
-  materialLight,
-  solarizedDark,
-  solarizedLight,
-  tokyoNight,
-  tokyoNightDay,
-  tokyoNightStorm,
-  vscodeDark,
-  vscodeLight,
-} from "@uiw/codemirror-themes-all";
+import { githubDarkInit, githubLightInit } from "@uiw/codemirror-theme-github";
 import { useIsDarkMode } from "@/shared/useMediaQuery";
 
-const lightEditorThemes = {
-  GitHub: githubLight,
-  "Tokyo Day": tokyoNightDay,
-  Solarized: solarizedLight,
-  Material: materialLight,
-  "VS Code": vscodeLight,
-};
+// The editor uses GitHub's colors, but on the app's background (instead of GitHub's)
+const settings = { background: "var(--background)", gutterBackground: "var(--background)" };
 
-const darkEditorThemes = {
-  GitHub: githubDark,
-  "Tokyo Night": tokyoNight,
-  "Tokyo Night Storm": tokyoNightStorm,
-  Solarized: solarizedDark,
-  Material: materialDark,
-  "VS Code": vscodeDark,
-};
+const lightEditorTheme = githubLightInit({ settings });
+const darkEditorTheme = githubDarkInit({ settings });
 
-/** The editor themes that match the system's color scheme (which the app follows). */
-export function useEditorThemes() {
-  return useIsDarkMode() ? darkEditorThemes : lightEditorThemes;
+/** The editor's theme, which matches the system's color scheme (which the app follows). */
+export function useEditorTheme() {
+  return useIsDarkMode() ? darkEditorTheme : lightEditorTheme;
 }

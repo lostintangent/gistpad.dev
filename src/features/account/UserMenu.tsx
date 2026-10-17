@@ -16,8 +16,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -26,7 +24,6 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { useDocument, useOpenDocument } from "@/features/editor/document";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { useEditorThemes } from "@/features/editor/themes";
 import {
   signOut,
   usePreferences,
@@ -35,7 +32,7 @@ import {
   type Preferences,
 } from "./queries";
 import { formatDistanceToNow } from "date-fns";
-import { Clock, LogOut, Music, Palette, Settings, Trash2 } from "lucide-react";
+import { Clock, LogOut, Music, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 type BooleanPreference = {
@@ -68,7 +65,6 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
   const { user } = useSession();
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const editorThemes = useEditorThemes();
   const openDocument = useOpenDocument();
   const doc = useDocument();
   const isMobile = useIsMobile();
@@ -92,12 +88,12 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger
-          render={<Button variant="ghost" size="icon-sm" className="rounded-full" />}
+          render={<Button variant="ghost" size="icon" className="size-6 rounded-full" />}
           aria-label="User menu"
         >
-          <Avatar className="size-6">
+          <Avatar className="size-5">
             <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback>{user?.initial}</AvatarFallback>
+            <AvatarFallback className="text-xs">{user?.initial}</AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent side={side} align={side === "top" ? "start" : "end"} className="w-56">
@@ -140,25 +136,6 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
 
           {GENERAL_SETTINGS.map(settingItem)}
           <DropdownMenuSeparator />
-
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Palette />
-              Editor theme
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup
-                value={preferences.editorTheme}
-                onValueChange={(editorTheme) => updatePreferences({ editorTheme })}
-              >
-                {Object.keys(editorThemes).map((themeName) => (
-                  <DropdownMenuRadioItem key={themeName} value={themeName}>
-                    {themeName}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
 
           {/* The item is covered by a color input, so that clicking it opens the color picker */}
           <DropdownMenuItem
