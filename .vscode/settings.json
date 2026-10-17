@@ -1,9 +1,0 @@
-{
-  "editor.formatOnPaste": true,
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "oxc.oxc-vscode",
-  "editor.codeActionsOnSave": {
-    "source.removeUnusedImports": "always",
-    "source.organizeImports": "always"
-  }
-}

@@ -1,0 +1,62 @@
+import { useAddAndOpenFile, useCreateAndOpenGist } from "@/features/gists/actions";
+import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
+import type { ResearchTask } from "@/features/session/queries";
+import { Button } from "@/shared/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/shared/ui/dialog";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2, Save, Trash } from "lucide-react";
+
+interface ResearchResultsDialogProps {
+  task: ResearchTask;
+  onClose: () => void;
+  /** Deletes the task, which is also how saved results are cleared. */
+  onDelete: () => void;
+}
+
+/** Displays the results of a research task, which can be saved to a gist (or deleted). */
+export default function ResearchResultsDialog({
+  task,
+  onClose,
+  onDelete,
+}: ResearchResultsDialogProps) {
+  const createGist = useCreateAndOpenGist();
+  const addFile = useAddAndOpenFile();
+
+  // Results are saved to the gist that the research was started from (or a new gist)
+  const { mutate: save, isPending: isSaving } = useMutation({
+    mutationFn: () =>
+      task.gistId
+        ? addFile(task.gistId, task.filename!, task.content)
+        : createGist({ description: task.title, content: task.content }),
+    onSuccess: onDelete,
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl h-[80vh]">
+        <DialogHeader>
+          <p className="text-gray-500 italic text-left">{task.topic}</p>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto py-4">
+          <MarkdownPreview isReadOnly>{task.content!}</MarkdownPreview>
+        </div>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button onClick={() => save()} className="gap-2" disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Save
+              </>
+            )}
+          </Button>
+          <Button variant="destructive" onClick={onDelete} className="gap-2">
+            <Trash className="h-4 w-4" />
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,5 +1,5 @@
 node_modules
-worktrees
 dist
+worktrees
 .DS_Store
-.env
+.env.local

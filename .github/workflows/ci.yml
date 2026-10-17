@@ -2,23 +2,21 @@ name: CI
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: [main]
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      # `bun lint` and `bun fmt` currently ship in canary builds only
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: "npm"
+          bun-version: canary
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
+      - run: bun install --frozen-lockfile
+      - run: bun check
+      - run: bun lint
+      - run: bun fmt --check
+      - run: bun run build

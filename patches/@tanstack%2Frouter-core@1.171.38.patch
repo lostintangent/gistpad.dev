@@ -1,0 +1,16 @@
+diff --git a/dist/esm/load-server.js b/dist/esm/load-server.js
+index c447cb77ba22c8cda68a8491051f702d28195149..571e12704b8fb1d5a2d7600dde5267f038d5aac4 100644
+--- a/dist/esm/load-server.js
++++ b/dist/esm/load-server.js
+@@ -1,8 +1,10 @@
+ import { isNotFound } from "./not-found.js";
+ import { rootRouteId } from "./root.js";
+ import { isRedirect, redirect } from "./redirect.js";
+-import { loadRouteChunk } from "./load-client.js";
++// Evaluate router.js before load-client.js (which it has a circular import with), since Bun's dev
++// server doesn't support circular imports that access each other's exports while evaluating.
+ import { getLocationChangeInfo, lifecycleEnd, runRouteLifecycle } from "./router.js";
++import { loadRouteChunk } from "./load-client.js";
+ import { waitForReason } from "./await-signal.js";
+ //#region src/load-server.ts
+ const SUCCESS = 0;
