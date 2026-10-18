@@ -1,4 +1,5 @@
 import z from "zod";
+import { aiSettingsStore } from "../../settings";
 import { createOpenAIClient } from "../openai";
 import { runStreamingAgent, type QaAgentOptions, type QaProgress } from "./base";
 
@@ -60,7 +61,7 @@ export async function reviewContent(options: QaAgentOptions<ReviewResult>) {
     try {
       const stream = createOpenAIClient().responses.stream(
         {
-          model: "gpt-4o",
+          model: aiSettingsStore.state.models.edit,
           instructions:
             "Generate a concise title that summarizes the objective, request, and context in the user's message. Respond with nothing but the title, and prepend it with an emoji.",
           input: options.prompt,

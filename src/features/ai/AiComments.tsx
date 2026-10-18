@@ -186,7 +186,7 @@ function ReviewCommentView({
   );
 }
 
-/** The comments from an AI review of the document, which can be applied (as AI edits) or resolved. */
+/** The comments from an AI review of the file, which can be applied (as AI edits) or resolved. */
 export default function AiComments({ review }: { review: AiReview }) {
   const ai = useAiCommands();
   const isAiInProgress = useIsAiInProgress();

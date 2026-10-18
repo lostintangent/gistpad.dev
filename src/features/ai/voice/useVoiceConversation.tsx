@@ -1,5 +1,5 @@
 import introUrl from "@/assets/intro.mp3";
-import { useDocumentContent, useSaveDocument, type GistDocument } from "@/features/editor/document";
+import { useFileContent, useSaveFile, type ActiveFile } from "@/features/files/file";
 import { useEditorMode } from "@/features/editor/mode";
 import { useAddAndOpenFile, useCreateAndOpenGist } from "@/features/gists/actions";
 import { getFileDisplayName, getGistDescription } from "@/shared/github";
@@ -70,14 +70,14 @@ async function openConnection() {
   }
 }
 
-/** A voice conversation about the open document, where the assistant can also use tools to edit it. */
-export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
-  const content = useDocumentContent(doc);
+/** A voice conversation about the active file, where the assistant can also use tools to edit it. */
+export function useVoiceConversation(file: ActiveFile, ai: AiCommands) {
+  const content = useFileContent(file);
   const preferences = usePreferences();
   const [, setEditorMode] = useEditorMode();
   const addFile = useAddAndOpenFile();
   const createGist = useCreateAndOpenGist();
-  const save = useSaveDocument(doc);
+  const save = useSaveFile(file);
 
   const session = useMutation({
     mutationFn: openConnection,
@@ -89,8 +89,8 @@ export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
   const [whoIsSpeaking, setWhoIsSpeaking] = useState<"user" | "assistant" | null>(null);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
 
-  // The document that the assistant was last told about (so it can be told when it changes).
-  const announcedDocumentRef = useRef<string | null>(null);
+  // The file that the assistant was last told about (so it can be told when it changes).
+  const announcedFileRef = useRef<string | null>(null);
 
   const end = () => {
     session.reset();
@@ -105,11 +105,11 @@ export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
   };
 
   const getToolContext = (): VoiceToolContext => ({
-    doc,
+    file,
     runCommand: async (command, mode) => {
       if (!(await ai.run(command, mode))) throw new Error(`The ${mode} command didn't complete.`);
     },
-    addFile: (filename, content) => addFile(doc.gistId!, filename, content),
+    addFile: (filename, content) => addFile(file.gistId!, filename, content),
     createGist: (description, content) => createGist({ description, content }),
     save,
     setEditorMode,
@@ -117,7 +117,7 @@ export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
     endConversation: end,
   });
 
-  /** Configures the assistant (based on the document's settings), and shares the document with it. */
+  /** Configures the assistant (based on the file's settings), and shares the file with it. */
   const startConversation = useEffectEvent((channel: RTCDataChannel) => {
     const { frontMatter, content: body } = parseFrontMatter(content);
     const talk = { ...parseGlobalFrontMatter(preferences).talk, ...frontMatter?.talk };
@@ -136,20 +136,20 @@ export function useVoiceConversation(doc: GistDocument, ai: AiCommands) {
       session: {
         instructions,
         voice: talk.voice || DEFAULT_VOICE,
-        tools: getToolDefinitions({ canEdit: !doc.isReadOnly }),
+        tools: getToolDefinitions({ canEdit: !file.isReadOnly }),
       },
     });
 
-    const files = Object.keys(doc.gist?.files ?? {})
+    const files = Object.keys(file.gist?.files ?? {})
       .map(
         (filename) =>
-          `* ${getFileDisplayName(filename)}${filename === doc.filename ? " (current document)" : ""}`,
+          `* ${getFileDisplayName(filename)}${filename === file.filename ? " (current document)" : ""}`,
       )
       .join("\n");
 
     send(
       channel,
-      userMessage(`Here's the contents of the file I'm working on, in a gist that's titled "${doc.gist ? getGistDescription(doc.gist) : ""}". If you were given an objective, then make sure to follow that precisely. Otherwise, greet me with a very quick intro that you're ready to talk about this document, and then wait for me to ask questions.
+      userMessage(`Here's the contents of the file I'm working on, in a gist that's titled "${file.gist ? getGistDescription(file.gist) : ""}". If you were given an objective, then make sure to follow that precisely. Otherwise, greet me with a very quick intro that you're ready to talk about this document, and then wait for me to ask questions.
 <document_contents>
 ${body}
 </document_contents>
@@ -161,7 +161,7 @@ ${files}
 </file_list>`),
     );
 
-    announcedDocumentRef.current = doc.documentKey;
+    announcedFileRef.current = file.key;
     setTimeout(() => send(channel, { type: "response.create" }), 1000);
   });
 
@@ -234,19 +234,19 @@ ${files}
       channel.removeEventListener("message", onMessage);
       channel.close();
       connection.close();
-      announcedDocumentRef.current = null;
+      announcedFileRef.current = null;
     };
   }, [connection]);
 
-  // Let the assistant know when the user opens a different document.
-  const announceDocument = useEffectEvent((channel: RTCDataChannel) => {
-    const previous = announcedDocumentRef.current;
-    if (previous === null || previous === doc.documentKey || !doc.gist) return;
+  // Let the assistant know when the user opens a different file.
+  const announceFile = useEffectEvent((channel: RTCDataChannel) => {
+    const previous = announcedFileRef.current;
+    if (previous === null || previous === file.key || !file.gist) return;
 
-    announcedDocumentRef.current = doc.documentKey;
+    announcedFileRef.current = file.key;
     send(
       channel,
-      userMessage(`I've switched to a different document called "${doc.filename}" in a gist titled "${getGistDescription(doc.gist)}". Here are its contents:
+      userMessage(`I've switched to a different document called "${file.filename}" in a gist titled "${getGistDescription(file.gist)}". Here are its contents:
 
 \`\`\`markdown
 ${content}
@@ -255,8 +255,8 @@ ${content}
   });
 
   useEffect(() => {
-    if (connection && !doc.isLoading) announceDocument(connection.channel);
-  }, [connection, doc.documentKey, doc.isLoading]);
+    if (connection && !file.isLoading) announceFile(connection.channel);
+  }, [connection, file.key, file.isLoading]);
 
   return {
     isActive: !!connection,

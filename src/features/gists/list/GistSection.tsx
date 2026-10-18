@@ -1,5 +1,5 @@
 import type { Gist } from "@/shared/github";
-import { useDocument } from "@/features/editor/document";
+import { useActiveFile } from "@/features/files/file";
 import { Archive, Star } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { GistItem } from "./GistItem";
@@ -22,7 +22,7 @@ export function GistSection({
   totalCount: number;
   isFiltered: boolean;
 }) {
-  const { gistId: openGistId } = useDocument();
+  const { gistId: openGistId } = useActiveFile();
 
   return (
     <CollapsibleSection

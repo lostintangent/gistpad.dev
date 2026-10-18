@@ -1,6 +1,6 @@
 import type { AdditionalReference } from "./agents/openai";
 import type { ReviewComment } from "./agents/qa/review";
-import { useDocument, useDocumentContent, useSaveDocument } from "@/features/editor/document";
+import { useActiveFile, useFileContent, useSaveFile } from "@/features/files/file";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { getGistDescription, isEmptyContent } from "@/shared/github";
 import { withFrontMatter } from "@/shared/frontMatter";
@@ -8,7 +8,8 @@ import { parseFrontMatter } from "./frontMatter";
 import { playAiChime } from "./chime";
 import { usePreferences, useUpdatePreferences } from "@/features/account/queries";
 import { aiStore, clearReview, updateAiResult, updateAiState } from "./store";
-import { editorViewAtom, readDraft, updateDraft } from "@/features/editor/store";
+import { readDraft, updateDraft } from "@/features/files/draft";
+import { editorViewAtom } from "@/features/editor/store";
 import { closeComments, openComments } from "@/features/comments/store";
 import { toast } from "sonner";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
@@ -20,22 +21,22 @@ import {
 } from "./commands";
 
 /**
- * Runs AI commands (ask, edit, review, research) against the open document,
+ * Runs AI commands (ask, edit, review, research) against the active file,
  * and tracks their progress in the AI store.
  */
 export function useAiCommands() {
-  const doc = useDocument();
-  const content = useDocumentContent(doc);
+  const file = useActiveFile();
+  const content = useFileContent(file);
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const save = useSaveDocument(doc);
+  const save = useSaveFile(file);
   const isMobile = useIsMobile();
 
-  const { comments } = useCommentThreads(doc);
+  const { comments } = useCommentThreads(file);
 
-  const description = doc.gist ? getGistDescription(doc.gist) : undefined;
+  const description = file.gist ? getGistDescription(file.gist) : undefined;
 
-  /** The custom instructions for a mode (from the document's frontmatter, and the user's global settings). */
+  /** The custom instructions for a mode (from the file's frontmatter, and the user's global settings). */
   const getInstructions = (mode: AiMode) =>
     getModeSettings(
       mode,
@@ -60,7 +61,7 @@ export function useAiCommands() {
       targetContent: hasSelection ? selectedText : body,
       replace: (updated: string) => {
         // The editor hides frontmatter (unless the user has opted to show it), so
-        // when the entire document is replaced, only replace the visible content.
+        // when the entire file is replaced, only replace the visible content.
         if (!hasSelection && preferences.showFrontmatter) {
           updated = withFrontMatter(updated, frontMatterYaml);
         }
@@ -68,7 +69,7 @@ export function useAiCommands() {
         if (view) {
           view.dispatch({ changes: { ...range, insert: updated }, userEvent: "ai" });
         } else {
-          updateDraft(doc, { content: withFrontMatter(updated, frontMatterYaml) });
+          updateDraft(file, { content: withFrontMatter(updated, frontMatterYaml) });
         }
       },
     };
@@ -97,13 +98,13 @@ export function useAiCommands() {
   }
 
   async function edit(prompt: string, references: AdditionalReference[], signal: AbortSignal) {
-    const { documentKey } = doc;
+    const fileKey = file.key;
     const previous = aiStore.state.edit;
 
     // Save any manual edits first, so that the diff only includes the AI's edits. (Except for
-    // other people's gists, since saving them forks the gist, which opens a different document.)
-    const draft = readDraft(doc);
-    if (!doc.isReadOnly && draft && !draft.hasPendingAiEdit) {
+    // other people's gists, since saving them forks the gist, which opens a different file.)
+    const draft = readDraft(file);
+    if (!file.isReadOnly && draft && !draft.hasPendingAiEdit) {
       await save();
     }
 
@@ -112,9 +113,8 @@ export function useAiCommands() {
     const originalContent = isEmpty ? "" : target.targetContent;
     let editedContent = originalContent;
 
-    const previousResponseId =
-      previous?.documentKey === documentKey ? previous.responseId : undefined;
-    updateAiState({ edit: { documentKey, responseId: previousResponseId } });
+    const previousResponseId = previous?.fileKey === fileKey ? previous.responseId : undefined;
+    updateAiState({ edit: { fileKey, responseId: previousResponseId } });
 
     // Revert any changes that were made before the edit was cancelled
     signal.addEventListener("abort", () => {
@@ -136,8 +136,8 @@ export function useAiCommands() {
 
         target.replace(edited);
 
-        // Edits to an empty document are simply its new content, so there's nothing to review.
-        if (!isEmpty) updateDraft(doc, { hasPendingAiEdit: true });
+        // Edits to an empty file are simply its new content, so there's nothing to review.
+        if (!isEmpty) updateDraft(file, { hasPendingAiEdit: true });
       },
     });
 
@@ -148,13 +148,12 @@ export function useAiCommands() {
   async function review(prompt: string, references: AdditionalReference[], signal: AbortSignal) {
     const { hasSelection, targetContent } = getCommandTarget();
     const previous = aiStore.state.review;
-    const previousResponseId =
-      previous?.documentKey === doc.documentKey ? previous.responseId : undefined;
+    const previousResponseId = previous?.fileKey === file.key ? previous.responseId : undefined;
 
     openComments({ tab: "ai" });
     updateAiState({
       review: {
-        documentKey: doc.documentKey,
+        fileKey: file.key,
         title: null,
         comments: [],
         followUp: null,
@@ -198,7 +197,7 @@ export function useAiCommands() {
     updatePreferences(({ researchTasks }) => ({
       researchTasks: [
         ...researchTasks,
-        { id, gistId: doc.gistId, topic, startedTime: new Date().toISOString() },
+        { id, gistId: file.gistId, topic, startedTime: new Date().toISOString() },
       ],
     }));
   }
@@ -220,14 +219,14 @@ export function useAiCommands() {
       if (mode === "auto") {
         // When the user is iterating on an edit (or an answer), then follow-up
         // commands are likely to be the same kind of command.
-        const suspectedMode = readDraft(doc)?.hasPendingAiEdit
+        const suspectedMode = readDraft(file)?.hasPendingAiEdit
           ? "edit"
-          : aiStore.state.answer || !doc.gistId
+          : aiStore.state.answer || !file.gistId
             ? "ask"
             : undefined;
 
         const { classifyMode } = await import("./agents");
-        mode = await classifyMode(command, !!doc.gistId, suspectedMode);
+        mode = await classifyMode(command, !!file.gistId, suspectedMode);
         updateAiState({ running: { mode, cancel } });
       }
 
@@ -236,7 +235,7 @@ export function useAiCommands() {
         return true;
       }
 
-      const { prompt, references } = await resolveReferences(command, doc.gistId);
+      const { prompt, references } = await resolveReferences(command, file.gistId);
       if (mode === "ask") await ask(prompt, references, signal);
       else if (mode === "edit") await edit(prompt, references, signal);
       else await review(prompt, references, signal);
@@ -268,7 +267,7 @@ export function useAiCommands() {
         "review",
       ),
 
-    /** Applies a review comment, by asking the AI to edit the document accordingly. */
+    /** Applies a review comment, by asking the AI to edit the file accordingly. */
     applyReviewComment: async (comment: ReviewComment, input?: string) => {
       updateAiResult("review", { applyingCommentId: comment.id });
 

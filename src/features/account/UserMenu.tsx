@@ -23,7 +23,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { useDocument, openDocument } from "@/features/editor/document";
+import { useActiveFile, openFile } from "@/features/files/file";
+import { closeMobilePanels } from "@/features/editor/layout";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import {
   signOut,
@@ -65,7 +66,7 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
   const { user } = useSession();
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const doc = useDocument();
+  const file = useActiveFile();
   const isMobile = useIsMobile();
 
   const [isSpotifyDialogOpen, setIsSpotifyDialogOpen] = useState(false);
@@ -104,19 +105,23 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
                   Recently viewed
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
-                  {recentlyViewedGistFiles.map((file) => {
-                    const isOpen = file.id === doc.gistId && file.filename === doc.filename;
+                  {recentlyViewedGistFiles.map((recent) => {
+                    const isOpen = recent.id === file.gistId && recent.filename === file.filename;
 
                     return (
                       <DropdownMenuItem
-                        key={`${file.id}-${file.filename}`}
-                        onClick={() => openDocument(file.id, file.filename)}
+                        key={`${recent.id}-${recent.filename}`}
+                        onClick={() => {
+                          // (Even if it's already open, e.g. to return to it from the mobile gist list)
+                          closeMobilePanels();
+                          openFile(recent.id, recent.filename);
+                        }}
                         className={isOpen ? "bg-primary text-primary-foreground" : ""}
                       >
                         <div className="flex flex-col max-w-[200px]">
-                          <span className="font-medium">{file.description}</span>
+                          <span className="font-medium">{recent.description}</span>
                           <span className="text-xs text-muted-foreground">
-                            {timeAgo(file.viewedDate)}
+                            {timeAgo(recent.viewedDate)}
                           </span>
                         </div>
                       </DropdownMenuItem>

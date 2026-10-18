@@ -1,7 +1,7 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { splitFrontMatter, withFrontMatter } from "@/shared/frontMatter";
 
-/** A document's (YAML) frontmatter, which configures its AI features (e.g. custom commands). */
+/** A file's (YAML) frontmatter, which configures its AI features (e.g. custom commands). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FrontMatter = Record<string, any>;
 

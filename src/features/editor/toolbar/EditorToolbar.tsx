@@ -5,7 +5,7 @@ import { deletesGist, useAddAndOpenFile } from "@/features/gists/actions";
 import { deleteGistDialog } from "@/features/gists/dialogs/DeleteGistDialog";
 import {
   useIsStarred,
-  useRenameGistFile,
+  useRenameFile,
   useToggleStarred,
   useUpdateGistDescription,
 } from "@/features/gists/queries";
@@ -74,26 +74,26 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import AddFileDialog from "../dialogs/AddFileDialog";
 import {
-  readDocumentContent,
+  readFileContent,
   useIsSaving,
-  openDocument,
-  useSaveDocument,
-  type GistDocument,
-} from "../document";
+  openFile,
+  useSaveFile,
+  type ActiveFile,
+} from "@/features/files/file";
 import { useIsViewingRevision } from "../history/revision";
 import { RevisionItems } from "../history/RevisionItems";
 import { useEditorMode, type EditorMode } from "../mode";
 import { mobilePanelAtom, zenModeAtom } from "../layout";
-import { useDraft } from "../store";
+import { useDraft } from "@/features/files/draft";
 
 /** The state that both the desktop and mobile toolbars reflect. */
-function useToolbar(doc: GistDocument) {
+function useToolbar(file: ActiveFile) {
   const [mode, setMode] = useEditorMode();
   const isCommentsOpen = useSelector(commentsPanelOpenAtom);
   const isViewingRevision = useIsViewingRevision();
-  const hasChanges = !!useDraft(doc);
-  const { comments, isEnabled: isCommentsEnabled } = useCommentThreads(doc);
-  const aiReview = useAiReview(doc.documentKey);
+  const hasChanges = !!useDraft(file);
+  const { comments, isEnabled: isCommentsEnabled } = useCommentThreads(file);
+  const aiReview = useAiReview(file.key);
 
   return {
     mode,
@@ -101,17 +101,17 @@ function useToolbar(doc: GistDocument) {
     isCommentsOpen,
     isViewingRevision,
     hasChanges,
-    isDisabled: !doc.gistId || doc.isLoading,
-    canViewHistory: !doc.isReadOnly && !!doc.gist && !isDailyNote(doc.gist),
+    isDisabled: !file.gistId || file.isLoading,
+    canViewHistory: !file.isReadOnly && !!file.gist && !isDailyNote(file.gist),
     commentCount: comments.length + (aiReview?.comments.length ?? 0),
     isCommentsEnabled,
     requestDelete: () =>
-      doc.gist && deleteGistDialog.openWithPayload({ gist: doc.gist, filename: doc.filename }),
+      file.gist && deleteGistDialog.openWithPayload({ gist: file.gist, filename: file.filename }),
   };
 }
 
-/** The menu items for sharing the document (or viewing it elsewhere). */
-function ShareItems({ doc, disabled = false }: { doc: GistDocument; disabled?: boolean }) {
+/** The menu items for sharing the file (or viewing it elsewhere). */
+function ShareItems({ file, disabled = false }: { file: ActiveFile; disabled?: boolean }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [, setMode] = useEditorMode();
@@ -123,13 +123,13 @@ function ShareItems({ doc, disabled = false }: { doc: GistDocument; disabled?: b
 
   const copyHtml = async () => {
     const { copyAsHtml } = await import("@/features/markdown/toHtml");
-    await copyAsHtml(readDocumentContent(doc));
+    await copyAsHtml(readFileContent(file));
     toast.success("HTML copied to clipboard!");
   };
 
   const openInGitHub = () => {
-    const fileAnchor = doc.isReadme ? "" : `#file-${doc.filename.replace(/\./g, "-")}`;
-    window.open(`https://gist.github.com/${doc.gistId}${fileAnchor}`, "_blank");
+    const fileAnchor = file.isReadme ? "" : `#file-${file.filename.replace(/\./g, "-")}`;
+    window.open(`https://gist.github.com/${file.gistId}${fileAnchor}`, "_blank");
   };
 
   return (
@@ -158,7 +158,7 @@ function ShareItems({ doc, disabled = false }: { doc: GistDocument; disabled?: b
         onClick={() =>
           navigate({
             to: "/share/$gistId/{-$filePath}",
-            params: { gistId: doc.gistId!, filePath: doc.filename },
+            params: { gistId: file.gistId!, filePath: file.filename },
           })
         }
       >
@@ -173,12 +173,12 @@ function ShareItems({ doc, disabled = false }: { doc: GistDocument; disabled?: b
 }
 
 /** Selects one of the gist's files (grouping date-based files by year and month). */
-function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
+function FileMenu({ file, title }: { file: ActiveFile; title: ReactNode }) {
   const isMobile = useIsMobile();
   const [isAddingFile, setIsAddingFile] = useState(false);
   const addFile = useAddAndOpenFile();
 
-  const filenames = getMarkdownFiles(doc.gist);
+  const filenames = getMarkdownFiles(file.gist);
   const dateGroups = groupFilesByDate(filenames);
   const dateFormat = detectDateFormat(filenames);
 
@@ -189,8 +189,8 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
   ) => (
     <DropdownMenuItem
       key={filename}
-      onClick={() => openDocument(doc.gistId, filename)}
-      className={filename === doc.filename ? "bg-primary text-primary-foreground" : ""}
+      onClick={() => openFile(file.gistId, filename)}
+      className={filename === file.filename ? "bg-primary text-primary-foreground" : ""}
     >
       {icon}
       {label}
@@ -199,7 +199,7 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
 
   // Highlights the submenus that contain the open file (while they're closed)
   const containsOpenFile = (files: string[]) =>
-    files.includes(doc.filename)
+    files.includes(file.filename)
       ? "not-data-popup-open:bg-primary not-data-popup-open:text-primary-foreground"
       : "";
 
@@ -249,7 +249,7 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
               </DropdownMenuSub>
             ))}
           {(dateGroups?.otherFiles.sort() ?? filenames).map((filename) => fileItem(filename))}
-          {!doc.isReadOnly && (
+          {!file.isReadOnly && (
             <>
               {filenames.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem onClick={() => setIsAddingFile(true)}>
@@ -265,7 +265,7 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
         <AddFileDialog
           defaultFilename={dateFormat ? generateDateFilename(dateFormat) : ""}
           onClose={() => setIsAddingFile(false)}
-          onSubmit={(filename) => addFile(doc.gistId!, filename)}
+          onSubmit={(filename) => addFile(file.gistId!, filename)}
         />
       )}
     </>
@@ -274,35 +274,35 @@ function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
 
 /** Edits the gist's description (for its README), or the name of the open file. */
 function TitleEditor({
-  doc,
+  file,
   initialValue,
   onDone,
 }: {
-  doc: GistDocument;
+  file: ActiveFile;
   initialValue: string;
   onDone: () => void;
 }) {
   const [value, setValue] = useState(initialValue);
   const { mutate: updateDescription } = useUpdateGistDescription();
-  const { mutateAsync: renameFile } = useRenameGistFile();
-  const save = useSaveDocument(doc);
+  const { mutateAsync: renameFile } = useRenameFile();
+  const save = useSaveFile(file);
 
   const submit = async () => {
     onDone();
-    if (doc.isReadme) return updateDescription({ gist: doc.gist!, description: value });
+    if (file.isReadme) return updateDescription({ gist: file.gist!, description: value });
 
     const newFilename = toMarkdownFilename(value);
-    if (!value || newFilename === doc.filename) return;
+    if (!value || newFilename === file.filename) return;
 
     // Save any changes first, so they aren't saved to the old filename after it's renamed.
     await save();
-    await renameFile({ gistId: doc.gistId!, filename: doc.filename, newFilename });
-    await openDocument(doc.gistId, newFilename);
+    await renameFile({ gistId: file.gistId!, filename: file.filename, newFilename });
+    await openFile(file.gistId, newFilename);
   };
 
   return (
-    <InputGroup className={`h-8 ${doc.isReadme ? "max-w-md" : "max-w-[260px]"}`}>
-      {doc.isReadme ? (
+    <InputGroup className={`h-8 ${file.isReadme ? "max-w-md" : "max-w-[260px]"}`}>
+      {file.isReadme ? (
         <EmojiInput
           value={value}
           onValueChange={setValue}
@@ -333,9 +333,9 @@ function TitleEditor({
   );
 }
 
-function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void }) {
-  const toolbar = useToolbar(doc);
-  const isSaving = useIsSaving(doc);
+function DesktopActions({ file, onSave }: { file: ActiveFile; onSave: () => void }) {
+  const toolbar = useToolbar(file);
+  const isSaving = useIsSaving(file);
   const { mode, setMode, isDisabled, isViewingRevision } = toolbar;
 
   return (
@@ -389,7 +389,7 @@ function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void
             <History />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <RevisionItems doc={doc} />
+            <RevisionItems file={file} />
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -403,7 +403,7 @@ function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void
           <ChevronDown className="h-3 w-3" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <ShareItems doc={doc} />
+          <ShareItems file={file} />
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -412,7 +412,7 @@ function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void
         Save
       </Button>
 
-      {!doc.isReadOnly && (
+      {!file.isReadOnly && (
         <Button variant="destructive" onClick={toolbar.requestDelete} disabled={isDisabled}>
           <Trash2 />
           Delete
@@ -423,15 +423,15 @@ function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void
 }
 
 function MobileActions({
-  doc,
+  file,
   onSave,
   onEditTitle,
 }: {
-  doc: GistDocument;
+  file: ActiveFile;
   onSave: () => void;
   onEditTitle: () => void;
 }) {
-  const toolbar = useToolbar(doc);
+  const toolbar = useToolbar(file);
   const { mode, setMode, isCommentsOpen, isDisabled, isViewingRevision } = toolbar;
 
   return (
@@ -478,7 +478,7 @@ function MobileActions({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {mode !== "preview" && !isCommentsOpen && (
-            <DropdownMenuItem onClick={onEditTitle} disabled={doc.isReadOnly}>
+            <DropdownMenuItem onClick={onEditTitle} disabled={file.isReadOnly}>
               <Pencil /> Edit description
             </DropdownMenuItem>
           )}
@@ -488,7 +488,7 @@ function MobileActions({
                 <History /> History
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                <RevisionItems doc={doc} />
+                <RevisionItems file={file} />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
@@ -496,18 +496,18 @@ function MobileActions({
             <Save /> Save
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <ShareItems doc={doc} disabled={isViewingRevision} />
+          <ShareItems file={file} disabled={isViewingRevision} />
           {/* (On mobile, the sidebar's footer is slid away, so the dashboard can be opened here too) */}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => mobilePanelAtom.set("dashboard")}>
             <Newspaper /> Dashboard
           </DropdownMenuItem>
-          {!doc.isReadOnly && (
+          {!file.isReadOnly && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={toolbar.requestDelete}>
                 <Trash2 />
-                {doc.gist && deletesGist(doc.gist, doc.filename) ? "Delete gist" : "Delete file"}
+                {file.gist && deletesGist(file.gist, file.filename) ? "Delete gist" : "Delete file"}
               </DropdownMenuItem>
             </>
           )}
@@ -517,24 +517,24 @@ function MobileActions({
   );
 }
 
-export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSave: () => void }) {
+export default function EditorToolbar({ file, onSave }: { file: ActiveFile; onSave: () => void }) {
   const isMobile = useIsMobile();
   const isAiInProgress = useIsAiInProgress();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const { mutate: toggleStarred } = useToggleStarred();
 
-  const gist = doc.gist;
-  const isStarred = useIsStarred(doc.gistId);
+  const gist = file.gist;
+  const isStarred = useIsStarred(file.gistId);
 
   // The README's title is the gist's description, and otherwise, it's the file's name
-  const name = doc.isReadme
+  const name = file.isReadme
     ? gist
       ? getGistDescription(gist)
       : ""
-    : getFileDisplayName(doc.filename);
+    : getFileDisplayName(file.filename);
   const title = (
     <h2 className="text-lg font-semibold flex gap-2 items-center min-w-0">
-      {!doc.isReadme && gist && isDateBasedGist(gist) && <Calendar className="h-4 w-4 shrink-0" />}
+      {!file.isReadme && gist && isDateBasedGist(gist) && <Calendar className="h-4 w-4 shrink-0" />}
       <ScrollableText>
         <span className={isAiInProgress ? "ai-gradient-text" : ""}>
           {name || (
@@ -563,17 +563,17 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
         )}
         {gist &&
           (isEditingTitle ? (
-            <TitleEditor doc={doc} initialValue={name} onDone={() => setIsEditingTitle(false)} />
+            <TitleEditor file={file} initialValue={name} onDone={() => setIsEditingTitle(false)} />
           ) : (
             <>
-              {(!doc.isReadOnly || Object.keys(gist.files).length > 1) && !isDailyNote(gist) ? (
-                <FileMenu doc={doc} title={title} />
+              {(!file.isReadOnly || Object.keys(gist.files).length > 1) && !isDailyNote(gist) ? (
+                <FileMenu file={file} title={title} />
               ) : (
                 <div className="pl-2 min-w-0">{title}</div>
               )}
-              {!doc.isLoading &&
+              {!file.isLoading &&
                 !isMobile &&
-                (doc.isReadOnly ? (
+                (file.isReadOnly ? (
                   <Button
                     variant="ghost"
                     size="icon-xs"
@@ -588,7 +588,7 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
                     size="icon-xs"
                     className="text-muted-foreground"
                     onClick={() => setIsEditingTitle(true)}
-                    title={doc.isReadme ? "Edit description" : "Rename file"}
+                    title={file.isReadme ? "Edit description" : "Rename file"}
                   >
                     <Pencil />
                   </Button>
@@ -600,10 +600,14 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
       <div className="flex gap-2 items-center shrink-0">
         {isMobile ? (
           !isEditingTitle && (
-            <MobileActions doc={doc} onSave={onSave} onEditTitle={() => setIsEditingTitle(true)} />
+            <MobileActions
+              file={file}
+              onSave={onSave}
+              onEditTitle={() => setIsEditingTitle(true)}
+            />
           )
         ) : (
-          <DesktopActions doc={doc} onSave={onSave} />
+          <DesktopActions file={file} onSave={onSave} />
         )}
       </div>
     </div>

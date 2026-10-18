@@ -18,10 +18,11 @@ import {
   setGistData,
 } from "@/features/gists/queries";
 import { loadSession, usePreferences, useSession } from "@/features/account/queries";
-import { openComments } from "@/features/comments/store";
-import { mobilePanelAtom } from "@/features/editor/layout";
+import { openComments, resetComments } from "@/features/comments/store";
+import { resetAiForFile } from "@/features/ai/store";
+import { closeMobilePanels, mobilePanelAtom } from "@/features/editor/layout";
 import { EDITOR_MODES, type EditorMode } from "@/features/editor/mode";
-import { resetDocumentState } from "@/features/editor/store";
+import { revisionAtom } from "@/features/editor/history/revision";
 import { useEffect } from "react";
 import {
   createHashHistory,
@@ -216,9 +217,15 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// Reset the transient state of the open document (e.g. its selected comment), whenever the
-// user opens a different one (whether from a link, the back button, etc.). But not while the
-// app is first loading, since its redirects can set that state (e.g. to reply to a comment).
+// Whenever the user opens a different file (whether from a link, the back button, etc.), reset its
+// transient state (e.g. its selected comment, or the revision being viewed), and close any mobile
+// panels that cover it. But not while the app is first loading, since its redirects can set that
+// state (e.g. to reply to a comment, or to show the gist list beside the most recent gist).
 router.subscribe("onBeforeNavigate", ({ fromLocation, pathChanged }) => {
-  if (fromLocation && pathChanged) resetDocumentState();
+  if (!fromLocation || !pathChanged) return;
+
+  resetComments();
+  resetAiForFile();
+  revisionAtom.set(null);
+  closeMobilePanels();
 });

@@ -11,16 +11,16 @@ export interface AiAnswer extends AskResult {
   responseId?: string;
 }
 
-/** The AI's edits to the open document (which are pending in its draft, until they're accepted). */
+/** The AI's edits to the active file (which are pending in its draft, until they're accepted). */
 interface AiEdit {
-  documentKey: string;
+  fileKey: string;
   /** Allows follow-up edits to refine the previous ones. */
   responseId?: string;
 }
 
-/** An AI review of the open document, which is displayed in the comments panel. */
+/** An AI review of the active file, which is displayed in the comments panel. */
 export interface AiReview extends ReviewResult {
-  documentKey: string;
+  fileKey: string;
   appliedCommentIds: number[];
   applyingCommentId: number | null;
   responseId?: string;
@@ -62,11 +62,11 @@ export function updateAiResult<Key extends "answer" | "edit" | "review">(
 }
 
 /**
- * Resets the AI state of the previously open document, by cancelling (and clearing) its edit
+ * Resets the AI state of the previously active file, by cancelling (and clearing) its edit
  * or review. But the answer to a question remains visible (since questions often span
- * documents), as a new conversation.
+ * files), as a new conversation.
  */
-export function resetAiForDocument() {
+export function resetAiForFile() {
   const { running } = aiStore.state;
   if (running?.mode === "edit" || running?.mode === "review") running.cancel();
 
@@ -89,10 +89,8 @@ export const useIsAiInProgress = () => useSelector(aiStore, ({ running }) => run
 /** The mode of the command that's running (if any). */
 export const useRunningMode = () => useSelector(aiStore, ({ running }) => running?.mode ?? null);
 
-export function useAiReview(documentKey: string) {
-  return useSelector(aiStore, ({ review }) =>
-    review?.documentKey === documentKey ? review : null,
-  );
+export function useAiReview(fileKey: string) {
+  return useSelector(aiStore, ({ review }) => (review?.fileKey === fileKey ? review : null));
 }
 
 /** Whether to show pending AI edits as a diff, as opposed to the final content. */

@@ -4,7 +4,7 @@
 export { analyzeStyle } from "./analyze";
 export { classifyMode } from "./classify";
 export { default as editContent } from "./edit/edit";
-export { cancelResponse, generateImage } from "./openai";
+export { cancelResponse, generateImage, listModels } from "./openai";
 export { default as askContent } from "./qa/ask";
 export { reviewContent } from "./qa/review";
 export { pollResearchTask, researchTopic } from "./research";

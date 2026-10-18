@@ -42,26 +42,39 @@ export function referencesAsContext(references?: AdditionalReference[]) {
   return `\n<additional_references>${refs.join("\n")}\n</additional_references>`;
 }
 
-export function createOpenAIClient() {
-  return new OpenAI({ apiKey: aiSettingsStore.state.apiKey, dangerouslyAllowBrowser: true });
+export function createOpenAIClient(apiKey = aiSettingsStore.state.apiKey) {
+  return new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 }
 
-/** The model (and its reasoning settings) that the user has chosen for a mode. */
+/**
+ * Whether a model can power the agents, which excludes models that are specialized for other tasks
+ * (e.g. audio, images, and coding), dated snapshots of models, and models that are being shut down.
+ */
+function isAgentModel({ id, shutdown_date }: OpenAI.Model) {
+  return (
+    /^(gpt-\d|o\d)/.test(id) &&
+    !/audio|realtime|transcribe|tts|image|search|codex|chat|instruct|cyber/.test(id) &&
+    !/-\d{4}(-\d{2}-\d{2})?$/.test(id) &&
+    !shutdown_date
+  );
+}
+
+/** The IDs of the models that an API key can use for the agents (newest first). */
+export async function listModels(apiKey: string, signal?: AbortSignal) {
+  const models: OpenAI.Model[] = [];
+  for await (const model of createOpenAIClient(apiKey).models.list({ signal })) {
+    if (isAgentModel(model)) models.push(model);
+  }
+
+  return models.sort((a, b) => b.created - a.created).map(({ id }) => id);
+}
+
+/** The model that the user has chosen for a mode (whose reasoning is summarized while it streams). */
 export function getModelProperties(mode: AiMode) {
-  const { models, showReasoningSummaries } = aiSettingsStore.state;
-  let model = models[mode];
-
-  const reasoning: OpenAI.Reasoning = {};
-  if ((model.startsWith("o") || model === "gpt-5") && showReasoningSummaries) {
-    reasoning.summary = "auto";
-  }
-
-  if (model.endsWith("-high")) {
-    model = model.slice(0, -5);
-    reasoning.effort = "high";
-  }
-
-  return Object.keys(reasoning).length > 0 ? { model, reasoning } : { model };
+  return {
+    model: aiSettingsStore.state.models[mode],
+    reasoning: { summary: "auto" as const },
+  };
 }
 
 export function userCommentsAsContext(comments?: GistComment[]) {

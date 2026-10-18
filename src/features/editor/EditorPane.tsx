@@ -9,7 +9,7 @@ import { emdash } from "./code-mirror/keybindings/emdash";
 import { selectionFormatting } from "./code-mirror/keybindings/selection-formatting";
 import { spellChecker } from "./code-mirror/linters/spell-checker";
 import { selectionComment } from "./code-mirror/widgets/selection-comment";
-import { useDocumentContent, openDocument, useSaveDocument, type GistDocument } from "./document";
+import { useActiveFile, useFileContent, openFile, useSaveFile } from "@/features/files/file";
 import type { Revision } from "./history/revision";
 import { useEditorMode } from "./mode";
 import { useEditorTheme } from "./themes";
@@ -20,14 +20,9 @@ import { usePreferences } from "@/features/account/queries";
 import { useIsAiEnabled } from "@/features/ai/settings";
 import { showPendingAiDiffsAtom } from "@/features/ai/store";
 import { openComments } from "@/features/comments/store";
-import {
-  editorStatusAtom,
-  editorViewAtom,
-  focusRequestAtom,
-  readDraft,
-  updateDraft,
-  useDraft,
-} from "./store";
+import { readDraft, updateDraft, useDraft } from "@/features/files/draft";
+import { focusRequestAtom } from "@/features/files/file";
+import { editorStatusAtom, editorViewAtom } from "./store";
 import { redo, undo } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { yamlFrontmatter } from "@codemirror/lang-yaml";
@@ -44,13 +39,13 @@ import { useCommentHighlights } from "@/features/comments/useCommentThreads";
 const UPLOADING_PLACEHOLDER = "_Uploading image..._";
 
 /** Inserts an image into the editor, after uploading it. */
-async function insertImage(view: EditorView, gistId: string, file: File, asHtml: boolean) {
+async function insertImage(view: EditorView, gistId: string, image: File, asHtml: boolean) {
   const { from } = view.state.selection.main;
   const placeholder = { from, to: from + UPLOADING_PLACEHOLDER.length };
   view.dispatch({ changes: { from, insert: UPLOADING_PLACEHOLDER } });
 
   try {
-    const url = await uploadImage(gistId, file);
+    const url = await uploadImage(gistId, image);
     const markup = asHtml ? `<img src="${url}" />` : `![Image](${url})`;
     view.dispatch({ changes: { ...placeholder, insert: markup } });
   } catch {
@@ -65,22 +60,21 @@ const getImageFile = (items: DataTransferItemList) =>
     ?.getAsFile();
 
 export function EditorPane({
-  doc,
   revision,
   previewRef,
 }: {
-  doc: GistDocument;
   /** The past revision that's being viewed (if any), which is shown read-only, with its changes. */
   revision: Revision | null;
   previewRef: RefObject<HTMLDivElement | null>;
 }) {
+  const file = useActiveFile();
   const preferences = usePreferences();
   const editorTheme = useEditorTheme();
   const isAiEnabled = useIsAiEnabled();
-  const draft = useDraft(doc);
-  const documentContent = useDocumentContent(doc);
-  const save = useSaveDocument(doc);
-  const highlights = useCommentHighlights(doc);
+  const draft = useDraft(file);
+  const documentContent = useFileContent(file);
+  const save = useSaveFile(file);
+  const highlights = useCommentHighlights(file);
   const showPendingAiDiffs = useSelector(showPendingAiDiffsAtom);
   const view = useSelector(editorViewAtom);
   const isSplitMode = useEditorMode()[0] === "split";
@@ -118,10 +112,10 @@ export function EditorPane({
     return () => view.scrollDOM.removeEventListener("scroll", syncScroll);
   }, [view, previewRef, isSplitMode]);
 
-  // Focus the editor when it's requested (e.g. for a new file), once the document's editor exists.
+  // Focus the editor when it's requested (e.g. for a new file), once the file's editor exists.
   const focusIfRequested = useEffectEvent(() => {
-    if (!view || !focusRequest || focusRequest.gistId !== doc.gistId) return;
-    if (focusRequest.filename && focusRequest.filename !== doc.filename) return;
+    if (!view || !focusRequest || focusRequest.gistId !== file.gistId) return;
+    if (focusRequest.filename && focusRequest.filename !== file.filename) return;
 
     focusRequestAtom.set(null);
     view.dispatch({ selection: { anchor: view.state.doc.length } });
@@ -144,7 +138,7 @@ export function EditorPane({
 
     // Once the user has accepted each of the AI's changes, then save them.
     const isAcceptingAiEdit =
-      readDraft(doc)?.hasPendingAiEdit &&
+      readDraft(file)?.hasPendingAiEdit &&
       update.transactions.some((tr) => tr.isUserEvent("accept"));
 
     if (isAcceptingAiEdit && !getChunks(update.state)?.chunks.length) queueMicrotask(save);
@@ -152,11 +146,11 @@ export function EditorPane({
 
   const openWikilink = (link: string) => {
     const filename = toMarkdownFilename(link);
-    if (doc.gist?.files[filename]) openDocument(doc.gistId, filename);
+    if (file.gist?.files[filename]) openFile(file.gistId, filename);
     else toast.error(`No file named "${link}" exists in this gist`);
   };
 
-  const otherFiles = getMarkdownFiles(doc.gist).filter((name) => name !== doc.filename);
+  const otherFiles = getMarkdownFiles(file.gist).filter((name) => name !== file.filename);
 
   const extensions = [
     yamlFrontmatter({ content: markdown() }),
@@ -175,7 +169,7 @@ export function EditorPane({
     preferences.isSpellcheckEnabled ? spellChecker : [],
     showDiff
       ? unifiedMergeView({
-          original: getVisibleContent(revision?.previousContent ?? doc.savedContent),
+          original: getVisibleContent(revision?.previousContent ?? file.savedContent),
           mergeControls: !isViewingRevision,
           collapseUnchanged: draft?.hasPendingAiEdit || isViewingRevision ? {} : undefined,
           allowInlineDiffs: true,
@@ -203,16 +197,16 @@ export function EditorPane({
         onDrop={(e) => {
           e.preventDefault();
           setDragOverlay(null);
-          const file = getImageFile(e.dataTransfer.items);
-          if (file && view && doc.gistId)
-            insertImage(view, doc.gistId, file, preferences.pasteImagesAsHtml);
+          const image = getImageFile(e.dataTransfer.items);
+          if (image && view && file.gistId)
+            insertImage(view, file.gistId, image, preferences.pasteImagesAsHtml);
         }}
         onPaste={(e) => {
-          const file = getImageFile(e.clipboardData.items);
-          if (!file || !view || !doc.gistId) return;
+          const image = getImageFile(e.clipboardData.items);
+          if (!image || !view || !file.gistId) return;
 
           e.preventDefault();
-          insertImage(view, doc.gistId, file, preferences.pasteImagesAsHtml);
+          insertImage(view, file.gistId, image, preferences.pasteImagesAsHtml);
         }}
       >
         {dragOverlay && (
@@ -231,7 +225,7 @@ export function EditorPane({
           </div>
         )}
         <CodeMirror
-          key={`${doc.documentKey}/${revision?.version}`}
+          key={`${file.key}/${revision?.version}`}
           value={preferences.showFrontmatter ? content : body}
           height="100%"
           className="h-full"
@@ -242,7 +236,7 @@ export function EditorPane({
           }}
           readOnly={isViewingRevision}
           extensions={extensions}
-          onChange={(value) => updateDraft(doc, { content: restoreFrontmatter(value) })}
+          onChange={(value) => updateDraft(file, { content: restoreFrontmatter(value) })}
           onUpdate={onUpdate}
           onCreateEditor={onCreateEditor}
         />

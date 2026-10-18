@@ -1,7 +1,7 @@
 import { VOICES } from "./commands";
 import type { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 
-// The AI settings that a document can configure (see `getModeSettings`)
+// The AI settings that a file can configure (see `getModeSettings`)
 const frontmatterProperties = [
   { label: "general", info: "Configure AI settings for all commands" },
   { label: "edit", info: "Configure AI edit commands and settings" },
@@ -23,7 +23,7 @@ const nestedProperties: Record<string, Completion[]> = {
   talk: [
     { label: "persona", info: "Define the AI's personality and behavior" },
     { label: "instructions", info: "Set the main goal(s) or task for the AI" },
-    { label: "voice", info: "Configure the AI voice to use for this document" },
+    { label: "voice", info: "Configure the AI voice to use for this file" },
   ],
 };
 

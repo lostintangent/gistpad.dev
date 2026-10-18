@@ -33,19 +33,19 @@ export interface CommentThread {
   replies: CommentThread[];
 }
 
-/** A thread whose top-level comment quotes the document (so it's highlighted in the editor/preview). */
+/** A thread whose top-level comment quotes the file (so it's highlighted in the editor/preview). */
 export interface QuotedCommentThread extends CommentThread {
   quote: string;
 }
 
-/** The threads whose quotes are highlighted in a document (and the selected comment, if any). */
+/** The threads whose quotes are highlighted in a file (and the selected comment, if any). */
 export interface CommentHighlights {
   threads: QuotedCommentThread[];
   selectedId?: number | null;
 }
 
 /**
- * Comments that quote the document (or reply to another comment) start with a blockquote line (e.g.
+ * Comments that quote the file (or reply to another comment) start with a blockquote line (e.g.
  * `> quoted text` or `> [comment:123]`). That line, and any blank lines after it, is the comment's
  * prefix, which is hidden when it's displayed or edited (i.e. only its text is).
  */
@@ -90,7 +90,7 @@ export function buildCommentThreads(comments: GistComment[]) {
 
 export const createReplyMarker = (parentCommentId: number) => `> [comment:${parentCommentId}]\n\n`;
 
-/** The threads whose top-level comment quotes the document. */
+/** The threads whose top-level comment quotes the file. */
 export function getQuotedCommentThreads(threads: CommentThread[]): QuotedCommentThread[] {
   return threads.flatMap((thread) => {
     const { quote } = parseCommentBody(thread.comment.body);

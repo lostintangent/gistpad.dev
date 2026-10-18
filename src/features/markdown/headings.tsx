@@ -39,7 +39,7 @@ function scrollToHeading(container: HTMLElement | null, id: string) {
  */
 export function useLinkedHeading(
   container: RefObject<HTMLElement | null>,
-  doc: { documentKey: string; isLoading: boolean },
+  file: { key: string; isLoading: boolean },
 ) {
   const { heading } = useSearch({ strict: false });
   const navigate = useNavigate();
@@ -48,8 +48,8 @@ export function useLinkedHeading(
     if (heading) scrollToHeading(container.current, heading);
   });
   useEffect(() => {
-    if (!doc.isLoading) scrollToLinkedHeading();
-  }, [doc.documentKey, doc.isLoading]);
+    if (!file.isLoading) scrollToLinkedHeading();
+  }, [file.key, file.isLoading]);
 
   const selectHeading = async (id: string) => {
     await navigate({ to: ".", search: (search) => ({ ...search, heading: id }), replace: true });

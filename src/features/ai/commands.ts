@@ -1,5 +1,5 @@
 import type { Preferences } from "@/features/account/queries";
-import { readGistFile, readGists } from "@/features/gists/queries";
+import { readFile, readGists } from "@/features/gists/queries";
 import type { FrontMatter } from "./frontMatter";
 import { getGistDisplayName, toMarkdownFilename } from "@/shared/github";
 import type { AdditionalReference } from "./agents/openai";
@@ -9,7 +9,7 @@ export type AiMode = "ask" | "edit" | "review" | "research";
 /** The action bar's modes, where "auto" detects a command's mode, and "talk" sends it to the voice assistant. */
 export type ActionBarMode = AiMode | "auto" | "talk";
 
-/** A custom slash command, which is defined in a document's frontmatter (or the user's global settings). */
+/** A custom slash command, which is defined in a file's frontmatter (or the user's global settings). */
 export interface CustomCommand {
   name: string;
   prompt: string;
@@ -60,8 +60,8 @@ export function parseGlobalFrontMatter({ globalFrontMatter }: Preferences): Fron
 }
 
 /**
- * A mode's custom commands and instructions, from the document's frontmatter and the user's global
- * settings (where the document's commands take precedence, and its settings can override the global
+ * A mode's custom commands and instructions, from the file's frontmatter and the user's global
+ * settings (where the file's commands take precedence, and its settings can override the global
  * ones). Questions and reviews share the "discuss" settings, while talk has its own (e.g. a voice).
  */
 export function getModeSettings(
@@ -135,11 +135,11 @@ export async function resolveReferences(command: string, gistId: string | undefi
   for (const { symbol, name } of findReferences(command)) {
     if (symbol === "@") {
       const gist = gists.find((gist) => getGistDisplayName(gist) === name);
-      if (gist) references.push({ title: name, content: await readGistFile(gist.id) });
+      if (gist) references.push({ title: name, content: await readFile(gist.id) });
     } else if (gistId) {
       references.push({
         title: name,
-        content: await readGistFile(gistId, toMarkdownFilename(name)),
+        content: await readFile(gistId, toMarkdownFilename(name)),
       });
     }
   }

@@ -1,17 +1,17 @@
 import { Button } from "@/shared/ui/button";
-import type { GistDocument } from "../document";
+import type { ActiveFile } from "@/features/files/file";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { updateDraft } from "../store";
+import { updateDraft } from "@/features/files/draft";
 import { History, RotateCcw, X } from "lucide-react";
 import { revisionAtom, type Revision } from "./revision";
 import { RevisionLabel } from "./RevisionLabel";
 
-/** Indicates that a past revision of the document is being viewed, which can be restored. */
-export function RevisionBanner({ doc, revision }: { doc: GistDocument; revision: Revision }) {
+/** Indicates that a past revision of the file is being viewed, which can be restored. */
+export function RevisionBanner({ file, revision }: { file: ActiveFile; revision: Revision }) {
   const isMobile = useIsMobile();
 
-  // (Restoring a revision that matches the document wouldn't change anything)
-  const canRestore = !revision.isLoading && revision.content !== doc.savedContent;
+  // (Restoring a revision that matches the file wouldn't change anything)
+  const canRestore = !revision.isLoading && revision.content !== file.savedContent;
   const close = () => revisionAtom.set(null);
 
   return (
@@ -22,7 +22,7 @@ export function RevisionBanner({ doc, revision }: { doc: GistDocument; revision:
           Viewing version from{" "}
           <RevisionLabel
             revision={revision}
-            gistCreatedAt={doc.gist?.created_at}
+            gistCreatedAt={file.gist?.created_at}
             showChangeStats={!isMobile}
           />
         </span>
@@ -33,7 +33,7 @@ export function RevisionBanner({ doc, revision }: { doc: GistDocument; revision:
             variant="ghost"
             size="icon-xs"
             onClick={() => {
-              updateDraft(doc, { content: revision.content });
+              updateDraft(file, { content: revision.content });
               close();
             }}
             title="Restore to this version"

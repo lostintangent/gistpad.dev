@@ -14,7 +14,7 @@ import { useOpenTodaysNote } from "../actions";
 import type { Gist } from "@/shared/github";
 import { useGists, useStarredGists } from "../queries";
 import { usePreferences } from "@/features/account/queries";
-import { useDocument } from "@/features/editor/document";
+import { useActiveFile } from "@/features/files/file";
 import { createAtom, useAtom } from "@tanstack/react-store";
 import { Calendar, Tag, X } from "lucide-react";
 import type { ReactNode } from "react";
@@ -40,7 +40,7 @@ export default function GistList({
   const { gists, archivedGists, dailyNotes, isPending } = useGists();
   const starredGists = useStarredGists();
   const { tags, gistTags, pinnedGists, showArchivedGists, showStarredGists } = usePreferences();
-  const { gistId: openGistId } = useDocument();
+  const { gistId: openGistId } = useActiveFile();
   const openTodaysNote = useOpenTodaysNote();
 
   const [filter, setFilter] = useAtom(filterAtom);

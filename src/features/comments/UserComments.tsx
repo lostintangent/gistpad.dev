@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import type { GistDocument } from "@/features/editor/document";
+import type { ActiveFile } from "@/features/files/file";
 import { createReplyMarker, parseCommentBody, type CommentThread } from "./threads";
 import type { GistComment } from "@/shared/github";
 import { useCreateComment, useDeleteComment, useUpdateComment } from "@/features/gists/queries";
@@ -297,16 +297,16 @@ function CommentInput({ comments }: { comments: GistComment[] }) {
 }
 
 /** The (threaded) comments on a gist, and an input for adding new ones. */
-export default function UserComments({ doc }: { doc: GistDocument }) {
-  const { comments, threads } = useCommentThreads(doc);
+export default function UserComments({ file }: { file: ActiveFile }) {
+  const { comments, threads } = useCommentThreads(file);
   const { user } = useSession();
 
   return (
     <CommentsContext
       value={{
-        gistId: doc.gistId ?? "",
+        gistId: file.gistId ?? "",
         currentUser: user?.login,
-        isGistOwner: !!user && doc.gist?.owner?.login === user.login,
+        isGistOwner: !!user && file.gist?.owner?.login === user.login,
       }}
     >
       <ScrollArea className="h-full flex-1 min-h-0">

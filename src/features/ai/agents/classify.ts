@@ -1,4 +1,5 @@
 import type { AiMode } from "../commands";
+import { aiSettingsStore } from "../settings";
 import { createOpenAIClient } from "./openai";
 
 const modeTriggerWords: Record<AiMode, Set<string>> = {
@@ -110,7 +111,7 @@ export async function classifyMode(
       id: "pmpt_687ff9ab138c8194b622d673059b7f4e03ac6cc27dce819b",
     },
     input: request,
-    model: "gpt-4.1-nano",
+    model: aiSettingsStore.state.models.edit,
   });
 
   const modeIndex = parseInt(output_text.trim()) - 1;

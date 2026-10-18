@@ -1,5 +1,5 @@
 import { Button } from "@/shared/ui/button";
-import { useDocument } from "@/features/editor/document";
+import { useActiveFile } from "@/features/files/file";
 import { useOpenDailyTemplate } from "../actions";
 import { getFileDisplayName, TEMPLATE_FILENAME, type Gist } from "@/shared/github";
 import { parseDateFilename } from "@/shared/dates";
@@ -39,7 +39,7 @@ const OVERDUE_BADGE_CLASSES =
   "ml-2 text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 py-0.5 px-1.5 rounded-full";
 
 export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
-  const { gistId: openGistId, filename: openFilename } = useDocument();
+  const { gistId: openGistId, filename: openFilename } = useActiveFile();
   // The gist list doesn't include file contents, so load the full gist to count its tasks.
   const { data: gist = dailyNotes } = useGist(dailyNotes.id);
   const openTemplate = useOpenDailyTemplate();

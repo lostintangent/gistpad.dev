@@ -3,7 +3,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from "@/shared/ui/dropdown-menu";
-import type { GistDocument } from "../document";
+import type { ActiveFile } from "@/features/files/file";
 import type { GistRevision } from "@/shared/github";
 import { gistQueries } from "@/features/gists/queries";
 import { useQuery } from "@tanstack/react-query";
@@ -22,11 +22,11 @@ const toContentRevisions = (revisions: GistRevision[]) =>
 
 const CURRENT_VERSION = "current";
 
-/** The menu items for viewing past revisions of the document (in a menu or submenu). */
-export function RevisionItems({ doc }: { doc: GistDocument }) {
+/** The menu items for viewing past revisions of the file (in a menu or submenu). */
+export function RevisionItems({ file }: { file: ActiveFile }) {
   const revisionId = useSelector(revisionAtom);
   const { data: revisions = [] } = useQuery({
-    ...gistQueries.revisions(doc.gistId),
+    ...gistQueries.revisions(file.gistId),
     select: toContentRevisions,
   });
 
@@ -46,7 +46,7 @@ export function RevisionItems({ doc }: { doc: GistDocument }) {
           className="whitespace-nowrap"
           closeOnClick
         >
-          <RevisionLabel revision={revision} gistCreatedAt={doc.gist?.created_at} />
+          <RevisionLabel revision={revision} gistCreatedAt={file.gist?.created_at} />
         </DropdownMenuRadioItem>
       ))}
     </DropdownMenuRadioGroup>

@@ -51,7 +51,7 @@ interface MarkdownOptions {
   onToggleTask?: (text: string) => void;
   isReadOnly?: boolean;
   enableBlockquoteCopying?: boolean;
-  /** The document's whiteboard, which ```tldraw blocks render. */
+  /** The file's whiteboard, which ```tldraw blocks render. */
   whiteboard?: Whiteboard;
   /** The comment whose quote is highlighted as selected. */
   selectedCommentId?: number | null;

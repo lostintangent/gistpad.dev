@@ -250,7 +250,7 @@ export function updateGistDescription(gist: Gist, description: string) {
   });
 }
 
-export function saveGistFiles(gistId: string, files: { filename: string; content: string }[]) {
+export function saveFiles(gistId: string, files: { filename: string; content: string }[]) {
   return updateGist(gistId, {
     files: Object.fromEntries(
       files.map(({ filename, content }) => [filename, { content: content || EMPTY_CONTENT }]),
@@ -258,7 +258,7 @@ export function saveGistFiles(gistId: string, files: { filename: string; content
   });
 }
 
-export function addGistFile(
+export function addFile(
   gistId: string,
   filename: string,
   content = `# ${getFileDisplayName(filename)}\n\n`,
@@ -266,11 +266,11 @@ export function addGistFile(
   return updateGist(gistId, { files: { [filename]: { content } } });
 }
 
-export function renameGistFile(gistId: string, filename: string, newFilename: string) {
+export function renameFile(gistId: string, filename: string, newFilename: string) {
   return updateGist(gistId, { files: { [filename]: { filename: newFilename } } });
 }
 
-export function deleteGistFile(gistId: string, filename: string) {
+export function deleteFile(gistId: string, filename: string) {
   return updateGist(gistId, { files: { [filename]: null } });
 }
 
@@ -313,7 +313,7 @@ export function createDailyNote(dailyNotes: Gist | undefined) {
   const content = template ? template.replace(/\{\{date\}\}/g, date) : `# ${date}\n\n`;
 
   return dailyNotes
-    ? addGistFile(dailyNotes.id, filename, content)
+    ? addFile(dailyNotes.id, filename, content)
     : createGist({ description: DAILY_NOTES_DESCRIPTION, filename, content });
 }
 

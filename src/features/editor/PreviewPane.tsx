@@ -3,15 +3,15 @@ import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import { ScrollToTop } from "@/features/markdown/ScrollToTop";
 import {
   getWhiteboard,
-  readDocumentContent,
-  useDocumentContent,
-  openDocument,
-  type GistDocument,
-} from "./document";
+  readFileContent,
+  useActiveFile,
+  useFileContent,
+  openFile,
+} from "@/features/files/file";
 import type { Revision } from "./history/revision";
 import { useGists } from "@/features/gists/queries";
 import { openComments } from "@/features/comments/store";
-import { updateDraft } from "./store";
+import { updateDraft } from "@/features/files/draft";
 import { useDeferredValue, type RefObject } from "react";
 import { useCommentHighlights } from "@/features/comments/useCommentThreads";
 
@@ -28,22 +28,21 @@ function toggleTask(content: string, text: string) {
 }
 
 export function PreviewPane({
-  doc,
   revision,
   showActionBar,
   ref,
 }: {
-  doc: GistDocument;
   /** The past revision that's being viewed (if any), which is shown read-only. */
   revision: Revision | null;
   /** Whether the action bar is shown (over the bottom of the preview). */
   showActionBar: boolean;
   ref: RefObject<HTMLDivElement | null>;
 }) {
-  const documentContent = useDocumentContent(doc);
+  const file = useActiveFile();
+  const documentContent = useFileContent(file);
   const { gists } = useGists();
-  const [, selectHeading] = useLinkedHeading(ref, doc);
-  const commentHighlights = useCommentHighlights(doc);
+  const [, selectHeading] = useLinkedHeading(ref, file);
+  const commentHighlights = useCommentHighlights(file);
 
   // Rendering markdown is relatively slow, so let it lag behind typing (in split mode)
   const deferredContent = useDeferredValue(revision?.content ?? documentContent);
@@ -51,18 +50,18 @@ export function PreviewPane({
   return (
     <div ref={ref} className="overflow-y-auto p-4 h-full">
       <MarkdownPreview
-        files={Object.keys(doc.gist?.files ?? {})}
-        onOpenFile={(filename) => openDocument(doc.gistId, filename)}
+        files={Object.keys(file.gist?.files ?? {})}
+        onOpenFile={(filename) => openFile(file.gistId, filename)}
         gists={gists}
-        onOpenGist={(gistId) => openDocument(gistId)}
+        onOpenGist={(gistId) => openFile(gistId)}
         onSelectHeading={selectHeading}
         onToggleTask={(text) =>
-          updateDraft(doc, { content: toggleTask(readDocumentContent(doc), text) })
+          updateDraft(file, { content: toggleTask(readFileContent(file), text) })
         }
         onAddComment={(text) => openComments({ quote: text })}
         commentHighlights={commentHighlights}
-        whiteboard={getWhiteboard(doc)}
-        isReadOnly={doc.isReadOnly || !!revision}
+        whiteboard={getWhiteboard(file)}
+        isReadOnly={file.isReadOnly || !!revision}
         scrollPastEnd={showActionBar}
       >
         {deferredContent}

@@ -3,12 +3,13 @@ import { CommentTooltips } from "@/features/comments/CommentTooltips";
 import { openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable";
-import { useDocument, useSaveDocument } from "./document";
+import { useActiveFile, useSaveFile } from "@/features/files/file";
 import { useEditorMode, type EditorMode } from "./mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { useIsAiEnabled } from "@/features/ai/settings";
 import { editorPaneSizeAtom, zenModeAtom } from "./layout";
-import { draftAtom, editorViewAtom } from "./store";
+import { draftAtom } from "@/features/files/draft";
+import { editorViewAtom } from "./store";
 import { commentsPanelOpenAtom, commentsPanelSizeAtom } from "@/features/comments/store";
 import { undo, undoDepth } from "@codemirror/commands";
 import { useSelector } from "@tanstack/react-store";
@@ -70,7 +71,7 @@ function getPaneLayout(mode: EditorMode, editorSize: number) {
  * Lays out the editor and preview, based on the mode. Hidden panes are collapsed
  * (rather than unmounted), so that switching modes preserves their state.
  */
-function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactNode }) {
+function Panes({ editor, preview }: { editor: ReactNode; preview: ReactNode }) {
   const [mode, setMode] = useEditorMode();
   const isMobile = useIsMobile();
   const groupRef = useGroupRef();
@@ -123,19 +124,19 @@ function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactN
 const WORKSPACE_CLASS = "raised rounded-xl overflow-clip w-full h-full";
 
 export default function Workspace() {
-  const doc = useDocument();
+  const file = useActiveFile();
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
   const isAiEnabled = useIsAiEnabled();
   const isCommentsOpen = useSelector(commentsPanelOpenAtom);
-  const revision = useRevision(doc);
-  const save = useSaveDocument(doc);
-  const { quotedThreads, isEnabled: isCommentsEnabled } = useCommentThreads(doc);
+  const revision = useRevision(file);
+  const save = useSaveFile(file);
+  const { quotedThreads, isEnabled: isCommentsEnabled } = useCommentThreads(file);
   const previewRef = useRef<HTMLDivElement>(null);
   const [isForkDialogOpen, setIsForkDialogOpen] = useState(false);
 
   // Saving someone else's gist forks it, so the user is asked first
-  const requestSave = () => (doc.isReadOnly ? setIsForkDialogOpen(true) : save());
+  const requestSave = () => (file.isReadOnly ? setIsForkDialogOpen(true) : save());
 
   useWorkspaceShortcuts(requestSave);
 
@@ -147,38 +148,29 @@ export default function Workspace() {
 
   const aiAssistant = isAiEnabled && (
     <Suspense>
-      <AiAssistant doc={doc} showActionBar={showActionBar} />
+      <AiAssistant file={file} showActionBar={showActionBar} />
     </Suspense>
   );
 
-  if (!doc.gistId) {
+  if (!file.gistId) {
     return <div className={`${WORKSPACE_CLASS} relative`}>{aiAssistant}</div>;
   }
 
-  const isLoading = doc.isLoading || revision?.isLoading;
-  const body = doc.error ? (
+  const isLoading = file.isLoading || revision?.isLoading;
+  const body = file.error ? (
     <div className="h-full flex items-center justify-center text-muted-foreground italic">
       This gist couldn't be loaded
     </div>
   ) : (
-    <DocumentPanes
+    <Panes
       editor={
-        isLoading ? (
-          <LoadingSkeleton />
-        ) : (
-          <EditorPane doc={doc} revision={revision} previewRef={previewRef} />
-        )
+        isLoading ? <LoadingSkeleton /> : <EditorPane revision={revision} previewRef={previewRef} />
       }
       preview={
         isLoading ? (
           <LoadingSkeleton />
         ) : (
-          <PreviewPane
-            ref={previewRef}
-            doc={doc}
-            revision={revision}
-            showActionBar={showActionBar}
-          />
+          <PreviewPane ref={previewRef} revision={revision} showActionBar={showActionBar} />
         )
       }
     />
@@ -186,7 +178,7 @@ export default function Workspace() {
 
   const documentArea = (
     <div className="relative flex flex-col h-full min-h-0">
-      {revision && <RevisionBanner doc={doc} revision={revision} />}
+      {revision && <RevisionBanner file={file} revision={revision} />}
       <div className="flex-1 min-h-0">{body}</div>
     </div>
   );
@@ -194,14 +186,14 @@ export default function Workspace() {
   return (
     <div className={`${WORKSPACE_CLASS} relative flex flex-col`}>
       {aiAssistant}
-      {!isZenMode && <EditorToolbar key={doc.documentKey} doc={doc} onSave={requestSave} />}
+      {!isZenMode && <EditorToolbar key={file.key} file={file} onSave={requestSave} />}
 
       <div className="flex-1 min-h-0">
         {isMobile ? (
           <>
             {/* Hide (rather than unmount) the editor, so its state is preserved */}
             <div className={showComments ? "hidden" : "h-full"}>{documentArea}</div>
-            {showComments && <CommentsPanel key={doc.documentKey} doc={doc} />}
+            {showComments && <CommentsPanel key={file.key} file={file} />}
           </>
         ) : (
           <ResizablePanelGroup
@@ -221,7 +213,7 @@ export default function Workspace() {
                   defaultSize={`${commentsPanelSizeAtom.get()}`}
                   minSize="18"
                 >
-                  <CommentsPanel key={doc.documentKey} doc={doc} />
+                  <CommentsPanel key={file.key} file={file} />
                 </ResizablePanel>
               </>
             )}
@@ -229,7 +221,7 @@ export default function Workspace() {
         )}
       </div>
 
-      <ForkGistDialog doc={doc} isOpen={isForkDialogOpen} onOpenChange={setIsForkDialogOpen} />
+      <ForkGistDialog file={file} isOpen={isForkDialogOpen} onOpenChange={setIsForkDialogOpen} />
       <CommentTooltips
         threads={quotedThreads}
         onSelect={(commentId) => openComments({ commentId })}

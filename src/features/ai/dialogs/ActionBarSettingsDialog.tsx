@@ -8,13 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Textarea } from "@/shared/ui/textarea";
 import { MessageCircleQuestion, Mic, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
 import { parseFrontMatter, updateFrontMatter, type FrontMatter } from "../frontMatter";
-import { useDocument, useDocumentContent, useSaveDocument } from "@/features/editor/document";
-import { readDraft, updateDraft } from "@/features/editor/store";
+import { useActiveFile, useFileContent, useSaveFile } from "@/features/files/file";
+import { readDraft, updateDraft } from "@/features/files/draft";
 import { usePreferences, useUpdatePreferences } from "@/features/account/queries";
 import { useState } from "react";
 import { DEFAULT_VOICE, parseGlobalFrontMatter, VOICES } from "../commands";
 
-// The action bar is configured via frontmatter (in a document, or the user's global settings),
+// The action bar is configured via frontmatter (in a file, or the user's global settings),
 // which this dialog edits as a form, while preserving any other frontmatter properties.
 
 const VOICE_ITEMS = VOICES.map(({ name }) => ({
@@ -209,19 +209,19 @@ function CommandSectionFields({
   );
 }
 
-/** Configures the action bar's instructions and custom commands (for the open document, or globally). */
+/** Configures the action bar's instructions and custom commands (for the active file, or globally). */
 export default function ActionBarSettingsDialog({
   scope,
   onClose,
 }: {
-  scope: "document" | "global";
+  scope: "file" | "global";
   onClose: () => void;
 }) {
-  const doc = useDocument();
-  const content = useDocumentContent(doc);
+  const file = useActiveFile();
+  const content = useFileContent(file);
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const saveDocument = useSaveDocument(doc);
+  const saveFile = useSaveFile(file);
 
   const frontMatter =
     scope === "global"
@@ -237,10 +237,10 @@ export default function ActionBarSettingsDialog({
     if (scope === "global") {
       updatePreferences({ globalFrontMatter: JSON.stringify(updated) });
     } else {
-      // If the document didn't have unsaved changes, then save the settings right away.
-      const hadChanges = !!readDraft(doc);
-      updateDraft(doc, { content: updateFrontMatter(content, updated) });
-      if (!hadChanges && !doc.isReadOnly) saveDocument();
+      // If the file didn't have unsaved changes, then save the settings right away.
+      const hadChanges = !!readDraft(file);
+      updateDraft(file, { content: updateFrontMatter(content, updated) });
+      if (!hadChanges && !file.isReadOnly) saveFile();
     }
     onClose();
   };
@@ -290,7 +290,7 @@ export default function ActionBarSettingsDialog({
                 section={settings[type]}
                 onChange={(section) => update(type, section)}
                 placeholder={`Custom instructions for ${type === "edit" ? "edit" : "review"} commands`}
-                canOverrideGlobalSettings={scope === "document"}
+                canOverrideGlobalSettings={scope === "file"}
               />
             </TabsContent>
           ))}

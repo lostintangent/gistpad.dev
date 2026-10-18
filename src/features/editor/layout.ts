@@ -1,4 +1,6 @@
 import { persistedAtom } from "@/shared/persistedAtom";
+import { MOBILE_MEDIA_QUERY } from "@/shared/useMediaQuery";
+import { commentsPanelOpenAtom } from "@/features/comments/store";
 import { createAtom } from "@tanstack/react-store";
 
 // The editor page's layout, where the workspace is beside two panels: the sidebar (i.e. the gist
@@ -39,6 +41,14 @@ export const dashboardOpenAtom = persistedAtom("gistpad-dashboard-open", false);
 
 /** The panel that's open beside the editor (mobile only), since only one can be at a time. */
 export const mobilePanelAtom = createAtom<"sidebar" | "dashboard" | null>(null);
+
+/** On mobile, files take up the whole screen, so close the panels that cover them (e.g. to open one). */
+export function closeMobilePanels() {
+  if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) return;
+
+  mobilePanelAtom.set(null);
+  commentsPanelOpenAtom.set(false);
+}
 
 export const zenModeAtom = createAtom(false);
 

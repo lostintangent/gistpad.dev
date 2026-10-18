@@ -1,4 +1,4 @@
-import type { GistDocument } from "@/features/editor/document";
+import type { ActiveFile } from "@/features/files/file";
 import { useIsViewingRevision } from "@/features/editor/history/revision";
 import { usePreferences } from "@/features/account/queries";
 import { buildCommentThreads, getQuotedCommentThreads, type CommentHighlights } from "./threads";
@@ -16,7 +16,7 @@ function toThreads(comments: GistComment[]) {
 const EMPTY = toThreads([]);
 
 /** The open gist's comments, organized into threads (and the threads that quote its content). */
-export function useCommentThreads({ gist, gistId }: Pick<GistDocument, "gist" | "gistId">) {
+export function useCommentThreads({ gist, gistId }: Pick<ActiveFile, "gist" | "gistId">) {
   const isEnabled = !!gist && !isDailyNote(gist);
   const { data = EMPTY } = useQuery({
     ...gistQueries.comments(gistId),
@@ -29,13 +29,13 @@ export function useCommentThreads({ gist, gistId }: Pick<GistDocument, "gist" | 
 }
 
 /**
- * The comments whose quotes are highlighted in the open document: all of them (when the user shows
- * inline comments), or otherwise, just the selected one's. And since comments quote the document's
+ * The comments whose quotes are highlighted in the active file: all of them (when the user shows
+ * inline comments), or otherwise, just the selected one's. And since comments quote the file's
  * current content, nothing is highlighted while viewing a past revision.
  */
-export function useCommentHighlights(doc: GistDocument): CommentHighlights | undefined {
+export function useCommentHighlights(file: ActiveFile): CommentHighlights | undefined {
   const { showInlineComments } = usePreferences();
-  const { quotedThreads } = useCommentThreads(doc);
+  const { quotedThreads } = useCommentThreads(file);
   const selectedId = useSelector(commentsStore, (state) => state.selectedCommentId);
   const isViewingRevision = useIsViewingRevision();
 

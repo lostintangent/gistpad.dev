@@ -3,12 +3,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Switch } from "@/shared/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
+import { useQuery } from "@tanstack/react-query";
 import type { AiMode } from "../commands";
-import { aiSettingsStore, OPENAI_MODELS } from "../settings";
+import { aiSettingsStore } from "../settings";
 import { ExternalLink, Info, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const MODEL_PICKERS: { mode: AiMode; label: string; tooltip: string }[] = [
   { mode: "ask", label: "Ask model", tooltip: "The AI model used to ask questions" },
@@ -21,9 +21,38 @@ const MODEL_PICKERS: { mode: AiMode; label: string; tooltip: string }[] = [
   },
 ];
 
+/** Formats a model's ID as a display name (e.g. "gpt-6.1-sol" → "GPT-6.1 Sol"). */
+function modelLabel(id: string) {
+  if (!id.startsWith("gpt-")) return id;
+
+  const [version, ...variant] = id.slice(4).split("-");
+  const words = variant.map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  return [`GPT-${version}`, ...words].join(" ");
+}
+
 /** Configures the user's OpenAI API key, and the model that's used for each mode. */
 export default function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
   const [settings, setSettings] = useState(() => aiSettingsStore.state);
+
+  // Wait until the user stops typing their API key, before loading its models
+  const [modelsApiKey, setModelsApiKey] = useState(settings.apiKey);
+  useEffect(() => {
+    const timeout = setTimeout(() => setModelsApiKey(settings.apiKey), 500);
+    return () => clearTimeout(timeout);
+  }, [settings.apiKey]);
+
+  const { data: availableModels = [], isError } = useQuery({
+    queryKey: ["openai-models", modelsApiKey],
+    queryFn: async ({ signal }) => {
+      const { listModels } = await import("../agents");
+      return listModels(modelsApiKey, signal);
+    },
+    enabled: !!modelsApiKey,
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+    // Since it's keyed by the API key, don't copy it into the query cache's localStorage
+    meta: { persist: false },
+  });
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -59,54 +88,55 @@ export default function ModelSettingsDialog({ onClose }: { onClose: () => void }
                 </Button>
               )}
             </div>
+            {isError && (
+              <p className="text-xs text-red-500">
+                Couldn't load the available models. Make sure your API key is valid.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
-            {MODEL_PICKERS.map(({ mode, label, tooltip }) => (
-              <div key={mode} className="grid gap-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={label}>{label}</Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-4 w-4 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
+            {MODEL_PICKERS.map(({ mode, label, tooltip }) => {
+              // Include the current model, in case the list hasn't loaded (or doesn't include it)
+              const model = settings.models[mode];
+              const items = (
+                availableModels.includes(model) ? availableModels : [model, ...availableModels]
+              ).map((id) => ({ value: id, label: modelLabel(id) }));
+
+              return (
+                <div key={mode} className="grid gap-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={label}>{label}</Label>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{tooltip}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Select
+                    items={items}
+                    value={model}
+                    onValueChange={(value) =>
+                      value &&
+                      setSettings({ ...settings, models: { ...settings.models, [mode]: value } })
+                    }
+                  >
+                    <SelectTrigger id={label} className="w-full">
+                      <SelectValue placeholder="Select a model..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {items.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select
-                  items={OPENAI_MODELS}
-                  value={settings.models[mode]}
-                  onValueChange={(model) =>
-                    model &&
-                    setSettings({ ...settings, models: { ...settings.models, [mode]: model } })
-                  }
-                >
-                  <SelectTrigger id={label} className="w-full">
-                    <SelectValue placeholder="Select a model..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OPENAI_MODELS.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mt-4">
-            <Switch
-              id="show-reasoning-summaries"
-              checked={settings.showReasoningSummaries}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, showReasoningSummaries: checked })
-              }
-            />
-            <label htmlFor="show-reasoning-summaries" className="text-sm cursor-pointer">
-              Show reasoning summaries?
-            </label>
+              );
+            })}
           </div>
         </div>
         <DialogFooter>

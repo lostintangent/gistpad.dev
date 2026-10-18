@@ -4,9 +4,9 @@ import { lazy, Suspense, useState } from "react";
 
 const TldrawCanvas = lazy(() => import("./TldrawCanvas"));
 
-/** A whiteboard that's embedded in a document (via a ```tldraw block). */
+/** A whiteboard that's embedded in a file (via a ```tldraw block). */
 export interface Whiteboard {
-  /** Identifies the whiteboard, so that it's reloaded when it changes (e.g. when another document opens). */
+  /** Identifies the whiteboard, so that it's reloaded when it changes (e.g. when another file opens). */
   key: string;
   snapshot: string | undefined;
   onChange: (serialize: () => string) => void;

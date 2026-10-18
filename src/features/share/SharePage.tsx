@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { getWhiteboard, useDocument, type GistDocument } from "@/features/editor/document";
+import { getWhiteboard, useActiveFile, type ActiveFile } from "@/features/files/file";
 import LoadingSkeleton from "@/features/editor/LoadingSkeleton";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { useTransientState } from "@/shared/useTransientState";
@@ -47,12 +47,14 @@ import {
 import { useRef, useState } from "react";
 
 /** The gist's name, plus the name of the open file (when it's not the gist's README). */
-function getTitle(doc: GistDocument) {
-  if (!doc.gist) return "Loading...";
+function getTitle(file: ActiveFile) {
+  if (!file.gist) return "Loading...";
 
-  const name = getGistDisplayName(doc.gist);
-  const file = getFileDisplayName(doc.filename);
-  return doc.isReadme || name.toLowerCase() === file.toLowerCase() ? name : `${name} (${file})`;
+  const name = getGistDisplayName(file.gist);
+  const fileName = getFileDisplayName(file.filename);
+  return file.isReadme || name.toLowerCase() === fileName.toLowerCase()
+    ? name
+    : `${name} (${fileName})`;
 }
 
 function GistDates({ gist }: { gist: Gist }) {
@@ -95,10 +97,10 @@ function GistDates({ gist }: { gist: Gist }) {
 
 /** A read-only view of a gist, which can be shared with other people. */
 export default function Share() {
-  const doc = useDocument();
+  const file = useActiveFile();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { quotedThreads } = useCommentThreads(doc);
+  const { quotedThreads } = useCommentThreads(file);
   const [isCopied, setIsCopied] = useTransientState(false);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -106,12 +108,12 @@ export default function Share() {
   const refresh = useMutation({
     mutationFn: () =>
       Promise.all([
-        queryClient.refetchQueries({ queryKey: gistQueries.detail(doc.gistId!).queryKey }),
-        queryClient.refetchQueries({ queryKey: gistQueries.comments(doc.gistId!).queryKey }),
+        queryClient.refetchQueries({ queryKey: gistQueries.detail(file.gistId!).queryKey }),
+        queryClient.refetchQueries({ queryKey: gistQueries.comments(file.gistId!).queryKey }),
       ]),
   });
 
-  const [heading, linkHeading] = useLinkedHeading(previewRef, doc);
+  const [heading, linkHeading] = useLinkedHeading(previewRef, file);
 
   const copyUrl = () => {
     navigator.clipboard.writeText(location.href);
@@ -120,7 +122,7 @@ export default function Share() {
 
   const copyHtml = async () => {
     const { copyAsHtml } = await import("@/features/markdown/toHtml");
-    await copyAsHtml(doc.savedContent);
+    await copyAsHtml(file.savedContent);
     setIsCopied(true);
   };
 
@@ -129,20 +131,20 @@ export default function Share() {
     setIsCopied(true);
   };
 
-  // The open document, in the editor (e.g. to comment on a quote from it)
+  // The active file, in the editor (e.g. to comment on a quote from it)
   const editorLink = linkOptions({
     to: "/{-$gistId}/{-$filePath}",
-    params: { gistId: doc.gistId, filePath: doc.filename },
+    params: { gistId: file.gistId, filePath: file.filename },
   });
 
   const openFile = (filename: string) =>
     navigate({
       to: "/share/$gistId/{-$filePath}",
-      params: { gistId: doc.gistId!, filePath: filename },
+      params: { gistId: file.gistId!, filePath: filename },
     });
 
-  const title = getTitle(doc);
-  const files = getMarkdownFiles(doc.gist);
+  const title = getTitle(file);
+  const files = getMarkdownFiles(file.gist);
 
   return (
     <div className="mx-auto max-w-4xl p-4">
@@ -151,7 +153,7 @@ export default function Share() {
       <header className="mb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="min-w-0 mr-6">
-            {doc.isLoading ? (
+            {file.isLoading ? (
               <h1 className="text-2xl font-bold flex-1 min-w-0">{title}</h1>
             ) : (
               <DropdownMenu
@@ -215,7 +217,7 @@ export default function Share() {
                               key={filename}
                               onClick={() => openFile(filename)}
                               className={
-                                filename === doc.filename
+                                filename === file.filename
                                   ? "bg-primary text-primary-foreground"
                                   : ""
                               }
@@ -252,25 +254,25 @@ export default function Share() {
           )}
         </div>
 
-        {doc.gist?.owner && (
+        {file.gist?.owner && (
           <div className="flex items-center text-sm text-muted-foreground ml-1">
             <a
-              href={`https://github.com/${doc.gist.owner.login}`}
+              href={`https://github.com/${file.gist.owner.login}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 hover:text-foreground"
             >
-              <UserAvatar user={doc.gist.owner} size="sm" />
-              <span className="font-medium">{doc.gist.owner.login}</span>
+              <UserAvatar user={file.gist.owner} size="sm" />
+              <span className="font-medium">{file.gist.owner.login}</span>
             </a>
             <span className="mx-2">•</span>
-            <GistDates gist={doc.gist} />
+            <GistDates gist={file.gist} />
           </div>
         )}
       </header>
 
       <Card className="shadow-lg">
-        {doc.isLoading ? (
+        {file.isLoading ? (
           <div className="p-6">
             <LoadingSkeleton />
           </div>
@@ -283,9 +285,9 @@ export default function Share() {
               isReadOnly
               onAddComment={(quote) => navigate({ ...editorLink, search: { quote } })}
               commentHighlights={{ threads: quotedThreads }}
-              whiteboard={getWhiteboard(doc)}
+              whiteboard={getWhiteboard(file)}
             >
-              {doc.savedContent}
+              {file.savedContent}
             </MarkdownPreview>
             <ScrollToTop />
             <CommentTooltips threads={quotedThreads} />

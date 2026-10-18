@@ -13,12 +13,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Separator } from "@/shared/ui/separator";
 import { Toggle } from "@/shared/ui/toggle";
-import {
-  useDocument,
-  useDocumentContent,
-  openDocument,
-  useSaveDocument,
-} from "@/features/editor/document";
+import { useActiveFile, useFileContent, openFile, useSaveFile } from "@/features/files/file";
 import { useEditorMode } from "@/features/editor/mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { parseFrontMatter } from "./frontMatter";
@@ -33,7 +28,8 @@ import {
   useRunningMode,
   type AiAnswer,
 } from "./store";
-import { editorStatusAtom, editorViewAtom, useDraft } from "@/features/editor/store";
+import { useDraft } from "@/features/files/draft";
+import { editorStatusAtom, editorViewAtom } from "@/features/editor/store";
 import { Chunk, getChunks, rejectChunk } from "@codemirror/merge";
 import { Text } from "@codemirror/state";
 import { useSelector } from "@tanstack/react-store";
@@ -113,8 +109,8 @@ const MODES: Record<
   },
 };
 
-// The modes that are available when a document is open (or not), where `null` is a separator.
-const DOCUMENT_MODES: (ActionBarMode | null)[] = [
+// The modes that are available when a file is open (or not), where `null` is a separator.
+const FILE_MODES: (ActionBarMode | null)[] = [
   "auto",
   "talk",
   null,
@@ -126,7 +122,7 @@ const DOCUMENT_MODES: (ActionBarMode | null)[] = [
 ];
 const GLOBAL_MODES: (ActionBarMode | null)[] = ["auto", null, "ask", "research"];
 
-type Dialog = "document-settings" | "global-settings" | "model-settings" | "analyze-style";
+type Dialog = "file-settings" | "global-settings" | "model-settings" | "analyze-style";
 
 const PANEL_CLASSES =
   "translate-y-[5px] bg-card/95 backdrop-blur-sm border border-border/50 shadow-2xl dark:shadow-dark-xl w-full";
@@ -211,7 +207,7 @@ function AnswerPanel({
         >
           {answer.text ? (
             <>
-              <MarkdownPreview gists={gists} onOpenGist={openDocument} isReadOnly>
+              <MarkdownPreview gists={gists} onOpenGist={openFile} isReadOnly>
                 {answer.text}
               </MarkdownPreview>
               {answer.followUp?.question && (
@@ -237,7 +233,7 @@ function AnswerPanel({
   );
 }
 
-/** Counts the lines that were added and deleted between two versions of a document. */
+/** Counts the lines that were added and deleted between two versions of a file. */
 function getDiffStats(original: string, updated: string) {
   const a = Text.of(original.split(/\r?\n/));
   const b = Text.of(updated.split(/\r?\n/));
@@ -266,15 +262,15 @@ function rejectEdits() {
   updateAiState({ edit: null });
 }
 
-/** Accepts (i.e. saves) or rejects the AI's pending edits to the document. */
+/** Accepts (i.e. saves) or rejects the AI's pending edits to the file. */
 function EditPanel({ isRounded }: { isRounded: boolean }) {
-  const doc = useDocument();
-  const content = useDocumentContent(doc);
-  const hasPendingAiEdit = !!useDraft(doc)?.hasPendingAiEdit;
-  const save = useSaveDocument(doc);
+  const file = useActiveFile();
+  const content = useFileContent(file);
+  const hasPendingAiEdit = !!useDraft(file)?.hasPendingAiEdit;
+  const save = useSaveFile(file);
   const showDiffs = useSelector(showPendingAiDiffsAtom);
   const isInProgress = useRunningMode() === "edit";
-  const stats = hasPendingAiEdit ? getDiffStats(doc.savedContent, content) : null;
+  const stats = hasPendingAiEdit ? getDiffStats(file.savedContent, content) : null;
 
   return (
     <div className="absolute bottom-full w-full animate-in slide-in-from-bottom-2 duration-300">
@@ -327,15 +323,15 @@ function EditPanel({ isRounded }: { isRounded: boolean }) {
   );
 }
 
-/** A floating bar for running AI commands against the open document (or the user's gists). */
+/** A floating bar for running AI commands against the active file (or the user's gists). */
 export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversation }) {
-  const doc = useDocument();
-  const content = useDocumentContent(doc);
+  const file = useActiveFile();
+  const content = useFileContent(file);
   const { gists } = useGists();
   const preferences = usePreferences();
   const [editorMode] = useEditorMode();
   const hasSelection = useSelector(editorStatusAtom, (status) => status.hasSelection);
-  const draft = useDraft(doc);
+  const draft = useDraft(file);
   const answer = useSelector(aiStore, (state) => state.answer);
   const cancel = useSelector(aiStore, (state) => state.running?.cancel);
   const isAiInProgress = useIsAiInProgress() || voice.isAwaitingResponse;
@@ -352,18 +348,16 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
   // nowhere (after opening a dialog, which takes focus), or else back to the menu's trigger.
   const menuFinalFocus = useRef<HTMLElement | boolean>(true);
 
-  const hasDocument = !!doc.gistId;
-  const mode: ActionBarMode = voice.isActive && hasDocument ? "talk" : selectedMode;
+  const hasFile = !!file.gistId;
+  const mode: ActionBarMode = voice.isActive && hasFile ? "talk" : selectedMode;
   const { frontMatter } = parseFrontMatter(content);
   const globalFrontMatter = parseGlobalFrontMatter(preferences);
-  const commands = hasDocument
-    ? getModeSettings(mode, frontMatter, globalFrontMatter).commands
-    : [];
+  const commands = hasFile ? getModeSettings(mode, frontMatter, globalFrontMatter).commands : [];
 
   const showEditPanel = (!!draft?.hasPendingAiEdit || isEditing) && editorMode !== "preview";
 
-  // When there isn't an open document, the action bar is centered (rather than at the bottom)
-  const isCentered = !hasDocument && answer === null;
+  // When there isn't an active file, the action bar is centered (rather than at the bottom)
+  const isCentered = !hasFile && answer === null;
 
   const run = (command: string, explicitMode?: ActionBarMode) => {
     setIsExpanded(false);
@@ -459,7 +453,7 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
                 </>
               ) : (
                 <>
-                  {(hasDocument ? DOCUMENT_MODES : GLOBAL_MODES).map((mode, index) => {
+                  {(hasFile ? FILE_MODES : GLOBAL_MODES).map((mode, index) => {
                     if (!mode) return <DropdownMenuSeparator key={index} />;
 
                     const { icon: Icon, label } = MODES[mode];
@@ -489,9 +483,9 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
                       <DropdownMenuItem onClick={() => openDialog("global-settings")}>
                         <Globe /> Global settings
                       </DropdownMenuItem>
-                      {hasDocument && (
-                        <DropdownMenuItem onClick={() => openDialog("document-settings")}>
-                          <FileText /> Document settings
+                      {hasFile && (
+                        <DropdownMenuItem onClick={() => openDialog("file-settings")}>
+                          <FileText /> File settings
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
@@ -518,9 +512,9 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
             onSubmit={submit}
             previousCommand={previousCommand}
             commands={hasSelection ? [] : commands}
-            gists={gists.filter(({ id }) => id !== doc.gistId)}
-            files={getMarkdownFiles(doc.gist)
-              .filter((file) => file !== doc.filename)
+            gists={gists.filter(({ id }) => id !== file.gistId)}
+            files={getMarkdownFiles(file.gist)
+              .filter((name) => name !== file.filename)
               .map(getFileDisplayName)}
             placeholder={hasSelection ? selectionPlaceholder : placeholder}
             disabled={isAiInProgress}
@@ -547,9 +541,7 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
       {dialog === "global-settings" && (
         <ActionBarSettingsDialog scope="global" onClose={closeDialog} />
       )}
-      {dialog === "document-settings" && (
-        <ActionBarSettingsDialog scope="document" onClose={closeDialog} />
-      )}
+      {dialog === "file-settings" && <ActionBarSettingsDialog scope="file" onClose={closeDialog} />}
       {dialog === "model-settings" && <ModelSettingsDialog onClose={closeDialog} />}
       {dialog === "analyze-style" && <AnalyzeStyleDialog gists={gists} onClose={closeDialog} />}
     </div>

@@ -25,7 +25,7 @@ const initialState: CommentsState = {
   tab: "user",
 };
 
-/** The state of the comments panel, for the open document. */
+/** The state of the comments panel, for the active file. */
 export const commentsStore = createStore(initialState);
 
 export function updateComments(changes: Partial<CommentsState>) {

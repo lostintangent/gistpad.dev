@@ -1,4 +1,4 @@
-import { readGistFile, readGists } from "@/features/gists/queries";
+import { readFile, readGists } from "@/features/gists/queries";
 import { tool } from "@openai/agents";
 import { z } from "zod";
 
@@ -17,6 +17,6 @@ export const gistTools = [
     description:
       "Read the contents of a gist, which may provide relevant context to the current conversation",
     parameters: z.object({ gistId: z.string() }),
-    execute: ({ gistId }) => readGistFile(gistId),
+    execute: ({ gistId }) => readFile(gistId),
   }),
 ];

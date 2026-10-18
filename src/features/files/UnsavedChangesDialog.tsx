@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 
-/** Asks the user what to do with their unsaved changes, before leaving the current document. */
+/** Asks the user what to do with their unsaved changes, before leaving the current file. */
 export default function UnsavedChangesDialog({
   isOpen,
   isSaving,

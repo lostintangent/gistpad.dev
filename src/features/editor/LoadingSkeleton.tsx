@@ -1,6 +1,6 @@
 import { Skeleton } from "@/shared/ui/skeleton";
 
-/** A placeholder for the editor or preview, while the document is loading. */
+/** A placeholder for the editor or preview, while the file is loading. */
 export default function LoadingSkeleton() {
   return (
     <div className="p-2 space-y-4 h-full">

@@ -106,8 +106,8 @@ export function useGist(gistId: string | undefined) {
   });
 }
 
-/** Reads the content of a gist file, fetching the gist if it isn't already cached. */
-export async function readGistFile(gistId: string, filename?: string) {
+/** Reads the content of a file, fetching the gist if it isn't already cached. */
+export async function readFile(gistId: string, filename?: string) {
   const gist = await queryClient.query(gistQueries.detail(gistId));
   return gist.files[filename ?? github.getDefaultFile(gist)]?.content ?? "";
 }
@@ -195,27 +195,27 @@ export function useDeleteGist() {
 
 type FileVariables = { gistId: string; filename: string };
 
-export function useDeleteGistFile() {
+export function useDeleteFile() {
   return useMutation({
-    mutationFn: ({ gistId, filename }: FileVariables) => github.deleteGistFile(gistId, filename),
+    mutationFn: ({ gistId, filename }: FileVariables) => github.deleteFile(gistId, filename),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to delete file" },
   });
 }
 
-export function useAddGistFile() {
+export function useAddFile() {
   return useMutation({
     mutationFn: ({ gistId, filename, content }: FileVariables & { content?: string }) =>
-      github.addGistFile(gistId, filename, content),
+      github.addFile(gistId, filename, content),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to add file" },
   });
 }
 
-export function useRenameGistFile() {
+export function useRenameFile() {
   return useMutation({
     mutationFn: ({ gistId, filename, newFilename }: FileVariables & { newFilename: string }) =>
-      github.renameGistFile(gistId, filename, newFilename),
+      github.renameFile(gistId, filename, newFilename),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to rename file" },
   });
@@ -283,12 +283,12 @@ export function useToggleStarred() {
   });
 }
 
-/** Saves a gist file (and any files embedded in it). */
-export function useSaveGistFiles() {
+/** Saves a file (and any files embedded in it). */
+export function useSaveFiles() {
   return useMutation({
-    mutationKey: ["saveGistFiles"],
+    mutationKey: ["saveFiles"],
     mutationFn: (variables: { gistId: string; files: { filename: string; content: string }[] }) =>
-      github.saveGistFiles(variables.gistId, variables.files),
+      github.saveFiles(variables.gistId, variables.files),
     onSuccess: setGistData,
     meta: { errorMessage: "Failed to save gist" },
   });

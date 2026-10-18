@@ -12,12 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
-import { openDocument } from "@/features/editor/document";
+import { openFile } from "@/features/files/file";
 import { getGistDisplayName, isArchived, type Gist } from "@/shared/github";
 import { useDuplicateGist, useIsStarred, useToggleArchived, useToggleStarred } from "../queries";
 import { usePreferences, useSession, useUpdatePreferences } from "@/features/account/queries";
 import { useIsAiInProgress } from "@/features/ai/store";
-import { draftAtom } from "@/features/editor/store";
+import { draftAtom } from "@/features/files/draft";
 import { useSelector } from "@tanstack/react-store";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "cn";
@@ -57,7 +57,7 @@ export function GistItem({
   const isAiInProgress = useIsAiInProgress();
   const hasUnsavedChanges = useSelector(
     draftAtom,
-    (draft) => !!draft?.documentKey.startsWith(`${gist.id}/`),
+    (draft) => !!draft?.fileKey.startsWith(`${gist.id}/`),
   );
 
   const navigate = useNavigate();
@@ -131,7 +131,7 @@ export function GistItem({
         {isOwn && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={async () => openDocument((await duplicateGist(gist.id)).id)}>
+            <DropdownMenuItem onClick={async () => openFile((await duplicateGist(gist.id)).id)}>
               <Copy />
               Duplicate gist
             </DropdownMenuItem>

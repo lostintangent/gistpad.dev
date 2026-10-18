@@ -1,7 +1,7 @@
 import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { persistedAtom } from "@/shared/persistedAtom";
-import { useDocument } from "@/features/editor/document";
+import { useActiveFile } from "@/features/files/file";
 import { useAtom } from "@tanstack/react-store";
 import { ChevronRight } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -46,7 +46,7 @@ export function CollapsibleSection({
   children,
 }: CollapsibleSectionProps) {
   const [isCollapsed, setIsCollapsed] = useAtom(sectionCollapsedAtoms[section]);
-  const { gistId: openGistId } = useDocument();
+  const { gistId: openGistId } = useActiveFile();
 
   // Expand the section when one of its gists is opened, until the user explicitly collapses it.
   const [dismissedGistId, setDismissedGistId] = useState<string>();

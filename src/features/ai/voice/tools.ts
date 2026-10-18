@@ -1,5 +1,5 @@
 import { closeComments, openComments } from "@/features/comments/store";
-import { openDocument, type GistDocument } from "@/features/editor/document";
+import { openFile, type ActiveFile } from "@/features/files/file";
 import { deleteGistDialog } from "@/features/gists/dialogs/DeleteGistDialog";
 import type { EditorMode } from "@/features/editor/mode";
 import { toMarkdownFilename } from "@/shared/github";
@@ -10,7 +10,7 @@ import type { AiMode } from "../commands";
 
 /** The (latest) state and actions of the editor, when a voice tool is called. */
 export interface VoiceToolContext {
-  doc: GistDocument;
+  file: ActiveFile;
   /** Runs an AI command, and throws if it doesn't complete (e.g. because it failed). */
   runCommand: (command: string, mode: AiMode) => Promise<void>;
   addFile: (filename: string, content?: string) => Promise<void>;
@@ -30,7 +30,7 @@ interface Tool<Args = any> {
   description: string;
   /** The JSON schema of the tool's arguments (if it has any). */
   parameters?: object;
-  /** Whether the tool edits the user's gists (so it's only available if they can edit the document). */
+  /** Whether the tool edits the user's gists (so it's only available if they can edit the file). */
   isEditTool?: boolean;
   /** Performs the tool call, and throws if it fails (so the assistant can let the user know). */
   handler: (args: Args, context: VoiceToolContext) => ToolResult | Promise<ToolResult>;
@@ -62,8 +62,8 @@ const tools: Tool[] = [
       },
       required: ["filename"],
     },
-    handler: ({ filename }, { doc }) => {
-      openDocument(doc.gistId, toMarkdownFilename(filename));
+    handler: ({ filename }, { file }) => {
+      openFile(file.gistId, toMarkdownFilename(filename));
     },
   } satisfies Tool<{ filename: string }>,
   {
@@ -164,10 +164,10 @@ const tools: Tool[] = [
       },
       required: ["prompt", "summary"],
     },
-    handler: async ({ prompt, summary }, { doc }) => {
+    handler: async ({ prompt, summary }, { file }) => {
       const generate = async () => {
         const { generateImage } = await import("../agents");
-        return uploadImage(doc.gistId!, await generateImage(prompt));
+        return uploadImage(file.gistId!, await generateImage(prompt));
       };
 
       const imageUrl = await toast
@@ -220,8 +220,8 @@ const tools: Tool[] = [
     description:
       "Delete the currently viewed gist or gist file (when the gist has multiple files).",
     // Deleting requires confirmation, so this only opens the delete dialog
-    handler: (_, { doc }) => {
-      if (doc.gist) deleteGistDialog.openWithPayload({ gist: doc.gist, filename: doc.filename });
+    handler: (_, { file }) => {
+      if (file.gist) deleteGistDialog.openWithPayload({ gist: file.gist, filename: file.filename });
     },
     isEditTool: true,
   },

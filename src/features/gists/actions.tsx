@@ -3,15 +3,15 @@ import { getTodayNoteFilename, TEMPLATE_FILENAME, type Gist } from "@/shared/git
 import {
   ensureTodaysNote,
   getMostRecentGist,
-  useAddGistFile,
+  useAddFile,
   useCreateGist,
   useDeleteGist,
-  useDeleteGistFile,
+  useDeleteFile,
 } from "./queries";
 import { useUpdatePreferences } from "@/features/account/queries";
-import { mobilePanelAtom } from "@/features/editor/layout";
-import { draftAtom } from "@/features/editor/store";
-import { useDocument, openDocument } from "@/features/editor/document";
+import { closeMobilePanels, mobilePanelAtom } from "@/features/editor/layout";
+import { draftAtom } from "@/features/files/draft";
+import { useActiveFile, openFile } from "@/features/files/file";
 import { useMutation } from "@tanstack/react-query";
 
 /** Creates a gist (optionally tagged), and then opens it. */
@@ -29,17 +29,17 @@ export function useCreateAndOpenGist() {
       updatePreferences(({ gistTags }) => ({ gistTags: { ...gistTags, [gist.id]: tagIds } }));
     }
 
-    await openDocument(gist.id, undefined, { focus: true });
+    await openFile(gist.id, undefined, { focus: true });
   };
 }
 
 /** Adds a file to a gist, and then opens it. */
 export function useAddAndOpenFile() {
-  const { mutateAsync: addFile } = useAddGistFile();
+  const { mutateAsync: addFile } = useAddFile();
 
   return async (gistId: string, filename: string, content?: string) => {
     await addFile({ gistId, filename, content });
-    await openDocument(gistId, filename, { focus: true });
+    await openFile(gistId, filename, { focus: true });
   };
 }
 
@@ -54,7 +54,9 @@ export function useOpenTodaysNote() {
 
   return async () => {
     const dailyNotes = await ensureNote();
-    await openDocument(dailyNotes.id, getTodayNoteFilename(), { focus: true });
+    // (Even if it's already open, e.g. to return to it from the mobile gist list)
+    closeMobilePanels();
+    await openFile(dailyNotes.id, getTodayNoteFilename(), { focus: true });
   };
 }
 
@@ -62,10 +64,15 @@ export function useOpenTodaysNote() {
 export function useOpenDailyTemplate() {
   const addAndOpenFile = useAddAndOpenFile();
 
-  return (dailyNotes: Gist) =>
-    dailyNotes.files[TEMPLATE_FILENAME]
-      ? openDocument(dailyNotes.id, TEMPLATE_FILENAME)
-      : addAndOpenFile(dailyNotes.id, TEMPLATE_FILENAME, "# 📆 {{date}}\n\n");
+  return (dailyNotes: Gist) => {
+    if (!dailyNotes.files[TEMPLATE_FILENAME]) {
+      return addAndOpenFile(dailyNotes.id, TEMPLATE_FILENAME, "# 📆 {{date}}\n\n");
+    }
+
+    // (Even if it's already open, e.g. to return to it from the mobile gist list)
+    closeMobilePanels();
+    return openFile(dailyNotes.id, TEMPLATE_FILENAME);
+  };
 }
 
 /** Whether deleting a gist's file deletes the gist itself (i.e. its README, or its only file). */
@@ -78,25 +85,26 @@ export const deletesGist = (gist: Gist, filename?: string) =>
  */
 export function useDeleteGistOrFile() {
   const { mutateAsync: deleteGist } = useDeleteGist();
-  const { mutateAsync: deleteGistFile } = useDeleteGistFile();
-  const openDoc = useDocument();
+  const { mutateAsync: deleteFile } = useDeleteFile();
+  const activeFile = useActiveFile();
   const isMobile = useIsMobile();
 
   return async (gist: Gist, filename?: string) => {
     const isDeletingGist = deletesGist(gist, filename);
     if (isDeletingGist) await deleteGist(gist.id);
-    else await deleteGistFile({ gistId: gist.id, filename: filename! });
+    else await deleteFile({ gistId: gist.id, filename: filename! });
 
-    const wasOpen = gist.id === openDoc.gistId && (isDeletingGist || filename === openDoc.filename);
+    const wasOpen =
+      gist.id === activeFile.gistId && (isDeletingGist || filename === activeFile.filename);
     if (!wasOpen) return;
 
     // The deleted changes don't need to be saved.
     draftAtom.set(null);
 
     if (!isDeletingGist) {
-      await openDocument(gist.id);
+      await openFile(gist.id);
     } else {
-      await openDocument((await getMostRecentGist())?.id);
+      await openFile((await getMostRecentGist())?.id);
       if (isMobile) mobilePanelAtom.set("sidebar");
     }
   };

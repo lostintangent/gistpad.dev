@@ -1,4 +1,5 @@
-import { openDocument, prepareToOpenDocument } from "@/features/editor/document";
+import { openFile } from "@/features/files/file";
+import { closeMobilePanels } from "@/features/editor/layout";
 import { cn } from "cn";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -37,10 +38,11 @@ export function ListItem({
         search={({ view }) => ({ view })}
         onClick={(event) => {
           if (!event.metaKey && !event.ctrlKey) {
-            prepareToOpenDocument();
+            // (Even if the item's already open, e.g. to return to it from the mobile gist list)
+            closeMobilePanels();
           } else if (isOpen) {
             event.preventDefault();
-            openDocument();
+            openFile();
           }
         }}
         className={cn(
