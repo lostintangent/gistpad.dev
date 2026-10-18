@@ -17,7 +17,7 @@ interface CollapsibleSectionProps {
   count: ReactNode;
   /** Shown in the header, while the section is collapsed (e.g. a summary). */
   collapsedDetails?: ReactNode;
-  /** Shown in the header, while the section is expanded. */
+  /** Shown in the header (before its count), while the section is expanded. */
   actions?: ReactNode;
   /** The ID of the open gist, if it's in this section (which reveals the section). */
   openGistId?: string;
@@ -65,12 +65,12 @@ export function CollapsibleSection({
             {title}
             {!isOpen && collapsedDetails}
           </span>
-          {/* (At the end of the header, so that the sections' counts line up) */}
-          <Badge variant="count" className="ml-auto">
-            {count}
-          </Badge>
+          {/* (A rule from the title to the header's end, which separates the sections) */}
+          <span aria-hidden className="mr-1 h-px flex-1 bg-border" />
         </button>
         {isOpen && actions}
+        {/* (Last in the header, so that the sections' counts line up) */}
+        <Badge variant="count">{count}</Badge>
       </div>
       <div
         className="transition-[height,opacity] duration-200 ease-in-out overflow-hidden"

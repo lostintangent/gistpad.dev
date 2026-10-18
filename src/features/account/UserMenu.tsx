@@ -96,7 +96,7 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
             <AvatarFallback className="text-xs">{user?.initial}</AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side={side} align={side === "top" ? "start" : "end"} className="w-56">
+        <DropdownMenuContent side={side} align={side === "top" ? "start" : "end"}>
           {recentlyViewedGistFiles.length > 0 && (
             <>
               <DropdownMenuSub>
@@ -169,7 +169,7 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
               <Settings />
               Advanced settings
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56">
+            <DropdownMenuSubContent>
               {ADVANCED_SETTINGS.map((setting, index) =>
                 setting ? settingItem(setting) : <DropdownMenuSeparator key={index} />,
               )}
