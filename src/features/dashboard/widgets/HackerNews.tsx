@@ -1,6 +1,7 @@
+import { timeAgo } from "@/shared/dates";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
 import { ArrowUp, Clock, MessageSquare } from "lucide-react";
+import { HANGING_LIST, HANGING_MARKER } from "../styles";
 import type { Comment, WidgetDefinition, WidgetProps } from "../types";
 
 interface Story {
@@ -79,11 +80,13 @@ async function fetchReplies(ids: number[] = []): Promise<Comment[]> {
 function HackerNewsWidget({ data, config, openCommentsDialog }: WidgetProps<Story[]>) {
   if (!data) {
     return (
-      <div className="space-y-3">
+      <div className={`space-y-3 ${HANGING_LIST}`}>
         {[...Array(Number(config.postCount) || 10)].map((_, index) => (
           <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
-            <div className="flex gap-2">
-              <span className="text-sm text-muted-foreground mt-0.5">{index + 1}.</span>
+            <div className="flex">
+              <span className={`${HANGING_MARKER} text-sm text-muted-foreground mt-0.5`}>
+                {index + 1}.
+              </span>
               <div className="flex-1 space-y-3 mt-1">
                 <Skeleton className="h-9 w-full" />
                 <div className="flex gap-3">
@@ -100,11 +103,13 @@ function HackerNewsWidget({ data, config, openCommentsDialog }: WidgetProps<Stor
   }
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${HANGING_LIST}`}>
       {data.map((story, index) => (
         <div key={story.id} className="border-b pb-2 last:border-0 last:pb-0">
-          <div className="flex gap-2">
-            <span className="text-sm text-muted-foreground mt-0.5">{index + 1}.</span>
+          <div className="flex">
+            <span className={`${HANGING_MARKER} text-sm text-muted-foreground mt-0.5`}>
+              {index + 1}.
+            </span>
             <div className="flex-1">
               <a
                 href={story.url || `https://news.ycombinator.com/item?id=${story.id}`}
@@ -143,7 +148,7 @@ function HackerNewsWidget({ data, config, openCommentsDialog }: WidgetProps<Stor
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(story.time * 1000, { addSuffix: true })}
+                  {timeAgo(story.time * 1000)}
                 </span>
               </div>
             </div>

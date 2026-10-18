@@ -29,7 +29,7 @@ export function TagFilter() {
         <Tag />
         {selectedTagIds.length > 0 && selectedTagIds.length}
       </PopoverTrigger>
-      <PopoverContent className="w-39 space-y-1 p-2.5" align="end">
+      <PopoverContent className="w-39 space-y-1 p-2.5" align="start">
         {Object.entries(tags).map(([id, tag]) => (
           <label key={id} className="flex items-center gap-2 py-1 cursor-pointer">
             <Checkbox

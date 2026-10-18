@@ -6,7 +6,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/u
 import { useDocument, useDocumentContent, useSaveDocument, type GistDocument } from "./document";
 import { useEditorMode } from "./mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { CARD_CLASS } from "./card";
 import { gistQueries } from "@/features/gists/queries";
 import { useIsAiEnabled } from "@/features/ai/settings";
 import { draftAtom, editorPanelSizeAtom, editorViewAtom, revisionAtom, zenModeAtom } from "./store";
@@ -152,6 +151,9 @@ function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactN
   );
 }
 
+/** The workspace is raised above the backdrop (that the sidebars are recessed into). */
+const WORKSPACE_CLASS = "raised rounded-xl overflow-clip w-full h-full";
+
 export default function Workspace() {
   const doc = useDocument();
   const content = useDocumentContent(doc);
@@ -183,7 +185,7 @@ export default function Workspace() {
   );
 
   if (!doc.gistId) {
-    return <div className={`${CARD_CLASS} w-full h-full relative`}>{aiAssistant}</div>;
+    return <div className={`${WORKSPACE_CLASS} relative`}>{aiAssistant}</div>;
   }
 
   const body = doc.error ? (
@@ -223,7 +225,7 @@ export default function Workspace() {
   );
 
   return (
-    <div className={`${CARD_CLASS} w-full h-full relative flex flex-col`}>
+    <div className={`${WORKSPACE_CLASS} relative flex flex-col`}>
       {aiAssistant}
       {!isZenMode && <EditorToolbar key={doc.documentKey} doc={doc} onSave={saveOrFork} />}
 

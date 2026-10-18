@@ -1,3 +1,4 @@
+import { timeAgo } from "@/shared/dates";
 import { EmojiInput } from "@/shared/EmojiInput";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
@@ -26,7 +27,6 @@ import { useSession } from "@/features/account/queries";
 import { commentsStore, openComments, updateComments } from "./store";
 import { useSelector } from "@tanstack/react-store";
 import { Collapsible } from "@base-ui/react/collapsible";
-import { formatDistanceToNow } from "date-fns";
 import { ArrowUp, ChevronRight, MoreHorizontal, Pencil, Reply, Trash2, X } from "lucide-react";
 import { createContext, use, useEffect, useRef, useState } from "react";
 import { useCommentThreads } from "./useCommentThreads";
@@ -188,7 +188,7 @@ function CommentItem({ comment, depth }: { comment: GistComment; depth: number }
               {comment.user?.login ?? "Anonymous"}
             </span>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {formatDistanceToNow(comment.created_at, { addSuffix: true })}
+              {timeAgo(comment.created_at)}
             </span>
           </div>
           {!isEditing && (

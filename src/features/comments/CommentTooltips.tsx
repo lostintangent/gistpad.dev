@@ -1,8 +1,8 @@
+import { timeAgo } from "@/shared/dates";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import type { GistComment } from "@/shared/github";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Popover, PopoverContent } from "@/shared/ui/popover";
-import { formatDistanceToNow } from "date-fns";
 import { useEffect, useEffectEvent, useState } from "react";
 import {
   COMMENT_ID_ATTR,
@@ -119,9 +119,7 @@ function Comment({ comment }: { comment: GistComment }) {
           <AvatarFallback>{comment.user?.login?.[0]?.toUpperCase() ?? "A"}</AvatarFallback>
         </Avatar>
         <span className="text-sm font-medium">{comment.user?.login || "Anonymous"}</span>
-        <span className="text-xs text-muted-foreground">
-          {formatDistanceToNow(comment.created_at, { addSuffix: true })}
-        </span>
+        <span className="text-xs text-muted-foreground">{timeAgo(comment.created_at)}</span>
       </div>
       <MarkdownPreview enableBlockquoteCopying={false}>
         {getDisplayBody(comment.body)}

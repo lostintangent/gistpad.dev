@@ -1,4 +1,8 @@
-import { format as formatDate } from "date-fns";
+import { format as formatDate, formatDistanceToNow } from "date-fns";
+
+/** How long ago a date was (e.g. "5 minutes ago", or "1 year ago", without date-fns' "about"). */
+export const timeAgo = (date: Parameters<typeof formatDistanceToNow>[0]) =>
+  formatDistanceToNow(date, { addSuffix: true }).replace(/^about /, "");
 
 // Gists can be organized as a series of dated files (e.g. a journal, with a file per day), and
 // so these helpers detect when a gist's files are named with a common date format.

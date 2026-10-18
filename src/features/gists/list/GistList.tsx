@@ -25,16 +25,7 @@ import { usePreferences } from "@/features/account/queries";
 import { tagFiltersAtom } from "../store";
 import { useParams } from "@tanstack/react-router";
 import { useSelector } from "@tanstack/react-store";
-import {
-  Archive,
-  ArchiveRestore,
-  Calendar,
-  MoreHorizontal,
-  Search,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Archive, ArchiveRestore, Calendar, MoreHorizontal, Star, Trash2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { DailyNotes } from "./DailyNotes";
 import { GistListItem } from "./GistListItem";
@@ -74,11 +65,11 @@ export default function GistList({
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       {/* Header */}
-      <div className="border-b px-2.5 py-3 flex-none bg-muted/30 flex items-center gap-2">
+      <div className="px-2 py-3 flex-none flex items-center gap-2">
         {leadingSlot}
-        <InputGroup className="h-8 flex-1" data-disabled={gists.length === 0}>
+        <InputGroup className="h-8 flex-1 bg-card" data-disabled={gists.length === 0}>
           <InputGroupAddon>
-            <Search />
+            <TagFilter />
           </InputGroupAddon>
           <InputGroupInput
             placeholder="Filter gists"
@@ -86,6 +77,9 @@ export default function GistList({
             onChange={(e) => setFilter(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setFilter("")}
             disabled={gists.length === 0}
+            // The tag button has its own padding, so the input only needs some when
+            // the button is filled in (i.e. it's showing the selected tag count)
+            className={tagFilters.length > 0 ? "pl-1.5!" : "pl-0!"}
           />
           <InputGroupAddon align="inline-end">
             {/* While filtering by text, the count is replaced by a button that clears the filter */}
@@ -102,7 +96,6 @@ export default function GistList({
                 {tagFilters.length > 0 ? filteredGists.length : gists.length}
               </Badge>
             )}
-            <TagFilter />
           </InputGroupAddon>
         </InputGroup>
         <CreateGistButton />

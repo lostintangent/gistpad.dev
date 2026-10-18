@@ -1,7 +1,7 @@
+import { timeAgo } from "@/shared/dates";
 import { CompletionList, useCompletions } from "@/shared/CompletionList";
 import { Textarea } from "@/shared/ui/textarea";
 import { getGistDisplayName, type Gist } from "@/shared/github";
-import { formatDistanceToNow } from "date-fns";
 import { Globe } from "lucide-react";
 import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import type { CustomCommand } from "./commands";
@@ -135,7 +135,7 @@ export function CommandInput({
                 <span className="flex items-center gap-1 w-full overflow-hidden">
                   <span className="truncate flex-1">{getGistDisplayName(gist)}</span>
                   <span className="text-xs text-muted-foreground pl-2 whitespace-nowrap">
-                    {formatDistanceToNow(gist.updated_at, { addSuffix: true })}
+                    {timeAgo(gist.updated_at)}
                   </span>
                 </span>
               ),

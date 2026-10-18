@@ -6,8 +6,7 @@ import { getGistDisplayName, type Gist } from "@/shared/github";
 import { useParams } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { CollapsibleSection } from "./CollapsibleSection";
-import { GistLink } from "./GistLink";
-import { GistMetadata } from "./GistMetadata";
+import { GistRow } from "./GistLink";
 
 /** A secondary list of gists (e.g. starred or archived gists), below the user's main gists. */
 export function GistSection({
@@ -43,41 +42,33 @@ export function GistSection({
         </>
       }
       openGistId={gists.some(({ id }) => id === openGistId) ? openGistId : undefined}
-      height={gists.length === 1 ? 80 : 150}
+      rowCount={gists.length}
     >
       <ScrollArea className="h-full">
-        <div className="p-2 space-y-1">
+        <div className="py-1 pl-3 pr-2 space-y-0.5">
           {gists.length === 0 ? (
             <div className="p-2 text-muted-foreground text-center italic text-sm">
               No {section} gists match your filter
             </div>
           ) : (
             gists.map((gist) => (
-              <div key={gist.id} className="flex items-center gap-2">
-                <GistLink
-                  gistId={gist.id}
-                  isSelected={gist.id === openGistId}
-                  className="max-w-[calc(100%-3rem)]"
-                >
-                  <div className="flex items-center gap-2">
-                    {isStarred && (
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={gist.owner?.avatar_url} alt={gist.owner?.login} />
-                        <AvatarFallback>{gist.owner?.login[0]?.toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-medium">
-                        <ScrollableText>{getGistDisplayName(gist)}</ScrollableText>
-                      </h3>
-                      <ScrollableText>
-                        <GistMetadata gist={gist} showPublicBadge={!isStarred} />
-                      </ScrollableText>
-                    </div>
-                  </div>
-                </GistLink>
-                {renderAction(gist)}
-              </div>
+              <GistRow
+                key={gist.id}
+                gistId={gist.id}
+                isSelected={gist.id === openGistId}
+                action={renderAction(gist)}
+                className="py-1.5 px-2"
+              >
+                <div className="flex items-center gap-2 text-sm">
+                  {isStarred && (
+                    <Avatar className="size-5">
+                      <AvatarImage src={gist.owner?.avatar_url} alt={gist.owner?.login} />
+                      <AvatarFallback>{gist.owner?.login[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <ScrollableText className="flex-1">{getGistDisplayName(gist)}</ScrollableText>
+                </div>
+              </GistRow>
             ))
           )}
         </div>

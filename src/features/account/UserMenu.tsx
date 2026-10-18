@@ -1,3 +1,4 @@
+import { timeAgo } from "@/shared/dates";
 import { SpotifyConfigDialog } from "@/features/spotify/SpotifyConfigDialog";
 import {
   AlertDialog,
@@ -31,7 +32,6 @@ import {
   useUpdatePreferences,
   type Preferences,
 } from "./queries";
-import { formatDistanceToNow } from "date-fns";
 import { Clock, LogOut, Music, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -117,7 +117,7 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
                         <div className="flex flex-col max-w-[200px]">
                           <span className="font-medium">{file.description}</span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(file.viewedDate, { addSuffix: true })}
+                            {timeAgo(file.viewedDate)}
                           </span>
                         </div>
                       </DropdownMenuItem>

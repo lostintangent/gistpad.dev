@@ -94,31 +94,44 @@ export function resetDocumentState() {
   }));
 }
 
-// The editor page's layout
+// The editor page's layout, where the workspace is beside two panels: the sidebar (i.e. the gist
+// list) and the news dashboard. On desktop, they're sized in pixels (rather than as a percentage),
+// so their widths survive window resizes, and the workspace's panes divide whatever's left.
 
-/** Whether the gist list sidebar is collapsed (desktop only). */
+export const SIDEBAR_WIDTH = { min: 250, max: 480 };
+export const DASHBOARD_WIDTH = { min: SIDEBAR_WIDTH.min, max: 600 };
+
+/** A panel's width (desktop only), which is kept while it's collapsed or closed. */
+const persistedWidthAtom = (
+  key: string,
+  initialWidth: number,
+  { min, max }: typeof SIDEBAR_WIDTH,
+) =>
+  persistedAtom(key, initialWidth, {
+    parse: (value) => {
+      const width = Number(value);
+      if (!Number.isFinite(width)) throw new Error(`Invalid width: ${value}`);
+      return Math.min(max, Math.max(min, width));
+    },
+    stringify: String,
+  });
+
+export const sidebarWidthAtom = persistedWidthAtom("gistpad-sidebar-width", 325, SIDEBAR_WIDTH);
+
+/** Whether the sidebar is collapsed into its rail (desktop only). */
 export const sidebarCollapsedAtom = persistedAtom("gistpad-sidebar-collapsed", false);
 
-// The sidebar is sized in pixels (rather than as a percentage), so its width survives window
-// resizes, and the workspace's panes divide whatever's left
-export const SIDEBAR_MIN_WIDTH = 300;
-export const SIDEBAR_MAX_WIDTH = 480;
+export const dashboardWidthAtom = persistedWidthAtom(
+  "gistpad-dashboard-width",
+  400,
+  DASHBOARD_WIDTH,
+);
 
-export const clampSidebarWidth = (width: number) =>
-  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
+/** Whether the news dashboard is open (desktop only). */
+export const dashboardOpenAtom = persistedAtom("gistpad-dashboard-open", false);
 
-/** The width of the expanded sidebar (desktop only), which is kept while it's collapsed. */
-export const sidebarWidthAtom = persistedAtom("gistpad-sidebar-width", 325, {
-  parse: (value) => {
-    const width = Number(value);
-    if (!Number.isFinite(width)) throw new Error(`Invalid sidebar width: ${value}`);
-    return clampSidebarWidth(width);
-  },
-  stringify: String,
-});
-
-/** Whether the gist list is being shown, instead of the editor (mobile only). */
-export const mobileSidebarOpenAtom = createAtom(false);
+/** The panel that's open beside the editor (mobile only), since only one can be at a time. */
+export const mobilePanelAtom = createAtom<"sidebar" | "dashboard" | null>(null);
 
 export const zenModeAtom = createAtom(false);
 

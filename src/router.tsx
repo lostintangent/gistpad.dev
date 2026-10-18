@@ -1,21 +1,19 @@
 import { MOBILE_MEDIA_QUERY } from "@/shared/useMediaQuery";
-import {
-  createGist,
-  EMPTY_CONTENT,
-  getTodayNoteFilename,
-  GitHubError,
-  isArchived,
-  isDailyNote,
-} from "@/shared/github";
+import { createGist, EMPTY_CONTENT, getTodayNoteFilename, GitHubError } from "@/shared/github";
 import { queryClient } from "@/shared/query-client";
 import ErrorCard from "@/shared/cards/ErrorCard";
 import LoadingCard from "@/shared/cards/LoadingCard";
 import SignInCard from "@/features/account/SignInCard";
 import NotFoundCard from "@/shared/cards/NotFoundCard";
-import { gistQueries, openDailyNote, setGistData } from "@/features/gists/queries";
+import {
+  getMostRecentGist,
+  gistQueries,
+  openDailyNote,
+  setGistData,
+} from "@/features/gists/queries";
 import { sessionQuery, usePreferences, useSession } from "@/features/account/queries";
 import { openComments } from "@/features/comments/store";
-import { resetDocumentState } from "@/features/editor/store";
+import { mobilePanelAtom, resetDocumentState } from "@/features/editor/store";
 import { useEffect } from "react";
 import {
   createHashHistory,
@@ -94,20 +92,20 @@ export const editorRoute = createRoute({
     quote: optionalString(search.quote),
     replyTo: Number(search.replyTo) || undefined,
   }),
-  // When the app is opened without a gist (on desktop), open the most recently updated one.
+  // When the app is opened without a gist, open the most recent one. But since the user didn't
+  // choose it, mobile (where the gist fills the screen) shows the gist list beside it.
   beforeLoad: async ({ params, cause, context }) => {
-    if (cause !== "enter" || params.gistId || window.matchMedia(MOBILE_MEDIA_QUERY).matches) return;
-    if (!context.session) return;
+    if (cause !== "enter" || params.gistId || !context.session) return;
 
-    const gists = await queryClient.query({ ...gistQueries.list(), staleTime: "static" });
-    const mostRecentGist = gists.find((gist) => !isDailyNote(gist) && !isArchived(gist));
-    if (mostRecentGist) {
-      throw redirect({
-        to: "/{-$gistId}/{-$filePath}",
-        params: { gistId: mostRecentGist.id },
-        replace: true,
-      });
-    }
+    const mostRecentGist = await getMostRecentGist();
+    if (!mostRecentGist) return;
+
+    if (window.matchMedia(MOBILE_MEDIA_QUERY).matches) mobilePanelAtom.set("sidebar");
+    throw redirect({
+      to: "/{-$gistId}/{-$filePath}",
+      params: { gistId: mostRecentGist.id },
+      replace: true,
+    });
   },
   loaderDeps: ({ search: { quote, replyTo } }) => ({ quote, replyTo }),
   loader: ({ params: { gistId }, deps: { quote, replyTo }, preload }) => {

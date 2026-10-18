@@ -1,14 +1,7 @@
 import { useIsMobile } from "@/shared/useMediaQuery";
+import { getTodayNoteFilename, TEMPLATE_FILENAME, type Gist } from "@/shared/github";
 import {
-  getTodayNoteFilename,
-  isArchived,
-  isDailyNote,
-  TEMPLATE_FILENAME,
-  type Gist,
-} from "@/shared/github";
-import { queryClient } from "@/shared/query-client";
-import {
-  gistQueries,
+  getMostRecentGist,
   useAddGistFile,
   useCreateGist,
   useDeleteGist,
@@ -16,7 +9,7 @@ import {
   useOpenDailyNote,
 } from "./queries";
 import { useUpdatePreferences } from "@/features/account/queries";
-import { draftAtom, mobileSidebarOpenAtom } from "@/features/editor/store";
+import { draftAtom, mobilePanelAtom } from "@/features/editor/store";
 import { useDocument, useOpenDocument } from "@/features/editor/document";
 
 /** Creates a gist (optionally tagged), and then opens it. */
@@ -77,8 +70,8 @@ export const deletesGist = (gist: Gist, filename?: string) =>
   !filename || filename === "README.md" || Object.keys(gist.files).length === 1;
 
 /**
- * Deletes a gist, or one of its files. And if it's currently open, then the next most recent gist
- * is opened instead (or on mobile, the user is returned to the gist list).
+ * Deletes a gist, or one of its files. And if it's currently open, then (like when the app opens)
+ * the most recent gist is opened instead, beside the gist list on mobile.
  */
 export function useDeleteGistOrFile() {
   const { mutateAsync: deleteGist } = useDeleteGist();
@@ -100,13 +93,9 @@ export function useDeleteGistOrFile() {
 
     if (!isDeletingGist) {
       await openDocument(gist.id);
-    } else if (isMobile) {
-      await openDocument();
-      mobileSidebarOpenAtom.set(true);
     } else {
-      const gists = queryClient.getQueryData(gistQueries.list().queryKey) ?? [];
-      const nextGist = gists.find((gist) => !isDailyNote(gist) && !isArchived(gist));
-      await openDocument(nextGist?.id);
+      await openDocument((await getMostRecentGist())?.id);
+      if (isMobile) mobilePanelAtom.set("sidebar");
     }
   };
 }

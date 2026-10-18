@@ -1,7 +1,6 @@
 import { Badge } from "@/shared/ui/badge";
 import type { Gist } from "@/shared/github";
-import { isDateBasedGist } from "@/shared/dates";
-import { formatDistanceToNow } from "date-fns";
+import { isDateBasedGist, timeAgo } from "@/shared/dates";
 import { Calendar, File, Globe, MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -28,22 +27,22 @@ export function GistMetadata({
   return (
     <div className="text-sm text-muted-foreground flex items-center gap-2">
       {hasIndicator && <span className="bg-blue-500 rounded-full w-2 h-2" />}
-      {formatDistanceToNow(gist.updated_at, { addSuffix: true })}
+      {timeAgo(gist.updated_at)}
       {showPublicBadge && gist.public && (
-        <Badge variant="secondary" title="Public gist">
-          <Globe className="h-3.5 w-3.5" />
+        <Badge variant="count" title="Public gist">
+          <Globe />
         </Badge>
       )}
       {(fileCount > 1 || isDateBased) && (
-        <Badge variant="secondary" title={`${fileCount} files`}>
+        <Badge variant="count" title={`${fileCount} files`}>
           {fileCount}
-          <FileIcon className="ml-1 h-3.5 w-3.5" />
+          <FileIcon />
         </Badge>
       )}
       {gist.comments > 0 && (
-        <Badge variant="secondary" title={`${gist.comments} comments`}>
+        <Badge variant="count" title={`${gist.comments} comments`}>
           {gist.comments}
-          <MessageSquare className="ml-1 h-3.5 w-3.5" />
+          <MessageSquare />
         </Badge>
       )}
       {children}

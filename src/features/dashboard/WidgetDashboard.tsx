@@ -1,13 +1,6 @@
 import { Button } from "@/shared/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu";
-import { SheetClose, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { ScrollArea } from "@/shared/ui/scroll-area";
 import { persistedAtom } from "@/shared/persistedAtom";
-import { useTransientState } from "@/shared/useTransientState";
 import { useSelector } from "@tanstack/react-store";
 import { cn } from "cn";
 import {
@@ -17,7 +10,8 @@ import {
   Edit,
   ListEnd,
   ListStart,
-  PanelLeftOpen,
+  Newspaper,
+  PanelRightClose,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -27,7 +21,6 @@ import {
   createWidget,
   getDefaultWidgets,
   getRequiredOptions,
-  getWidgetTitle,
   isConfigured,
   widgetRegistry,
   type WidgetState,
@@ -60,13 +53,12 @@ const removeUnconfiguredWidgets = () =>
   );
 
 /** The news dashboard's contents (which are loaded on demand, when it's first opened). */
-export default function WidgetDashboard() {
+export default function WidgetDashboard({ onClose }: { onClose: () => void }) {
   const widgets = useSelector(widgetsAtom);
   const [isEditMode, setIsEditMode] = useState(false);
   const [commentsDialog, setCommentsDialog] = useState<CommentThread | null>(null);
   const [mediaDialogItem, setMediaDialogItem] = useState<Media | null>(null);
   const [availableCollapsed, setAvailableCollapsed] = useState(false);
-  const [highlightedId, setHighlightedId] = useTransientState<string | null>(null);
   const widgetListRef = useRef<HTMLDivElement>(null);
 
   // While dragging a widget, where it would be dropped (as an index into the list of widgets)
@@ -88,11 +80,6 @@ export default function WidgetDashboard() {
       ),
     );
     getWidgetElement(widget.id)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  };
-
-  const scrollToWidget = (id: string) => {
-    getWidgetElement(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setHighlightedId(id);
   };
 
   /** Rejects a config that would duplicate another widget (e.g. the same sport). */
@@ -128,130 +115,110 @@ export default function WidgetDashboard() {
 
   return (
     <>
-      <SheetHeader className="py-2 border-b bg-muted/30">
+      <div className="px-2 pt-3 pb-2 flex-none">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <SheetTitle
-              className="cursor-pointer"
-              onClick={() => widgetListRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-            >
-              News Dashboard
-            </SheetTitle>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon-xs" title="Jump to widget" />}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
-                {widgets.length === 0 ? (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No widgets added</div>
-                ) : (
-                  widgets.map((widget, index) => (
-                    <DropdownMenuItem
-                      key={widget.id}
-                      onClick={() => scrollToWidget(widget.id)}
-                      className="cursor-pointer"
-                    >
-                      <span className="mr-2 text-muted-foreground">{index + 1}.</span>
-                      {getWidgetTitle(widget)}
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <h2
+            // (Its icon lines up with the widgets' chevrons, and its title with theirs)
+            className="font-semibold cursor-pointer flex items-center gap-2"
+            onClick={() =>
+              widgetListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })
+            }
+          >
+            <Newspaper className="size-4" />
+            Dashboard
+          </h2>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={isEditMode ? exitEditMode : () => setIsEditMode(true)}
               className={cn(
-                "h-8 w-8",
                 isEditMode && "hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20",
               )}
               title={isEditMode ? "Save and exit edit mode" : "Edit widgets"}
             >
-              {isEditMode ? <Check className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+              {isEditMode ? <Check /> : <Edit />}
             </Button>
-            <div className="h-4 w-px bg-border" />
-            <SheetClose render={<Button variant="ghost" size="icon-sm" title="Close dashboard" />}>
-              <PanelLeftOpen className="h-4 w-4" />
-            </SheetClose>
+            <div className="h-4 w-px bg-separator" />
+            <Button variant="ghost" size="icon-sm" title="Close dashboard" onClick={onClose}>
+              <PanelRightClose />
+            </Button>
           </div>
         </div>
-      </SheetHeader>
-      <div
-        ref={widgetListRef}
-        className={`space-y-3 px-3 pb-6 overflow-y-auto flex-1 ${isEditMode ? "edit-mode" : ""}`}
-        // (So that widgets can also be dropped in the gaps between them)
-        onDragOver={(e) => drag && e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (drag && dropIndex != null) {
-            moveWidget(drag.id, draggedIndex < dropIndex ? dropIndex - 1 : dropIndex);
-          }
-          setDrag(null);
-        }}
-      >
-        {widgets.map((widget, index) => (
-          <div
-            key={widget.id}
-            data-widget-id={widget.id}
-            draggable={isEditMode}
-            onDragStart={() => setDrag({ id: widget.id, dropIndex: null })}
-            onDragEnd={() => setDrag(null)}
-            onDragOver={(e) => {
-              if (!drag) return;
-              e.preventDefault();
-
-              // Dropping on the top half of a widget places it before it (otherwise, after it)
-              const { top, height } = e.currentTarget.getBoundingClientRect();
-              const dropIndex = e.clientY < top + height / 2 ? index : index + 1;
-              if (dropIndex !== drag.dropIndex) setDrag({ ...drag, dropIndex });
-            }}
-            className={cn(
-              "relative first:mt-3 scroll-mt-3 rounded-lg transition-all",
-              isEditMode && "cursor-move",
-              drag?.id === widget.id && "opacity-30",
-              highlightedId === widget.id && "ring-1 ring-primary ring-offset-1",
-              // The drop indicator, which is centered in the gap before (or after) the widget
-              dropIndex === index &&
-                "before:absolute before:inset-x-0 before:-top-[7px] before:h-0.5 before:bg-primary",
-              dropIndex === widgets.length &&
-                index === widgets.length - 1 &&
-                "after:absolute after:inset-x-0 after:-bottom-[7px] after:h-0.5 after:bg-primary",
-            )}
-          >
-            <Widget
-              widget={widget}
-              isEditMode={isEditMode}
-              isFirst={index === 0}
-              isLast={index === widgets.length - 1}
-              onEnterEditMode={() => setIsEditMode(true)}
-              onExitEditMode={exitEditMode}
-              onToggleCollapsed={() => updateWidget(widget.id, { collapsed: !widget.collapsed })}
-              onMoveUp={() => moveWidget(widget.id, index - 1)}
-              onMoveDown={() => moveWidget(widget.id, index + 1)}
-              onRemove={() =>
-                widgetsAtom.set((widgets) => widgets.filter(({ id }) => id !== widget.id))
-              }
-              onSaveConfig={(config) => saveConfig(widget, config)}
-              openCommentsDialog={setCommentsDialog}
-              displayMediaDialog={setMediaDialogItem}
-            />
-          </div>
-        ))}
       </div>
+      {/* The widgets scroll together (like the gist list), beneath the dashboard's header */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div
+          ref={widgetListRef}
+          // (Its widgets' chevrons are as far from the workspace as the gist list's edge is)
+          className={`space-y-4 pl-1 pr-2 pb-6 ${isEditMode ? "edit-mode" : ""}`}
+          // (So that widgets can also be dropped in the gaps between them)
+          onDragOver={(e) => drag && e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (drag && dropIndex != null) {
+              moveWidget(drag.id, draggedIndex < dropIndex ? dropIndex - 1 : dropIndex);
+            }
+            setDrag(null);
+          }}
+        >
+          {widgets.map((widget, index) => (
+            <div
+              key={widget.id}
+              data-widget-id={widget.id}
+              draggable={isEditMode}
+              onDragStart={() => setDrag({ id: widget.id, dropIndex: null })}
+              onDragEnd={() => setDrag(null)}
+              onDragOver={(e) => {
+                if (!drag) return;
+                e.preventDefault();
+
+                // Dropping on the top half of a widget places it before it (otherwise, after it)
+                const { top, height } = e.currentTarget.getBoundingClientRect();
+                const dropIndex = e.clientY < top + height / 2 ? index : index + 1;
+                if (dropIndex !== drag.dropIndex) setDrag({ ...drag, dropIndex });
+              }}
+              className={cn(
+                "relative first:mt-1 scroll-mt-3 rounded-lg transition-all",
+                isEditMode && "cursor-move",
+                drag?.id === widget.id && "opacity-30",
+                // The drop indicator, which is centered in the gap before (or after) the widget
+                dropIndex === index &&
+                  "before:absolute before:inset-x-0 before:-top-[7px] before:h-0.5 before:bg-primary",
+                dropIndex === widgets.length &&
+                  index === widgets.length - 1 &&
+                  "after:absolute after:inset-x-0 after:-bottom-[7px] after:h-0.5 after:bg-primary",
+              )}
+            >
+              <Widget
+                widget={widget}
+                isEditMode={isEditMode}
+                isFirst={index === 0}
+                isLast={index === widgets.length - 1}
+                onEnterEditMode={() => setIsEditMode(true)}
+                onExitEditMode={exitEditMode}
+                onToggleCollapsed={() => updateWidget(widget.id, { collapsed: !widget.collapsed })}
+                onMoveUp={() => moveWidget(widget.id, index - 1)}
+                onMoveDown={() => moveWidget(widget.id, index + 1)}
+                onRemove={() =>
+                  widgetsAtom.set((widgets) => widgets.filter(({ id }) => id !== widget.id))
+                }
+                onSaveConfig={(config) => saveConfig(widget, config)}
+                openCommentsDialog={setCommentsDialog}
+                displayMediaDialog={setMediaDialogItem}
+              />
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
 
       {isEditMode && availableWidgets.length > 0 && (
-        <div className="border-t p-3 bg-background sticky bottom-0">
+        <div className="border-t p-3 bg-backdrop">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-muted-foreground">Add widget to dashboard</h4>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-6 w-6"
+              size="icon-xs"
               onClick={() => setAvailableCollapsed(!availableCollapsed)}
               title={availableCollapsed ? "Expand" : "Collapse"}
             >

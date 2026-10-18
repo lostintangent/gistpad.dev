@@ -25,17 +25,23 @@
   --secondary-foreground: light-dark(oklch(0.205 0 0), oklch(0.985 0 0));
   --muted: light-dark(oklch(0.97 0 0), oklch(0.269 0 0));
   --muted-foreground: light-dark(oklch(0.556 0 0), oklch(0.708 0 0));
-  /* The default accent color (which the user can change, via an inline style on `<html>`) */
-  --accent: #facc15;
   --destructive: light-dark(oklch(0.577 0.245 27.325), oklch(0.704 0.191 22.216));
   --border: light-dark(oklch(0.922 0 0), oklch(0.3 0 0));
   --input: light-dark(oklch(0.922 0 0), oklch(1 0 0 / 15%));
   --ring: light-dark(oklch(0.708 0 0), oklch(0.556 0 0));
 
-  /* The window surface that cards float over */
-  --backdrop: light-dark(oklch(0.96 0 0), oklch(0.17 0 0));
-  /* Lifts those cards off the backdrop */
-  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.05);
+  /* The default accent color (which the user can change, via an inline style on `<html>`) */
+  --accent: #facc15;
+
+  /* The app's surfaces are a backdrop (which the sidebars are recessed into), and the surfaces that
+     are raised above it (e.g. the workspace, and the selected gist), which are lighter than the
+     backdrop in dark mode. Raised surfaces are outlined, and since shadows don't show on a dark
+     backdrop, they have a faint glow (and a highlight along their top edge) in dark mode. */
+  --backdrop: light-dark(oklch(0.96 0 0), oklch(0.145 0 0));
+  --raised-shadow:
+    0 0 0 1px var(--border), inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 0.06)),
+    0 1px 2px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.5)),
+    0 8px 28px -6px light-dark(rgb(0 0 0 / 0.14), rgb(255 255 255 / 0.05));
 
   /* The accent that a resize handle shows (along its length) while it's hovered or dragged */
   --resize-accent: transparent 0%, var(--accent) 20%, var(--accent) 80%, transparent 100%;
@@ -43,11 +49,53 @@
   --resize-accent-x: linear-gradient(to right, var(--resize-accent));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark cards are separated by tone rather than shadow */
-    --card-shadow: none;
-  }
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  /* (Black or white, whichever is most legible on the user's accent color) */
+  --color-accent-foreground: contrast-color(var(--accent));
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-backdrop: var(--backdrop);
+  /* The (vertical) rule between groups of actions, e.g. in a header */
+  --color-separator: --alpha(var(--muted-foreground) / 50%);
+
+  /* A micro label size, below `text-xs` (12px), for badges and counts */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* The AI action bar's purple glow */
+  --shadow-dark-xl: 0 0 10px 0 rgb(147 51 234 / 0.3);
+  --shadow-centered-action-bar: 0 0 30px 0 rgb(147 51 234 / 0.4);
+}
+
+/* A surface that's raised above the backdrop (e.g. the workspace), whose content is painted on it
+   (rather than on the darker background, in dark mode) */
+@utility raised {
+  background-color: var(--card);
+  box-shadow: var(--raised-shadow);
+  --background: var(--card);
 }
 
 @layer base {
@@ -55,9 +103,8 @@
     @apply border-border outline-ring/50;
   }
 
-  /* On desktop, the app's cards float over a backdrop (and on mobile, they fill the screen) */
   body {
-    @apply bg-background md:bg-backdrop text-foreground;
+    @apply bg-backdrop text-foreground;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
       "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
@@ -75,54 +122,32 @@
   }
 }
 
-@utility container {
-  margin-inline: auto;
-  padding: 0.5rem;
-  padding-bottom: 1rem;
-  width: 100vw;
-  max-width: 125rem;
+/* The page, which is kept within the screen's safe area (i.e. clear of its notch, rounded corners
+   and home indicator, which nothing covers when GistPad's installed as an app, like a browser's
+   toolbars do). A page either fits the screen like an app (i.e. the editor), or scrolls like a
+   document (e.g. a shared gist). */
+
+:root {
+  --safe-screen-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary-background: --alpha(var(--muted) / 50%);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  /* An opaque equivalent of `bg-muted/50` over the app's background */
-  --color-panel: color-mix(in srgb, var(--muted) 50%, var(--background));
-  --color-backdrop: var(--backdrop);
-  --shadow-card: var(--card-shadow);
-  --color-accent: var(--accent);
-  /* (Black or white, whichever is most legible on the user's accent color) */
-  --color-accent-foreground: contrast-color(var(--accent));
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+@layer base {
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
 
-  /* A micro label size, below `text-xs` (12px), for badges, counts and eyebrow headings */
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
+  /* (So the screen can't be scrolled, or bounced, either) */
+  body:has(.fit-screen) {
+    overflow: hidden;
+  }
+}
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-
-  --shadow-dark-xl: 0 0 10px 0 rgb(147 51 234 / 0.3);
-  --shadow-centered-action-bar: 0 0 30px 0 rgb(147 51 234 / 0.4);
+/* A page that fits the screen, which is clipped at its edges, so that anything slid off of it (e.g.
+   a closed panel) can't be scrolled into view */
+@utility fit-screen {
+  height: var(--safe-screen-height);
+  overflow: clip;
 }
 
 /* Gradient text, which pulses while AI is working on something (e.g. a gist's title, while it's edited) */

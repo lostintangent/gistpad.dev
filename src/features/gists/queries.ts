@@ -63,6 +63,12 @@ const partitionGists = (gists: Gist[]) => ({
 
 const EMPTY_LISTS = partitionGists([]);
 
+/** The gist that's opened when the user hasn't chosen one (i.e. their most recently updated one). */
+export async function getMostRecentGist() {
+  const gists = await queryClient.query({ ...gistQueries.list(), staleTime: "static" });
+  return partitionGists(gists).gists[0];
+}
+
 /** The signed-in user's gists, partitioned into their regular gists, archived gists and daily notes. */
 export function useGists() {
   const { session } = useSession();

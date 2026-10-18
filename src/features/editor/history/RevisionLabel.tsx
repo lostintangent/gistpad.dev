@@ -1,5 +1,5 @@
+import { timeAgo } from "@/shared/dates";
 import type { GistRevision } from "@/shared/github";
-import { formatDistanceToNow } from "date-fns";
 
 export function RevisionLabel({
   revision,
@@ -16,7 +16,7 @@ export function RevisionLabel({
 
   return (
     <>
-      {formatDistanceToNow(revision.committed_at, { addSuffix: true })}
+      {timeAgo(revision.committed_at)}
       {showChangeStats &&
         (isCreation ? (
           <span className="ml-2 text-muted-foreground">(Created)</span>

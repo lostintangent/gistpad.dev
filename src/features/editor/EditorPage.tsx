@@ -1,29 +1,22 @@
 import UnsavedChangesDialog from "./dialogs/UnsavedChangesDialog";
+import { NewsDashboard } from "./NewsDashboard";
+import { MobilePanels } from "./SidePanel";
 import { Sidebar } from "./Sidebar";
-import { SidebarResizer } from "./SidebarResizer";
 import Workspace from "./Workspace";
 import ResearchStatus from "@/features/ai/research/ResearchStatus";
 import { SpotifyPlayer } from "@/features/spotify/SpotifyPlayer";
 import { Button } from "@/shared/ui/button";
-import { Sheet, SheetContent } from "@/shared/ui/sheet";
 import { useDocument, useIsSaving, useSaveDocument, type GistDocument } from "./document";
-import { useIsMobile } from "@/shared/useMediaQuery";
 import { getGistDisplayName } from "@/shared/github";
 import { useStarredGists } from "@/features/gists/queries";
 import { usePreferences, useRecordRecentlyViewed } from "@/features/account/queries";
 import DeleteGistDialog from "@/features/gists/dialogs/DeleteGistDialog";
-import { draftAtom, useDraft } from "./store";
-import {
-  mobileSidebarOpenAtom,
-  sidebarCollapsedAtom,
-  sidebarWidthAtom,
-  zenModeAtom,
-} from "./store";
+import { draftAtom, mobilePanelAtom, useDraft, zenModeAtom } from "./store";
+import { useIsMobile } from "@/shared/useMediaQuery";
 import { useBlocker } from "@tanstack/react-router";
 import { useSelector } from "@tanstack/react-store";
-import { cn } from "cn";
 import { EyeOff } from "lucide-react";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent } from "react";
 
 const AUTO_SAVE_DELAY = 5000;
 
@@ -132,83 +125,46 @@ function ZenModeControls() {
   );
 }
 
-/** In zen mode, the sidebar is hidden, but it can be revealed by hovering over the screen's left edge. */
-function SidebarHoverSheet() {
-  const [isOpen, setIsOpen] = useState(false);
-  const width = useSelector(sidebarWidthAtom);
-
-  useEffect(() => {
-    const onMouseMove = (event: MouseEvent) => {
-      if (event.clientX <= 30) setIsOpen(true);
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    return () => window.removeEventListener("mousemove", onMouseMove);
-  }, []);
-
-  return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetContent
-        side="left"
-        showCloseButton={false}
-        className="border-r-0 p-0"
-        style={{ width }}
-        onPointerLeave={() => setIsOpen(false)}
-      >
-        <Sidebar />
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 export default function EditorPage() {
   const doc = useDocument();
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
-  const isSidebarCollapsed = useSelector(sidebarCollapsedAtom);
-  const sidebarWidth = useSelector(sidebarWidthAtom);
-  const isMobileSidebarOpen = useSelector(mobileSidebarOpenAtom);
+
+  // (While there's no gist to show, e.g. for a new user, the gist list stays open)
+  const mobilePanel = useSelector(mobilePanelAtom) ?? (doc.gistId ? null : "sidebar");
 
   useRecentlyViewed(doc);
 
-  // On mobile, either the gist list or the editor fills the screen. And on desktop, the sidebar
-  // is hidden in zen mode (and otherwise, it's either expanded or collapsed into a rail).
-  const showSidebar = isMobile ? isMobileSidebarOpen || !doc.gistId : !isZenMode;
+  const workspace = (
+    <div className="relative min-w-0 flex-1 h-full">
+      <Workspace />
+      {isZenMode && <ZenModeControls />}
+    </div>
+  );
 
   return (
-    <div className="container h-screen">
+    <div className="fit-screen mx-auto max-w-500 p-2">
       <title>{doc.gist ? `GistPad - ${getGistDisplayName(doc.gist)}` : "GistPad"}</title>
 
-      {!isMobile && isZenMode && <SidebarHoverSheet />}
-
-      <div
-        className={cn("h-full", isMobile ? "grid grid-rows-[minmax(0,1fr)]" : "flex")}
-        style={isMobile ? { gridTemplateColumns: showSidebar ? "1fr 0px" : "0px 1fr" } : undefined}
-      >
-        {isMobile ? (
-          <div className={cn("overflow-hidden", !showSidebar && "opacity-0")}>
-            <Sidebar />
-          </div>
-        ) : (
-          <SidebarResizer
-            width={sidebarWidth}
-            isCollapsed={isSidebarCollapsed}
-            isHidden={!showSidebar}
-            onWidthChange={(width) => sidebarWidthAtom.set(width)}
-            onCollapsedChange={(isCollapsed) => sidebarCollapsedAtom.set(isCollapsed)}
-          >
-            <Sidebar
-              isCollapsed={isSidebarCollapsed}
-              onCollapsedChange={(isCollapsed) => sidebarCollapsedAtom.set(isCollapsed)}
-            />
-          </SidebarResizer>
-        )}
-
-        <div className={isMobile && showSidebar ? "hidden" : "relative min-w-0 flex-1"}>
-          <Workspace />
-          {isZenMode && <ZenModeControls />}
+      {/* The workspace is between two panels (which slide in, on mobile) */}
+      {isMobile ? (
+        <MobilePanels
+          openPanel={
+            mobilePanel === "sidebar" ? "left" : mobilePanel === "dashboard" ? "right" : null
+          }
+          onClose={() => mobilePanelAtom.set(null)}
+          left={<Sidebar />}
+          right={<NewsDashboard />}
+        >
+          {workspace}
+        </MobilePanels>
+      ) : (
+        <div className="h-full flex">
+          <Sidebar />
+          {workspace}
+          <NewsDashboard />
         </div>
-      </div>
+      )}
 
       <UnsavedChangesGuard doc={doc} />
       <DeleteGistDialog />

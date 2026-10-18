@@ -56,6 +56,7 @@ import {
   Link,
   MessageSquare,
   MoreHorizontal,
+  Newspaper,
   PanelLeftOpen,
   Pencil,
   Plus,
@@ -76,7 +77,7 @@ import {
 } from "../document";
 import { RevisionItems } from "../history/RevisionSelector";
 import { useEditorMode } from "../mode";
-import { mobileSidebarOpenAtom, revisionAtom, useDraft, zenModeAtom } from "../store";
+import { mobilePanelAtom, revisionAtom, useDraft, zenModeAtom } from "../store";
 
 /** The state and actions that both the desktop and mobile toolbars use. */
 function useToolbar(doc: GistDocument) {
@@ -483,6 +484,11 @@ function MobileActions({
           <DropdownMenuItem onClick={onSave} disabled={!toolbar.hasChanges}>
             <Save /> Save
           </DropdownMenuItem>
+          {/* (On mobile, the sidebar's footer is slid away, so the dashboard can be opened here too) */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => mobilePanelAtom.set("dashboard")}>
+            <Newspaper /> News dashboard
+          </DropdownMenuItem>
           {!doc.isReadOnly && (
             <>
               <DropdownMenuSeparator />
@@ -532,12 +538,12 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
   return (
     <div className="border-b p-2.5 flex justify-between items-center gap-2 bg-muted/30">
       <div className="flex items-center gap-1 flex-1 min-w-0">
-        {/* On mobile, the gist list replaces the editor (rather than being beside it) */}
+        {/* On mobile, the gist list is slid away (until it's shown, beside the editor) */}
         {isMobile && (
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => mobileSidebarOpenAtom.set(true)}
+            onClick={() => mobilePanelAtom.set("sidebar")}
             title="Show gists"
           >
             <PanelLeftOpen />

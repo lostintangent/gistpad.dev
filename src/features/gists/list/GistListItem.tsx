@@ -30,7 +30,7 @@ import {
   Tag as TagIcon,
   Trash2,
 } from "lucide-react";
-import { GistLink } from "./GistLink";
+import { GistRow } from "./GistLink";
 import { GistMetadata } from "./GistMetadata";
 import TagBadge from "../TagBadge";
 import { deleteGistDialog } from "../dialogs/DeleteGistDialog";
@@ -90,107 +90,103 @@ export function GistListItem({
       return { gistTags: { ...gistTags, [gist.id]: updated } };
     });
 
-  return (
-    <div className="flex items-center gap-2">
-      <GistLink gistId={gist.id} isSelected={isSelected} className="max-w-[calc(100%-3rem)]">
-        <h3 className="font-medium flex items-center gap-1">
-          {isPinned && (
-            <Tooltip>
-              <TooltipTrigger>
-                <Pin
-                  className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-primary-foreground" : "text-accent"}`}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Pinned gist</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          <ScrollableText>
-            <span className={isProcessing ? "ai-gradient-text" : ""}>
-              <GistTitle gist={gist} isProcessing={isProcessing} />
-            </span>
-          </ScrollableText>
-        </h3>
-
-        <ScrollableText>
-          <GistMetadata
-            gist={gist}
-            hasIndicator={hasUnseenResults || (hasUnsavedChanges && isSelected)}
-          >
-            {tagIds.map(
-              (id) => tags[id] && <TagBadge key={id} tag={tags[id].name} color={tags[id].color} />,
-            )}
-          </GistMetadata>
-        </ScrollableText>
-      </GistLink>
-
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
-          render={
-            <Button variant="ghost" size="icon-sm" className="shrink-0" aria-label="Gist options" />
+  const menu = (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon-xs" aria-label="Gist options" />}
+      >
+        <MoreHorizontal />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={togglePinned}>
+          <Pin />
+          {isPinned ? "Unpin gist" : "Pin gist"}
+        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <TagIcon />
+            Tag gist
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="z-100">
+            {Object.entries(tags).map(([id, tag]) => (
+              <DropdownMenuItem key={id} onClick={() => toggleTag(id)}>
+                {tagIds.includes(id) ? <Check /> : <span className="w-4 mr-2" />}
+                <TagBadge tag={tag.name} color={tag.color} />
+              </DropdownMenuItem>
+            ))}
+            {Object.keys(tags).length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem onClick={() => editTagsDialog.open(null)}>
+              <TagIcon />
+              Manage tags
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => navigator.clipboard.writeText(`${location.origin}/#/${gist.id}`)}
+        >
+          <Link />
+          Copy URL
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() =>
+            navigate({ to: "/share/$gistId/{-$filePath}", params: { gistId: gist.id } })
           }
         >
-          <MoreHorizontal />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={togglePinned}>
-            <Pin />
-            {isPinned ? "Unpin gist" : "Pin gist"}
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <TagIcon />
-              Tag gist
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="z-100">
-              {Object.entries(tags).map(([id, tag]) => (
-                <DropdownMenuItem key={id} onClick={() => toggleTag(id)}>
-                  {tagIds.includes(id) ? <Check /> : <span className="w-4 mr-2" />}
-                  <TagBadge tag={tag.name} color={tag.color} />
-                </DropdownMenuItem>
-              ))}
-              {Object.keys(tags).length > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuItem onClick={() => editTagsDialog.open(null)}>
-                <TagIcon />
-                Manage tags
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => navigator.clipboard.writeText(`${location.origin}/#/${gist.id}`)}
-          >
-            <Link />
-            Copy URL
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() =>
-              navigate({ to: "/share/$gistId/{-$filePath}", params: { gistId: gist.id } })
-            }
-          >
-            <Fullscreen />
-            View Fullscreen
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={async () => openDocument((await duplicateGist(gist.id)).id)}>
-            <Copy />
-            Duplicate gist
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toggleArchived(gist)}>
-            <Archive />
-            Archive gist
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => deleteGistDialog.openWithPayload({ gist })}
-          >
-            <Trash2 />
-            Delete gist
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+          <Fullscreen />
+          View Fullscreen
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={async () => openDocument((await duplicateGist(gist.id)).id)}>
+          <Copy />
+          Duplicate gist
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => toggleArchived(gist)}>
+          <Archive />
+          Archive gist
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onClick={() => deleteGistDialog.openWithPayload({ gist })}
+        >
+          <Trash2 />
+          Delete gist
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <GistRow gistId={gist.id} isSelected={isSelected} action={menu}>
+      <h3 className="font-medium flex items-center gap-1">
+        {isPinned && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Pin className="h-3.5 w-3.5 shrink-0 text-accent" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Pinned gist</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        <ScrollableText>
+          <span className={isProcessing ? "ai-gradient-text" : ""}>
+            <GistTitle gist={gist} isProcessing={isProcessing} />
+          </span>
+        </ScrollableText>
+      </h3>
+
+      <ScrollableText>
+        <GistMetadata
+          gist={gist}
+          hasIndicator={hasUnseenResults || (hasUnsavedChanges && isSelected)}
+        >
+          {tagIds.map(
+            (id) => tags[id] && <TagBadge key={id} tag={tags[id].name} color={tags[id].color} />,
+          )}
+        </GistMetadata>
+      </ScrollableText>
+    </GistRow>
   );
 }

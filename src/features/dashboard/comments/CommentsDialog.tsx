@@ -74,7 +74,7 @@ export function CommentsDialog({
               >
                 <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
               </button>
-              <div className="h-4 w-px bg-border" />
+              <div className="h-4 w-px bg-separator" />
               <button
                 onClick={onClose}
                 className="text-muted-foreground hover:text-foreground transition-colors"

@@ -4,7 +4,7 @@ import { useForkGist, useGist, useSaveGistFiles } from "@/features/gists/queries
 import { useSession } from "@/features/account/queries";
 import { draftAtom, focusRequestAtom, useDraft } from "./store";
 import { commentsPanelOpenAtom } from "@/features/comments/store";
-import { mobileSidebarOpenAtom } from "./store";
+import { mobilePanelAtom } from "./store";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useIsMutating } from "@tanstack/react-query";
 
@@ -49,10 +49,10 @@ export function readDocumentContent(doc: GistDocument) {
   return draft?.documentKey === doc.documentKey ? draft.content : doc.savedContent;
 }
 
-/** On mobile, documents take up the whole screen, so close the panels that would cover them. */
+/** On mobile, documents take up the whole screen, so close the panels that push them aside. */
 export function prepareToOpenDocument(isMobile: boolean) {
   if (isMobile) {
-    mobileSidebarOpenAtom.set(false);
+    mobilePanelAtom.set(null);
     commentsPanelOpenAtom.set(false);
   }
 }

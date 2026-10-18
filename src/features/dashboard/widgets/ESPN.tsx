@@ -1,5 +1,5 @@
+import { timeAgo } from "@/shared/dates";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
 import { Trophy } from "lucide-react";
 import { WidgetDefinition, WidgetProps } from "../types";
 
@@ -90,7 +90,7 @@ function ESPNNewsWidget({ data, config, displayMediaDialog }: WidgetProps<ESPNNe
                   {article.headline}
                 </h3>
                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                  <span>{formatDistanceToNow(article.published, { addSuffix: true })}</span>
+                  <span>{timeAgo(article.published)}</span>
                   {article.byline && (
                     <>
                       <span>•</span>

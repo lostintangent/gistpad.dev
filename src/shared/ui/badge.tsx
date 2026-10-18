@@ -18,8 +18,6 @@ const badgeVariants = cva(
         link: "text-primary underline-offset-4 [a&]:hover:underline",
         count:
           "h-4.5 min-w-4.5 px-1 py-0 bg-foreground/10 text-2xs tabular-nums text-muted-foreground",
-        metadata:
-          "h-5 px-1.5 py-0 bg-secondary text-2xs text-secondary-foreground [a&]:hover:bg-secondary/90",
       },
     },
     defaultVariants: {

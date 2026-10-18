@@ -5,7 +5,15 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Slider } from "@/shared/ui/slider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, ExternalLink, Pencil, RefreshCw, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ExternalLink,
+  Pencil,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { useId, useRef, useState } from "react";
 import {
   getRequiredOptions,
@@ -167,9 +175,6 @@ function WidgetConfigForm({
   );
 }
 
-const headerButtonClass =
-  "hover:bg-muted rounded p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent";
-
 interface WidgetProps extends Pick<
   WidgetComponentProps<unknown>,
   "openCommentsDialog" | "displayMediaDialog"
@@ -244,59 +249,69 @@ export function Widget({
   const isEmpty = !data || (Array.isArray(data) && data.length === 0);
 
   return (
-    <div className="border rounded-lg [.edit-mode_&]:border-dashed [.edit-mode_&]:border-primary/50">
-      <div
-        className={`flex items-center bg-muted/30 hover:bg-muted/60 transition-colors select-none ${!collapsed ? "border-b border-border [.edit-mode_&]:border-dashed [.edit-mode_&]:border-primary/50" : ""}`}
-      >
-        <button {...longPress} className="flex-1 p-3 text-left">
-          <h3 className="text-lg font-semibold">{title}</h3>
+    // Widgets sit directly on the dashboard (like the gist list on the sidebar), and are only
+    // outlined in edit mode (where they can be moved)
+    <div className="rounded-lg [.edit-mode_&]:border [.edit-mode_&]:border-dashed [.edit-mode_&]:border-primary/50">
+      <div className="flex items-center rounded-lg hover:bg-foreground/5 transition-colors select-none">
+        {/* (Like the sidebar's sections, whose content is indented under their header) */}
+        <button {...longPress} className="flex-1 flex items-center gap-2 px-1 py-1.5 text-left">
+          <ChevronRight
+            className={`h-4 w-4 transition-transform duration-200 ${collapsed ? "" : "rotate-90"}`}
+          />
+          <h3 className="font-semibold">{title}</h3>
         </button>
-        <div className="flex items-center pr-3">
+        <div className="flex items-center pr-1">
           {isEditMode ? (
             <>
               {canEditConfig && (
                 <>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setConfigEdit({ exitsEditMode: false })}
-                    className={headerButtonClass}
                     title="Edit configuration"
                     disabled={!!configEdit}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <div className="mx-1 h-4 border-l" />
+                    <Pencil />
+                  </Button>
+                  <div className="mx-1 h-4 w-px bg-separator" />
                 </>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={onMoveUp}
-                className={headerButtonClass}
                 title="Move up"
                 disabled={isFirst}
               >
-                <ChevronUp className="h-3.5 w-3.5" />
-              </button>
-              <button
+                <ChevronUp />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={onMoveDown}
-                className={headerButtonClass}
                 title="Move down"
                 disabled={isLast}
               >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-              <div className="mx-1 h-4 border-l" />
-              <button
+                <ChevronDown />
+              </Button>
+              <div className="mx-1 h-4 w-px bg-separator" />
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={onRemove}
-                className={headerButtonClass}
                 title={`Remove ${title.toLowerCase()}`}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
+                <X />
+              </Button>
             </>
           ) : (
             <>
               {definition.getExternalUrl && (
                 <>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() =>
                       window.open(
                         definition.getExternalUrl!(config),
@@ -304,29 +319,30 @@ export function Widget({
                         "noopener,noreferrer",
                       )
                     }
-                    className={headerButtonClass}
                     title="Open external website"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </button>
-                  <div className="mx-2 h-4 border-l" />
+                    <ExternalLink />
+                  </Button>
+                  <div className="mx-1 h-4 w-px bg-separator" />
                 </>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 // (Resetting the query shows its loading state, unlike a background refetch)
                 onClick={() => queryClient.resetQueries({ queryKey, exact: true })}
-                className={headerButtonClass}
                 title={`Refresh ${title.toLowerCase()}`}
                 disabled={isFetching || !isReady}
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-              </button>
+                <RefreshCw className={isFetching ? "animate-spin" : undefined} />
+              </Button>
             </>
           )}
         </div>
       </div>
       {!collapsed && (
-        <div className="p-3 relative">
+        // (Its content is indented under its title, like the sidebar's sections; see `styles.ts`)
+        <div className="[--widget-indent:--spacing(5)] pl-(--widget-indent) pr-2 pt-1 pb-2 relative">
           {!isReady || configEdit ? (
             <WidgetConfigForm
               definition={definition}
@@ -357,7 +373,7 @@ export function Widget({
             />
           )}
           {isEditMode && !configEdit && isReady && (
-            <div className="absolute inset-0 bg-background/50 backdrop-blur-[0.5px] rounded-b-lg" />
+            <div className="absolute inset-0 bg-backdrop/50 backdrop-blur-[0.5px] rounded-b-lg" />
           )}
         </div>
       )}

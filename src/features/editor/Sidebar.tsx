@@ -4,48 +4,21 @@ import ResearchStatus from "@/features/ai/research/ResearchStatus";
 import { UserMenu } from "@/features/account/UserMenu";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
-import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/sheet";
+import { Sheet, SheetContent } from "@/shared/ui/sheet";
+import { useIsMobile } from "@/shared/useMediaQuery";
+import { useSelector } from "@tanstack/react-store";
 import { cn } from "cn";
-import { Newspaper, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { lazy, Suspense, type ReactNode } from "react";
-import { CARD_CLASS } from "./card";
-
-/** The sidebar is a card, whose border is included in its width. */
-export const SIDEBAR_BORDER = 2;
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { NewsDashboardButton } from "./NewsDashboard";
+import { SidePanel } from "./SidePanel";
+import { SIDEBAR_WIDTH, sidebarCollapsedAtom, sidebarWidthAtom, zenModeAtom } from "./store";
 
 /** The size of the sidebar's actions, which the rail is one of across. */
 const ACTION_SIZE = "size-6";
 
 /** The width of the collapsed rail (one action between two insets). */
-export const RAIL_WIDTH = 44 + SIDEBAR_BORDER;
-
-// The news dashboard is loaded on demand (and preloaded when the user is about to open it)
-const loadWidgetDashboard = () => import("@/features/dashboard/WidgetDashboard");
-const WidgetDashboard = lazy(loadWidgetDashboard);
-
-function NewsDashboard() {
-  return (
-    <Sheet>
-      <SheetTrigger
-        render={
-          <Button variant="ghost" size="icon" className={ACTION_SIZE} title="Open news dashboard" />
-        }
-        onPointerEnter={loadWidgetDashboard}
-        onFocus={loadWidgetDashboard}
-      >
-        <Newspaper />
-      </SheetTrigger>
-      <SheetContent
-        showCloseButton={false}
-        className="w-[100vw] md:w-[400px] flex flex-col gap-0 border-l-0 md:border-l md:border-l-border"
-      >
-        <Suspense>
-          <WidgetDashboard />
-        </Suspense>
-      </SheetContent>
-    </Sheet>
-  );
-}
+const RAIL_WIDTH = 40;
 
 /** An action-sized space, which an action that's pinned over both of the sidebar's layouts fills. */
 const ActionSpacer = ({ className }: { className?: string }) => (
@@ -53,7 +26,7 @@ const ActionSpacer = ({ className }: { className?: string }) => (
 );
 
 /** The rail's separators are the footer's (vertical) separator, turned on its side. */
-const RAIL_SEPARATOR = "my-1.5 data-horizontal:w-4 bg-muted-foreground/50";
+const RAIL_SEPARATOR = "my-1.5 data-horizontal:w-4 bg-separator";
 
 /**
  * Crossfades one of the sidebar's layouts (expanded, or the collapsed rail). The leaving layout
@@ -68,18 +41,18 @@ const layerClass = (isVisible: boolean) =>
 
 function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
   return (
-    <div className="border-t px-2.5 py-3 bg-muted/30 flex items-center justify-between">
+    <div className="px-2 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
         {leadingSlot}
         <Separator
           orientation="vertical"
-          className="data-vertical:h-4 data-vertical:self-center mx-1 bg-muted-foreground/50"
+          className="data-vertical:h-4 data-vertical:self-center mx-1 bg-separator"
         />
         <span className="font-semibold">GistPad</span>
       </div>
       <div className="flex items-center gap-3">
         <ResearchStatus className={ACTION_SIZE} />
-        <NewsDashboard />
+        <NewsDashboardButton className={ACTION_SIZE} />
       </div>
     </div>
   );
@@ -94,7 +67,7 @@ function SidebarRail({ isVisible }: { isVisible: boolean }) {
   return (
     <div
       inert={!isVisible}
-      style={{ width: RAIL_WIDTH - SIDEBAR_BORDER }}
+      style={{ width: RAIL_WIDTH }}
       className={cn(
         "absolute inset-y-0 left-0 flex flex-col items-center gap-3 py-3",
         layerClass(isVisible),
@@ -106,58 +79,47 @@ function SidebarRail({ isVisible }: { isVisible: boolean }) {
       <CreateGistButton isRail />
       <div className="flex-1" />
       <ResearchStatus className={ACTION_SIZE} />
-      <NewsDashboard />
+      <NewsDashboardButton className={ACTION_SIZE} />
       <Separator className={RAIL_SEPARATOR} />
       <ActionSpacer />
     </div>
   );
 }
 
-/**
- * The gist list, between a header (for filtering and creating gists) and a footer (for the user's
- * account and the news dashboard). On desktop, it can collapse into a rail, which keeps the actions
- * from its header and footer. The collapse toggle and avatar are pinned over both of its layouts
- * (which crossfade), so that they don't move when it collapses or expands.
- */
-export function Sidebar({
-  isCollapsed = false,
-  onCollapsedChange,
-}: {
-  isCollapsed?: boolean;
-  /** Makes the sidebar collapsible (on desktop). */
-  onCollapsedChange?: (isCollapsed: boolean) => void;
-}) {
-  if (!onCollapsedChange) {
-    return (
-      <div className={cn(CARD_CLASS, "h-full flex flex-col")}>
-        <GistList />
-        <SidebarFooter leadingSlot={<UserMenu side="top" />} />
-      </div>
-    );
-  }
-
+/** The sidebar's layout where it can't collapse (on mobile, or in zen mode's hover sheet). */
+function ExpandedLayout() {
   return (
-    <div className={cn(CARD_CLASS, "relative h-full")}>
+    <div className="h-full flex flex-col">
+      <GistList />
+      <SidebarFooter leadingSlot={<UserMenu side="top" />} />
+    </div>
+  );
+}
+
+/**
+ * The sidebar's layout on desktop, which can collapse into a rail (that keeps the actions from its
+ * header and footer). The collapse toggle and avatar are pinned over both layouts (which crossfade),
+ * so that they don't move when it collapses or expands.
+ */
+function CollapsibleLayout({ isCollapsed }: { isCollapsed: boolean }) {
+  return (
+    <div className="relative h-full">
       {/* (Centered in the header's row, which is as tall as its filter input) */}
-      <div className="absolute top-3 left-2.5 z-10 flex h-8 items-center">
+      <div className="absolute top-3 left-2 z-10 flex h-8 items-center">
         <Button
           variant="ghost"
           size="icon"
           className={ACTION_SIZE}
-          onClick={() => onCollapsedChange(!isCollapsed)}
+          onClick={() => sidebarCollapsedAtom.set(!isCollapsed)}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
         </Button>
       </div>
 
-      {/* The expanded layout keeps its width (from `SidebarResizer`), so its content doesn't squeeze while collapsing */}
       <div
         inert={isCollapsed}
-        className={cn(
-          "absolute inset-y-0 left-0 flex flex-col w-[var(--sidebar-width,100%)]",
-          layerClass(!isCollapsed),
-        )}
+        className={cn("absolute inset-0 flex flex-col", layerClass(!isCollapsed))}
       >
         <GistList leadingSlot={<ActionSpacer />} />
         <SidebarFooter leadingSlot={<ActionSpacer />} />
@@ -165,9 +127,71 @@ export function Sidebar({
 
       <SidebarRail isVisible={isCollapsed} />
 
-      <div className="absolute bottom-3 left-2.5 z-10 flex">
+      <div className="absolute bottom-3 left-2 z-10 flex">
         <UserMenu side={isCollapsed ? "right" : "top"} />
       </div>
     </div>
+  );
+}
+
+/** In zen mode, the sidebar is hidden, but it can be revealed by hovering over the window's left edge. */
+function HoverSheet() {
+  const [isOpen, setIsOpen] = useState(false);
+  const width = useSelector(sidebarWidthAtom);
+
+  useEffect(() => {
+    const onMouseMove = (event: MouseEvent) => {
+      if (event.clientX <= 30) setIsOpen(true);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, []);
+
+  return (
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetContent
+        side="left"
+        showCloseButton={false}
+        className="gap-0 p-0 bg-backdrop data-[side=left]:border-r-0 data-[side=left]:sm:max-w-none"
+        style={{ width }}
+        onPointerLeave={() => setIsOpen(false)}
+      >
+        <ExpandedLayout />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/**
+ * The gist list, between a header (for filtering and creating gists) and a footer (for the user's
+ * account and the news dashboard), which is a panel beside the workspace.
+ */
+export function Sidebar() {
+  const isMobile = useIsMobile();
+  const isZenMode = useSelector(zenModeAtom);
+  const isCollapsed = useSelector(sidebarCollapsedAtom);
+  const width = useSelector(sidebarWidthAtom);
+
+  // (On mobile, `MobilePanels` slides it in)
+  if (isMobile) return <ExpandedLayout />;
+
+  return (
+    <>
+      {isZenMode && <HoverSheet />}
+      <SidePanel
+        side="left"
+        label="Resize sidebar"
+        width={width}
+        limits={SIDEBAR_WIDTH}
+        collapsedWidth={RAIL_WIDTH}
+        isCollapsed={isCollapsed}
+        isHidden={isZenMode}
+        onWidthChange={(width) => sidebarWidthAtom.set(width)}
+        onCollapsedChange={(isCollapsed) => sidebarCollapsedAtom.set(isCollapsed)}
+      >
+        <CollapsibleLayout isCollapsed={isCollapsed} />
+      </SidePanel>
+    </>
   );
 }

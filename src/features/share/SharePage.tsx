@@ -1,3 +1,4 @@
+import { timeAgo } from "@/shared/dates";
 import { CommentTooltips } from "@/features/comments/CommentTooltips";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { readHeadings, scrollToHeading, type Heading } from "@/features/markdown/headings";
@@ -28,7 +29,6 @@ import { gistQueries } from "@/features/gists/queries";
 import { shareRoute } from "@/router";
 import { useMutation } from "@tanstack/react-query";
 import { Link, linkOptions, useNavigate } from "@tanstack/react-router";
-import { formatDistanceToNow } from "date-fns";
 import {
   BookOpen,
   Calendar,
@@ -58,7 +58,7 @@ function GistDates({ gist }: { gist: Gist }) {
     <Popover>
       <PopoverTrigger className="flex items-center gap-1 hover:text-foreground">
         <Calendar className="h-4 w-4" />
-        Created {formatDistanceToNow(gist.created_at, { addSuffix: true })}
+        Created {timeAgo(gist.created_at)}
       </PopoverTrigger>
       <PopoverContent className="w-50">
         <div className="grid gap-4">
@@ -82,8 +82,7 @@ function GistDates({ gist }: { gist: Gist }) {
               Last updated
             </h4>
             <p className="text-sm text-muted-foreground">
-              {formatDistanceToNow(gist.updated_at, { addSuffix: true })} (
-              {new Date(gist.updated_at).toLocaleDateString("en-US")})
+              {timeAgo(gist.updated_at)} ({new Date(gist.updated_at).toLocaleDateString("en-US")})
             </p>
           </div>
         </div>
@@ -152,7 +151,7 @@ export default function Share() {
   const files = Object.keys(doc.gist?.files ?? {}).filter((filename) => filename.endsWith(".md"));
 
   return (
-    <div className="container max-w-4xl p-4">
+    <div className="mx-auto max-w-4xl p-4">
       <title>{`GistPad - ${title}`}</title>
 
       <header className="mb-3">

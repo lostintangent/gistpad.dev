@@ -1,3 +1,4 @@
+import { timeAgo } from "@/shared/dates";
 import { AiLoadingMessage } from "../AiLoadingMessage";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import { Button } from "@/shared/ui/button";
@@ -10,7 +11,6 @@ import { queryClient } from "@/shared/query-client";
 import { playAiChime } from "@/shared/utils";
 import { gistQueries } from "@/features/gists/queries";
 import { useMutation } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 
 function AnalyzeStyleForm({ gists, onDone }: { gists: Gist[]; onDone: () => void }) {
@@ -62,7 +62,7 @@ function AnalyzeStyleForm({ gists, onDone }: { gists: Gist[]; onDone: () => void
                   </span>
                   {!isMobile && (
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(gist.updated_at, { addSuffix: true })}
+                      {timeAgo(gist.updated_at)}
                     </span>
                   )}
                 </label>

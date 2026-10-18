@@ -1,3 +1,4 @@
+import { timeAgo } from "@/shared/dates";
 import { ScrollableText } from "@/shared/ScrollableText";
 import { useTransientState } from "@/shared/useTransientState";
 import { Button } from "@/shared/ui/button";
@@ -8,7 +9,6 @@ import {
   type ResearchTask,
 } from "@/features/account/queries";
 import { queryOptions, useQueries } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
 import { Bell, Check, CircleStop, Clipboard, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -121,8 +121,8 @@ export default function ResearchStatus({ className }: { className?: string }) {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {task.content
-                      ? `Completed ${formatDistanceToNow(task.completedTime ?? task.startedTime, { addSuffix: true })}`
-                      : `Started ${formatDistanceToNow(task.startedTime, { addSuffix: true })}`}
+                      ? `Completed ${timeAgo(task.completedTime ?? task.startedTime)}`
+                      : `Started ${timeAgo(task.startedTime)}`}
                   </p>
                 </div>
                 {!task.content ? (
