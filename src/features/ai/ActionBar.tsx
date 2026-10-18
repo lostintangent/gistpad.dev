@@ -16,28 +16,26 @@ import { Toggle } from "@/shared/ui/toggle";
 import {
   useDocument,
   useDocumentContent,
-  useOpenDocument,
+  openDocument,
   useSaveDocument,
 } from "@/features/editor/document";
 import { useEditorMode } from "@/features/editor/mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { parseFrontMatter, updateFrontMatter } from "@/shared/frontMatter";
+import { parseFrontMatter } from "./frontMatter";
 import { useGists } from "@/features/gists/queries";
-import {
-  parseGlobalFrontMatter,
-  usePreferences,
-  useUpdatePreferences,
-} from "@/features/account/queries";
+import { getFileDisplayName, getMarkdownFiles } from "@/shared/github";
+import { usePreferences } from "@/features/account/queries";
 import {
   aiStore,
   showPendingAiDiffsAtom,
   updateAiState,
-  useAiEdit,
   useIsAiInProgress,
   useRunningMode,
   type AiAnswer,
 } from "./store";
-import { draftAtom, editorStatusAtom, updateDraft, useDraft } from "@/features/editor/store";
+import { editorStatusAtom, editorViewAtom, useDraft } from "@/features/editor/store";
+import { Chunk, getChunks, rejectChunk } from "@codemirror/merge";
+import { Text } from "@codemirror/state";
 import { useSelector } from "@tanstack/react-store";
 import { cn } from "cn";
 import {
@@ -69,21 +67,50 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CommandInput } from "./CommandInput";
-import { expandCustomCommand, getCustomCommands, type ActionBarMode } from "./commands";
+import {
+  expandCustomCommand,
+  getModeSettings,
+  parseGlobalFrontMatter,
+  type ActionBarMode,
+} from "./commands";
 import ActionBarSettingsDialog from "./dialogs/ActionBarSettingsDialog";
 import AnalyzeStyleDialog from "./dialogs/AnalyzeStyleDialog";
-import ConfigureAiDialog from "./dialogs/ConfigureAiDialog";
+import ModelSettingsDialog from "./dialogs/ModelSettingsDialog";
 import { FollowUpButton } from "./FollowUpButton";
 import type { AiCommands } from "./useAiCommands";
 import type { VoiceConversation } from "./voice/useVoiceConversation";
 
-const MODES: Record<ActionBarMode, { icon: LucideIcon; label: string }> = {
-  auto: { icon: Lightbulb, label: "Auto" },
-  talk: { icon: Mic, label: "Talk" },
-  ask: { icon: MessageCircleQuestion, label: "Ask" },
-  edit: { icon: Pencil, label: "Edit" },
-  discuss: { icon: ClipboardList, label: "Review" },
-  research: { icon: Telescope, label: "Research" },
+// Each mode's icon, label and command input placeholder (and when there's a selection, if it differs).
+const MODES: Record<
+  ActionBarMode,
+  { icon: LucideIcon; label: string; placeholder: string; selectionPlaceholder?: string }
+> = {
+  auto: { icon: Lightbulb, label: "Auto", placeholder: "What would you like to know or do?" },
+  talk: { icon: Mic, label: "Talk", placeholder: "Ask a question or propose a change..." },
+  ask: {
+    icon: MessageCircleQuestion,
+    label: "Ask",
+    placeholder: "What would you like to know?",
+    selectionPlaceholder: "What question do you have about the selection?",
+  },
+  edit: {
+    icon: Pencil,
+    label: "Edit",
+    placeholder: "What change would you like to make?",
+    selectionPlaceholder: "How should we edit the selection?",
+  },
+  review: {
+    icon: ClipboardList,
+    label: "Review",
+    placeholder: "What would you like to review?",
+    selectionPlaceholder: "How should we review the selection?",
+  },
+  research: {
+    icon: Telescope,
+    label: "Research",
+    placeholder: "What would you like to research?",
+    selectionPlaceholder: "How should we research the selection?",
+  },
 };
 
 // The modes that are available when a document is open (or not), where `null` is a separator.
@@ -94,20 +121,10 @@ const DOCUMENT_MODES: (ActionBarMode | null)[] = [
   "ask",
   "edit",
   null,
-  "discuss",
+  "review",
   "research",
 ];
 const GLOBAL_MODES: (ActionBarMode | null)[] = ["auto", null, "ask", "research"];
-
-// The command input's placeholder in each mode (and when there's a selection, if it differs).
-const PLACEHOLDERS: Record<ActionBarMode, [placeholder: string, selectionPlaceholder?: string]> = {
-  auto: ["What would you like to know or do?"],
-  talk: ["Ask a question or propose a change..."],
-  ask: ["What would you like to know?", "What question do you have about the selection?"],
-  edit: ["What change would you like to make?", "How should we edit the selection?"],
-  discuss: ["What would you like to review?", "How should we review the selection?"],
-  research: ["What would you like to research?", "How should we research the selection?"],
-};
 
 type Dialog = "document-settings" | "global-settings" | "model-settings" | "analyze-style";
 
@@ -134,7 +151,6 @@ function AnswerPanel({
   const isMobile = useIsMobile();
   const isAiInProgress = useIsAiInProgress();
   const { gists } = useGists();
-  const openDocument = useOpenDocument();
   const contentRef = useRef<HTMLDivElement>(null);
   const [canExpand, setCanExpand] = useState(false);
 
@@ -221,12 +237,44 @@ function AnswerPanel({
   );
 }
 
-/** Accepts or rejects the AI's (pending) edits to the document. */
-function EditPanel({ ai, isRounded }: { ai: AiCommands; isRounded: boolean }) {
+/** Counts the lines that were added and deleted between two versions of a document. */
+function getDiffStats(original: string, updated: string) {
+  const a = Text.of(original.split(/\r?\n/));
+  const b = Text.of(updated.split(/\r?\n/));
+  const countLines = (text: Text, from: number, to: number) =>
+    from === to ? 0 : text.lineAt(to - 1).number - text.lineAt(from).number + 1;
+
+  let additions = 0;
+  let deletions = 0;
+  for (const chunk of Chunk.build(a, b)) {
+    additions += countLines(b, chunk.fromB, chunk.toB);
+    deletions += countLines(a, chunk.fromA, chunk.toA);
+  }
+
+  return { additions, deletions };
+}
+
+/** Rejects all of the AI's pending edits (which ends the edit conversation, since its edits are gone). */
+function rejectEdits() {
+  const view = editorViewAtom.get();
+  if (!view) return;
+
+  for (const chunk of getChunks(view.state)?.chunks.toReversed() ?? []) {
+    rejectChunk(view, chunk.fromB);
+  }
+
+  updateAiState({ edit: null });
+}
+
+/** Accepts (i.e. saves) or rejects the AI's pending edits to the document. */
+function EditPanel({ isRounded }: { isRounded: boolean }) {
   const doc = useDocument();
-  const edit = useAiEdit(doc.documentKey);
+  const content = useDocumentContent(doc);
+  const hasPendingAiEdit = !!useDraft(doc)?.hasPendingAiEdit;
+  const save = useSaveDocument(doc);
   const showDiffs = useSelector(showPendingAiDiffsAtom);
   const isInProgress = useRunningMode() === "edit";
+  const stats = hasPendingAiEdit ? getDiffStats(doc.savedContent, content) : null;
 
   return (
     <div className="absolute bottom-full w-full animate-in slide-in-from-bottom-2 duration-300">
@@ -237,10 +285,10 @@ function EditPanel({ ai, isRounded }: { ai: AiCommands; isRounded: boolean }) {
           {isInProgress ? (
             <Loader2 className="h-4 w-4 animate-spin ml-1" />
           ) : (
-            edit?.stats && (
+            stats && (
               <div className="text-sm whitespace-nowrap flex items-center gap-2">
-                <span className="text-green-400">+{edit.stats.additions}</span>
-                <span className="text-red-400">-{edit.stats.deletions}</span>
+                <span className="text-green-400">+{stats.additions}</span>
+                <span className="text-red-400">-{stats.deletions}</span>
               </div>
             )
           )}
@@ -260,7 +308,7 @@ function EditPanel({ ai, isRounded }: { ai: AiCommands; isRounded: boolean }) {
           <Button
             size="xs"
             className="bg-green-500 hover:bg-green-400 text-white"
-            onClick={ai.acceptEdit}
+            onClick={save}
             disabled={isInProgress}
           >
             <Check /> Accept all
@@ -268,7 +316,7 @@ function EditPanel({ ai, isRounded }: { ai: AiCommands; isRounded: boolean }) {
           <Button
             size="xs"
             className="bg-red-500 hover:bg-red-400 text-white"
-            onClick={ai.rejectEdit}
+            onClick={rejectEdits}
             disabled={isInProgress}
           >
             <X /> Reject all
@@ -285,12 +333,9 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
   const content = useDocumentContent(doc);
   const { gists } = useGists();
   const preferences = usePreferences();
-  const updatePreferences = useUpdatePreferences();
-  const save = useSaveDocument(doc);
   const [editorMode] = useEditorMode();
   const hasSelection = useSelector(editorStatusAtom, (status) => status.hasSelection);
-  const draft = useDraft(doc.documentKey);
-  const edit = useAiEdit(doc.documentKey);
+  const draft = useDraft(doc);
   const answer = useSelector(aiStore, (state) => state.answer);
   const cancel = useSelector(aiStore, (state) => state.running?.cancel);
   const isAiInProgress = useIsAiInProgress() || voice.isAwaitingResponse;
@@ -311,10 +356,11 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
   const mode: ActionBarMode = voice.isActive && hasDocument ? "talk" : selectedMode;
   const { frontMatter } = parseFrontMatter(content);
   const globalFrontMatter = parseGlobalFrontMatter(preferences);
-  const commands = hasDocument ? getCustomCommands(mode, frontMatter, globalFrontMatter) : [];
+  const commands = hasDocument
+    ? getModeSettings(mode, frontMatter, globalFrontMatter).commands
+    : [];
 
-  const showEditPanel =
-    (!!draft?.hasPendingAiEdit || (isEditing && !!edit)) && editorMode !== "preview";
+  const showEditPanel = (!!draft?.hasPendingAiEdit || isEditing) && editorMode !== "preview";
 
   // When there isn't an open document, the action bar is centered (rather than at the bottom)
   const isCentered = !hasDocument && answer === null;
@@ -325,20 +371,11 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
     const commandMode = explicitMode ?? mode;
     if (commandMode === "talk") return voice.sendCommand(command);
 
+    // Custom commands are questions, unless they're run in a specific mode
     const customCommand = expandCustomCommand(command, commands);
-    if (customCommand) {
-      return ai.run(customCommand, commandMode === "auto" ? "ask" : commandMode);
-    }
+    if (customCommand) return ai.run(customCommand, commandMode === "auto" ? "ask" : commandMode);
 
-    // When the user is iterating on an edit (or an answer), then follow-up
-    // commands are likely to be the same kind of action.
-    const suspectedMode = draft?.hasPendingAiEdit
-      ? "edit"
-      : answer !== null || !hasDocument
-        ? "ask"
-        : undefined;
-
-    return ai.run(command, commandMode, { suspectedMode });
+    return ai.run(command, commandMode);
   };
 
   const submit = () => {
@@ -359,13 +396,10 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
     setDialog(name);
   };
 
-  const dialogProps = (name: Dialog) => ({
-    isOpen: dialog === name,
-    onOpenChange: (open: boolean) => setDialog(open ? name : null),
-  });
+  const closeDialog = () => setDialog(null);
 
-  const ModeIcon = voice.isActive && voice.isMicMuted ? MicOff : MODES[mode].icon;
-  const [placeholder, selectionPlaceholder = placeholder] = PLACEHOLDERS[mode];
+  const { icon, placeholder, selectionPlaceholder = placeholder } = MODES[mode];
+  const ModeIcon = voice.isActive && voice.isMicMuted ? MicOff : icon;
 
   return (
     <div
@@ -383,7 +417,7 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
         />
       )}
 
-      {showEditPanel && <EditPanel ai={ai} isRounded={answer === null} />}
+      {showEditPanel && <EditPanel isRounded={answer === null} />}
 
       <div
         className={`relative p-[2px] rounded-md bg-linear-to-r from-green-400 to-purple-600 ${
@@ -485,9 +519,9 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
             previousCommand={previousCommand}
             commands={hasSelection ? [] : commands}
             gists={gists.filter(({ id }) => id !== doc.gistId)}
-            files={Object.keys(doc.gist?.files ?? {})
-              .filter((file) => file !== doc.filename && file.endsWith(".md"))
-              .map((file) => file.replace(/\.md$/, ""))}
+            files={getMarkdownFiles(doc.gist)
+              .filter((file) => file !== doc.filename)
+              .map(getFileDisplayName)}
             placeholder={hasSelection ? selectionPlaceholder : placeholder}
             disabled={isAiInProgress}
           />
@@ -510,29 +544,14 @@ export function ActionBar({ ai, voice }: { ai: AiCommands; voice: VoiceConversat
         </div>
       </div>
 
-      <ActionBarSettingsDialog
-        {...dialogProps("global-settings")}
-        scope="global"
-        frontMatter={globalFrontMatter}
-        onSave={(frontMatter) =>
-          updatePreferences({ globalFrontMatter: JSON.stringify(frontMatter) })
-        }
-      />
-      <ActionBarSettingsDialog
-        {...dialogProps("document-settings")}
-        scope="document"
-        frontMatter={frontMatter ?? {}}
-        onSave={(frontMatter) => {
-          // If the document didn't have unsaved changes, then save the settings right away.
-          const hadChanges = !!draftAtom.get();
-          updateDraft(doc.documentKey, doc.savedContent, {
-            content: updateFrontMatter(content, frontMatter),
-          });
-          if (!hadChanges && !doc.isReadOnly) save();
-        }}
-      />
-      <ConfigureAiDialog {...dialogProps("model-settings")} />
-      <AnalyzeStyleDialog {...dialogProps("analyze-style")} gists={gists} />
+      {dialog === "global-settings" && (
+        <ActionBarSettingsDialog scope="global" onClose={closeDialog} />
+      )}
+      {dialog === "document-settings" && (
+        <ActionBarSettingsDialog scope="document" onClose={closeDialog} />
+      )}
+      {dialog === "model-settings" && <ModelSettingsDialog onClose={closeDialog} />}
+      {dialog === "analyze-style" && <AnalyzeStyleDialog gists={gists} onClose={closeDialog} />}
     </div>
   );
 }

@@ -2,27 +2,29 @@ import { createEditorCompletions } from "./code-mirror/completions";
 import { assetUrlShortener } from "./code-mirror/decorations/asset-url-shortener";
 import { clickableLinks } from "./code-mirror/decorations/clickable-links";
 import { codeFenceMarker } from "./code-mirror/decorations/code-fence-marker";
-import { commentQuotes } from "./code-mirror/decorations/comment-quotes";
+import { commentHighlights } from "./code-mirror/decorations/comment-highlights";
 import { mathEquationResult } from "./code-mirror/decorations/math-equations";
 import { imagePreview } from "./code-mirror/hoverTooltips/image-preview";
 import { emdash } from "./code-mirror/keybindings/emdash";
 import { selectionFormatting } from "./code-mirror/keybindings/selection-formatting";
 import { spellChecker } from "./code-mirror/linters/spell-checker";
 import { selectionComment } from "./code-mirror/widgets/selection-comment";
-import { useOpenDocument, useSaveOrFork, type GistDocument } from "./document";
+import { useDocumentContent, openDocument, useSaveDocument, type GistDocument } from "./document";
+import type { Revision } from "./history/revision";
 import { useEditorMode } from "./mode";
 import { useEditorTheme } from "./themes";
-import { splitFrontMatter, withFrontMatter } from "@/shared/utils";
+import { splitFrontMatter, withFrontMatter } from "@/shared/frontMatter";
 import { uploadImage } from "@/shared/supabase";
+import { getMarkdownFiles, toMarkdownFilename } from "@/shared/github";
 import { usePreferences } from "@/features/account/queries";
 import { useIsAiEnabled } from "@/features/ai/settings";
-import { showPendingAiDiffsAtom, updateAiState } from "@/features/ai/store";
-import { commentsStore, openComments } from "@/features/comments/store";
+import { showPendingAiDiffsAtom } from "@/features/ai/store";
+import { openComments } from "@/features/comments/store";
 import {
-  draftAtom,
   editorStatusAtom,
   editorViewAtom,
   focusRequestAtom,
+  readDraft,
   updateDraft,
   useDraft,
 } from "./store";
@@ -37,7 +39,7 @@ import { ClipboardPaste, XCircle } from "lucide-react";
 import { useEffect, useEffectEvent, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { FormattingToolbar } from "./FormattingToolbar";
-import { useCommentThreads } from "@/features/comments/useCommentThreads";
+import { useCommentHighlights } from "@/features/comments/useCommentThreads";
 
 const UPLOADING_PLACEHOLDER = "_Uploading image..._";
 
@@ -64,34 +66,29 @@ const getImageFile = (items: DataTransferItemList) =>
 
 export function EditorPane({
   doc,
-  content,
-  originalContent,
-  revisionId,
+  revision,
   previewRef,
 }: {
   doc: GistDocument;
-  /** The content to display (which may be a past revision). */
-  content: string;
-  /** The content to diff against, when diffs are shown. */
-  originalContent: string;
-  revisionId: string | null;
+  /** The past revision that's being viewed (if any), which is shown read-only, with its changes. */
+  revision: Revision | null;
   previewRef: RefObject<HTMLDivElement | null>;
 }) {
   const preferences = usePreferences();
   const editorTheme = useEditorTheme();
   const isAiEnabled = useIsAiEnabled();
-  const draft = useDraft(doc.documentKey);
-  const saveOrFork = useSaveOrFork(doc);
-  const openDocument = useOpenDocument();
-  const { quotedThreads } = useCommentThreads(doc);
-  const selectedCommentId = useSelector(commentsStore, (state) => state.selectedCommentId);
+  const draft = useDraft(doc);
+  const documentContent = useDocumentContent(doc);
+  const save = useSaveDocument(doc);
+  const highlights = useCommentHighlights(doc);
   const showPendingAiDiffs = useSelector(showPendingAiDiffsAtom);
   const view = useSelector(editorViewAtom);
   const isSplitMode = useEditorMode()[0] === "split";
   const focusRequest = useSelector(focusRequestAtom);
   const [dragOverlay, setDragOverlay] = useState<"image" | "unsupported" | null>(null);
 
-  const isViewingRevision = revisionId !== null;
+  const isViewingRevision = !!revision;
+  const content = revision?.content ?? documentContent;
   const showDiff =
     preferences.showDiffs || (!!draft?.hasPendingAiEdit && showPendingAiDiffs) || isViewingRevision;
 
@@ -147,24 +144,19 @@ export function EditorPane({
 
     // Once the user has accepted each of the AI's changes, then save them.
     const isAcceptingAiEdit =
-      draftAtom.get()?.hasPendingAiEdit &&
+      readDraft(doc)?.hasPendingAiEdit &&
       update.transactions.some((tr) => tr.isUserEvent("accept"));
 
-    if (isAcceptingAiEdit && !getChunks(update.state)?.chunks.length) {
-      queueMicrotask(async () => {
-        await saveOrFork();
-        updateAiState({ edit: null });
-      });
-    }
+    if (isAcceptingAiEdit && !getChunks(update.state)?.chunks.length) queueMicrotask(save);
   };
 
   const openWikilink = (link: string) => {
-    const filename = `${link}.md`;
+    const filename = toMarkdownFilename(link);
     if (doc.gist?.files[filename]) openDocument(doc.gistId, filename);
     else toast.error(`No file named "${link}" exists in this gist`);
   };
 
-  const otherFiles = Object.keys(doc.gist?.files ?? {}).filter((name) => name !== doc.filename);
+  const otherFiles = getMarkdownFiles(doc.gist).filter((name) => name !== doc.filename);
 
   const extensions = [
     yamlFrontmatter({ content: markdown() }),
@@ -183,17 +175,13 @@ export function EditorPane({
     preferences.isSpellcheckEnabled ? spellChecker : [],
     showDiff
       ? unifiedMergeView({
-          original: getVisibleContent(originalContent),
+          original: getVisibleContent(revision?.previousContent ?? doc.savedContent),
           mergeControls: !isViewingRevision,
           collapseUnchanged: draft?.hasPendingAiEdit || isViewingRevision ? {} : undefined,
           allowInlineDiffs: true,
         })
       : [],
-    commentQuotes(
-      quotedThreads,
-      selectedCommentId,
-      preferences.showInlineComments && !isViewingRevision,
-    ),
+    highlights ? commentHighlights(highlights) : [],
     selectionComment((text) => openComments({ quote: text })),
     mathEquationResult,
     scrollPastEnd(),
@@ -243,7 +231,7 @@ export function EditorPane({
           </div>
         )}
         <CodeMirror
-          key={`${doc.documentKey}/${revisionId}`}
+          key={`${doc.documentKey}/${revision?.version}`}
           value={preferences.showFrontmatter ? content : body}
           height="100%"
           className="h-full"
@@ -254,9 +242,7 @@ export function EditorPane({
           }}
           readOnly={isViewingRevision}
           extensions={extensions}
-          onChange={(value) =>
-            updateDraft(doc.documentKey, doc.savedContent, { content: restoreFrontmatter(value) })
-          }
+          onChange={(value) => updateDraft(doc, { content: restoreFrontmatter(value) })}
           onUpdate={onUpdate}
           onCreateEditor={onCreateEditor}
         />

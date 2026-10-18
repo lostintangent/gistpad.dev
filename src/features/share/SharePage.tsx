@@ -1,11 +1,11 @@
 import { timeAgo } from "@/shared/dates";
 import { CommentTooltips } from "@/features/comments/CommentTooltips";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
-import { readHeadings, scrollToHeading, type Heading } from "@/features/markdown/headings";
+import { readHeadings, useLinkedHeading, type Heading } from "@/features/markdown/headings";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import { ScrollToTop } from "@/features/markdown/ScrollToTop";
 import { ScrollableText } from "@/shared/ScrollableText";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
+import { UserAvatar } from "@/shared/UserAvatar";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import {
@@ -19,14 +19,18 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Skeleton } from "@/shared/ui/skeleton";
-import { useDocument, type GistDocument } from "@/features/editor/document";
+import { getWhiteboard, useDocument, type GistDocument } from "@/features/editor/document";
+import LoadingSkeleton from "@/features/editor/LoadingSkeleton";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { useTransientState } from "@/shared/useTransientState";
-import { getGistDisplayName, type Gist } from "@/shared/github";
+import {
+  getFileDisplayName,
+  getGistDisplayName,
+  getMarkdownFiles,
+  type Gist,
+} from "@/shared/github";
 import { queryClient } from "@/shared/query-client";
 import { gistQueries } from "@/features/gists/queries";
-import { shareRoute } from "@/router";
 import { useMutation } from "@tanstack/react-query";
 import { Link, linkOptions, useNavigate } from "@tanstack/react-router";
 import {
@@ -40,17 +44,15 @@ import {
   Pencil,
   RefreshCw,
 } from "lucide-react";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 /** The gist's name, plus the name of the open file (when it's not the gist's README). */
 function getTitle(doc: GistDocument) {
   if (!doc.gist) return "Loading...";
 
   const name = getGistDisplayName(doc.gist);
-  const file = doc.filename.replace(/\.md$/, "");
-  return doc.filename === "README.md" || name.toLowerCase() === file.toLowerCase()
-    ? name
-    : `${name} (${file})`;
+  const file = getFileDisplayName(doc.filename);
+  return doc.isReadme || name.toLowerCase() === file.toLowerCase() ? name : `${name} (${file})`;
 }
 
 function GistDates({ gist }: { gist: Gist }) {
@@ -94,7 +96,6 @@ function GistDates({ gist }: { gist: Gist }) {
 /** A read-only view of a gist, which can be shared with other people. */
 export default function Share() {
   const doc = useDocument();
-  const { heading } = shareRoute.useSearch();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { quotedThreads } = useCommentThreads(doc);
@@ -110,13 +111,7 @@ export default function Share() {
       ]),
   });
 
-  // When a link to a heading is opened, scroll to the heading (once the document has rendered).
-  const scrollToLinkedHeading = useEffectEvent(() => {
-    if (heading) scrollToHeading(previewRef.current, heading);
-  });
-  useEffect(() => {
-    if (!doc.isLoading) scrollToLinkedHeading();
-  }, [doc.documentKey, doc.isLoading]);
+  const [heading, linkHeading] = useLinkedHeading(previewRef, doc);
 
   const copyUrl = () => {
     navigator.clipboard.writeText(location.href);
@@ -130,9 +125,8 @@ export default function Share() {
   };
 
   const selectHeading = async (id: string) => {
-    await navigate({ to: ".", search: { heading: id }, replace: true });
-    scrollToHeading(previewRef.current, id);
-    copyUrl();
+    await linkHeading(id);
+    setIsCopied(true);
   };
 
   // The open document, in the editor (e.g. to comment on a quote from it)
@@ -148,7 +142,7 @@ export default function Share() {
     });
 
   const title = getTitle(doc);
-  const files = Object.keys(doc.gist?.files ?? {}).filter((filename) => filename.endsWith(".md"));
+  const files = getMarkdownFiles(doc.gist);
 
   return (
     <div className="mx-auto max-w-4xl p-4">
@@ -226,7 +220,7 @@ export default function Share() {
                                   : ""
                               }
                             >
-                              <FileText /> {filename.replace(/\.md$/, "")}
+                              <FileText /> {getFileDisplayName(filename)}
                             </DropdownMenuItem>
                           ))}
                         </DropdownMenuSubContent>
@@ -266,10 +260,7 @@ export default function Share() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 hover:text-foreground"
             >
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={doc.gist.owner.avatar_url} alt={doc.gist.owner.login} />
-                <AvatarFallback>{doc.gist.owner.login[0].toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <UserAvatar user={doc.gist.owner} size="sm" />
               <span className="font-medium">{doc.gist.owner.login}</span>
             </a>
             <span className="mx-2">•</span>
@@ -280,11 +271,8 @@ export default function Share() {
 
       <Card className="shadow-lg">
         {doc.isLoading ? (
-          <div className="p-8 space-y-4">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-2/3" />
+          <div className="p-6">
+            <LoadingSkeleton />
           </div>
         ) : (
           <div ref={previewRef} className="p-5">
@@ -294,11 +282,12 @@ export default function Share() {
               onSelectHeading={selectHeading}
               isReadOnly
               onAddComment={(quote) => navigate({ ...editorLink, search: { quote } })}
-              comments={{ threads: quotedThreads }}
+              commentHighlights={{ threads: quotedThreads }}
+              whiteboard={getWhiteboard(doc)}
             >
               {doc.savedContent}
             </MarkdownPreview>
-            <ScrollToTop isActionBarVisible={false} />
+            <ScrollToTop />
             <CommentTooltips threads={quotedThreads} />
           </div>
         )}

@@ -4,17 +4,15 @@ import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { deletesGist, useAddAndOpenFile } from "@/features/gists/actions";
 import { deleteGistDialog } from "@/features/gists/dialogs/DeleteGistDialog";
 import {
+  useIsStarred,
   useRenameGistFile,
-  useStarredGists,
   useToggleStarred,
   useUpdateGistDescription,
 } from "@/features/gists/queries";
-import type { EditorMode } from "@/router";
 import {
   detectDateFormat,
   generateDateFilename,
   groupFilesByDate,
-  isDateBasedGist,
   parseDateFilename,
 } from "@/shared/dates";
 import { EmojiInput } from "@/shared/EmojiInput";
@@ -24,7 +22,14 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/shared/ui/input-group";
-import { getGistDescription, isDailyNote } from "@/shared/github";
+import {
+  getFileDisplayName,
+  getGistDescription,
+  getMarkdownFiles,
+  isDailyNote,
+  isDateBasedGist,
+  toMarkdownFilename,
+} from "@/shared/github";
 import { ScrollableText } from "@/shared/ScrollableText";
 import { Button } from "@/shared/ui/button";
 import { CountBadge } from "@/shared/ui/count-badge";
@@ -71,21 +76,22 @@ import AddFileDialog from "../dialogs/AddFileDialog";
 import {
   readDocumentContent,
   useIsSaving,
-  useOpenDocument,
+  openDocument,
   useSaveDocument,
   type GistDocument,
 } from "../document";
-import { RevisionItems } from "../history/RevisionSelector";
-import { useEditorMode } from "../mode";
-import { mobilePanelAtom, revisionAtom, useDraft, zenModeAtom } from "../store";
+import { useIsViewingRevision } from "../history/revision";
+import { RevisionItems } from "../history/RevisionItems";
+import { useEditorMode, type EditorMode } from "../mode";
+import { mobilePanelAtom, zenModeAtom } from "../layout";
+import { useDraft } from "../store";
 
-/** The state and actions that both the desktop and mobile toolbars use. */
+/** The state that both the desktop and mobile toolbars reflect. */
 function useToolbar(doc: GistDocument) {
   const [mode, setMode] = useEditorMode();
-  const navigate = useNavigate();
   const isCommentsOpen = useSelector(commentsPanelOpenAtom);
-  const revisionId = useSelector(revisionAtom);
-  const hasChanges = !!useDraft(doc.documentKey);
+  const isViewingRevision = useIsViewingRevision();
+  const hasChanges = !!useDraft(doc);
   const { comments, isEnabled: isCommentsEnabled } = useCommentThreads(doc);
   const aiReview = useAiReview(doc.documentKey);
 
@@ -93,54 +99,92 @@ function useToolbar(doc: GistDocument) {
     mode,
     setMode,
     isCommentsOpen,
-    isViewingRevision: !!revisionId,
+    isViewingRevision,
     hasChanges,
     isDisabled: !doc.gistId || doc.isLoading,
     canViewHistory: !doc.isReadOnly && !!doc.gist && !isDailyNote(doc.gist),
     commentCount: comments.length + (aiReview?.comments.length ?? 0),
     isCommentsEnabled,
-    // Deleting the README deletes the whole gist
-    deletesGist:
-      doc.filename === "README.md" || (!!doc.gist && deletesGist(doc.gist, doc.filename)),
-
-    copyUrl: () => {
-      navigator.clipboard.writeText(location.href);
-      toast.success("URL copied to clipboard!");
-    },
-    copyHtml: async () => {
-      const { copyAsHtml } = await import("@/features/markdown/toHtml");
-      await copyAsHtml(readDocumentContent(doc));
-      toast.success("HTML copied to clipboard!");
-    },
-    openInGitHub: () => {
-      const fileAnchor =
-        doc.filename === "README.md" ? "" : `#file-${doc.filename.replace(/\./g, "-")}`;
-      window.open(`https://gist.github.com/${doc.gistId}${fileAnchor}`, "_blank");
-    },
-    viewFullscreen: () =>
-      navigate({
-        to: "/share/$gistId/{-$filePath}",
-        params: { gistId: doc.gistId!, filePath: doc.filename },
-      }),
     requestDelete: () =>
       doc.gist && deleteGistDialog.openWithPayload({ gist: doc.gist, filename: doc.filename }),
   };
 }
 
+/** The menu items for sharing the document (or viewing it elsewhere). */
+function ShareItems({ doc, disabled = false }: { doc: GistDocument; disabled?: boolean }) {
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const [, setMode] = useEditorMode();
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(location.href);
+    toast.success("URL copied to clipboard!");
+  };
+
+  const copyHtml = async () => {
+    const { copyAsHtml } = await import("@/features/markdown/toHtml");
+    await copyAsHtml(readDocumentContent(doc));
+    toast.success("HTML copied to clipboard!");
+  };
+
+  const openInGitHub = () => {
+    const fileAnchor = doc.isReadme ? "" : `#file-${doc.filename.replace(/\./g, "-")}`;
+    window.open(`https://gist.github.com/${doc.gistId}${fileAnchor}`, "_blank");
+  };
+
+  return (
+    <>
+      <DropdownMenuItem disabled={disabled} onClick={copyUrl}>
+        <Link /> Copy URL
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled={disabled} onClick={copyHtml}>
+        <FileText /> Copy as HTML
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      {/* (Zen mode shows the editor and preview side by side, which mobile screens don't have room for) */}
+      {!isMobile && (
+        <DropdownMenuItem
+          disabled={disabled}
+          onClick={() => {
+            zenModeAtom.set(true);
+            setMode("split");
+          }}
+        >
+          <Eye /> Enter Zen Mode
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuItem
+        disabled={disabled}
+        onClick={() =>
+          navigate({
+            to: "/share/$gistId/{-$filePath}",
+            params: { gistId: doc.gistId!, filePath: doc.filename },
+          })
+        }
+      >
+        <Fullscreen /> View Fullscreen
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem disabled={disabled} onClick={openInGitHub}>
+        <ExternalLink /> Open in GitHub
+      </DropdownMenuItem>
+    </>
+  );
+}
+
 /** Selects one of the gist's files (grouping date-based files by year and month). */
 function FileMenu({ doc, title }: { doc: GistDocument; title: ReactNode }) {
   const isMobile = useIsMobile();
-  const openDocument = useOpenDocument();
   const [isAddingFile, setIsAddingFile] = useState(false);
   const addFile = useAddAndOpenFile();
 
-  const filenames = Object.keys(doc.gist?.files ?? {}).filter((name) => name.endsWith(".md"));
+  const filenames = getMarkdownFiles(doc.gist);
   const dateGroups = groupFilesByDate(filenames);
   const dateFormat = detectDateFormat(filenames);
 
   const fileItem = (
     filename: string,
-    label: ReactNode = filename.replace(/\.md$/, ""),
+    label: ReactNode = getFileDisplayName(filename),
     icon = <FileText />,
   ) => (
     <DropdownMenuItem
@@ -238,18 +282,16 @@ function TitleEditor({
   initialValue: string;
   onDone: () => void;
 }) {
-  const isReadme = doc.filename === "README.md";
   const [value, setValue] = useState(initialValue);
   const { mutate: updateDescription } = useUpdateGistDescription();
   const { mutateAsync: renameFile } = useRenameGistFile();
   const save = useSaveDocument(doc);
-  const openDocument = useOpenDocument();
 
   const submit = async () => {
     onDone();
-    if (isReadme) return updateDescription({ gist: doc.gist!, description: value });
+    if (doc.isReadme) return updateDescription({ gist: doc.gist!, description: value });
 
-    const newFilename = value.endsWith(".md") ? value : `${value}.md`;
+    const newFilename = toMarkdownFilename(value);
     if (!value || newFilename === doc.filename) return;
 
     // Save any changes first, so they aren't saved to the old filename after it's renamed.
@@ -259,8 +301,8 @@ function TitleEditor({
   };
 
   return (
-    <InputGroup className={`h-8 ${isReadme ? "max-w-md" : "max-w-[260px]"}`}>
-      {isReadme ? (
+    <InputGroup className={`h-8 ${doc.isReadme ? "max-w-md" : "max-w-[260px]"}`}>
+      {doc.isReadme ? (
         <EmojiInput
           value={value}
           onValueChange={setValue}
@@ -361,28 +403,7 @@ function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void
           <ChevronDown className="h-3 w-3" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={toolbar.copyUrl}>
-            <Link /> Copy URL
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={toolbar.copyHtml}>
-            <FileText /> Copy as HTML
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              zenModeAtom.set(true);
-              setMode("split");
-            }}
-          >
-            <Eye /> Enter Zen Mode
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={toolbar.viewFullscreen}>
-            <Fullscreen /> View Fullscreen
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={toolbar.openInGitHub}>
-            <ExternalLink /> Open in GitHub
-          </DropdownMenuItem>
+          <ShareItems doc={doc} />
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -471,29 +492,22 @@ function MobileActions({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={isViewingRevision} onClick={toolbar.copyUrl}>
-            <Link /> Copy URL
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled={isViewingRevision} onClick={toolbar.viewFullscreen}>
-            <Fullscreen /> View Fullscreen
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled={isViewingRevision} onClick={toolbar.openInGitHub}>
-            <ExternalLink /> Open in GitHub
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={onSave} disabled={!toolbar.hasChanges}>
             <Save /> Save
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <ShareItems doc={doc} disabled={isViewingRevision} />
           {/* (On mobile, the sidebar's footer is slid away, so the dashboard can be opened here too) */}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => mobilePanelAtom.set("dashboard")}>
-            <Newspaper /> News dashboard
+            <Newspaper /> Dashboard
           </DropdownMenuItem>
           {!doc.isReadOnly && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={toolbar.requestDelete}>
-                <Trash2 /> {toolbar.deletesGist ? "Delete gist" : "Delete file"}
+                <Trash2 />
+                {doc.gist && deletesGist(doc.gist, doc.filename) ? "Delete gist" : "Delete file"}
               </DropdownMenuItem>
             </>
           )}
@@ -507,22 +521,20 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
   const isMobile = useIsMobile();
   const isAiInProgress = useIsAiInProgress();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const starredGists = useStarredGists();
   const { mutate: toggleStarred } = useToggleStarred();
 
   const gist = doc.gist;
-  const isReadme = doc.filename === "README.md";
-  const isStarred = starredGists.some(({ id }) => id === doc.gistId);
+  const isStarred = useIsStarred(doc.gistId);
 
   // The README's title is the gist's description, and otherwise, it's the file's name
-  const name = isReadme
+  const name = doc.isReadme
     ? gist
       ? getGistDescription(gist)
       : ""
-    : doc.filename.replace(/\.md$/, "");
+    : getFileDisplayName(doc.filename);
   const title = (
     <h2 className="text-lg font-semibold flex gap-2 items-center min-w-0">
-      {!isReadme && gist && isDateBasedGist(gist) && <Calendar className="h-4 w-4 shrink-0" />}
+      {!doc.isReadme && gist && isDateBasedGist(gist) && <Calendar className="h-4 w-4 shrink-0" />}
       <ScrollableText>
         <span className={isAiInProgress ? "ai-gradient-text" : ""}>
           {name || (
@@ -565,7 +577,7 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    onClick={() => toggleStarred({ gist, isStarred })}
+                    onClick={() => toggleStarred(gist)}
                     title={isStarred ? "Unstar gist" : "Star gist"}
                   >
                     <Star className={`text-yellow-400 ${isStarred ? "fill-yellow-400" : ""}`} />
@@ -576,7 +588,7 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
                     size="icon-xs"
                     className="text-muted-foreground"
                     onClick={() => setIsEditingTitle(true)}
-                    title={isReadme ? "Edit description" : "Rename file"}
+                    title={doc.isReadme ? "Edit description" : "Rename file"}
                   >
                     <Pencil />
                   </Button>

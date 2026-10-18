@@ -1,4 +1,4 @@
-import { findQuoteMatches, type QuotedCommentThread } from "@/features/comments/threads";
+import { findQuoteMatches, type CommentHighlights } from "@/features/comments/threads";
 import type { Element, Parent, Root, Text } from "hast";
 import { SKIP, visit } from "unist-util-visit";
 
@@ -8,7 +8,7 @@ import { SKIP, visit } from "unist-util-visit";
 
 const SKIPPED_ELEMENTS = new Set(["pre", "code", "svg"]);
 
-export default function rehypeCommentHighlights({ threads }: { threads: QuotedCommentThread[] }) {
+export default function rehypeCommentHighlights({ threads }: CommentHighlights) {
   return (tree: Root) => {
     const textNodes: { node: Text; parent: Parent }[] = [];
     visit(tree, (node, _, parent) => {

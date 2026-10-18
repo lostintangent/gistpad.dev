@@ -10,7 +10,7 @@ import { Separator } from "@/shared/ui/separator";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { openComments } from "@/features/comments/store";
 import { editorStatusAtom, editorViewAtom } from "./store";
-import { redo, undo } from "@codemirror/commands";
+import * as commands from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 import { useSelector } from "@tanstack/react-store";
 import {
@@ -30,20 +30,28 @@ import {
   Undo,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { formatSelection } from "./code-mirror/keybindings/selection-formatting";
 import { LinkDialog, readClipboardUrl } from "./dialogs/LinkDialog";
+
+type Formatter = Parameters<typeof formatSelection>[1];
+
+/** An editor action, which is shown as a toolbar button (or on mobile, sometimes as a menu item). */
+interface FormattingAction {
+  Icon: LucideIcon;
+  title: string;
+  run: () => void;
+  disabled: boolean;
+}
 
 export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) {
   const view = useSelector(editorViewAtom);
   const { hasSelection, canUndo, canRedo } = useSelector(editorStatusAtom);
   const isMobile = useIsMobile();
-  const [link, setLink] = useState<{ text: string; url: string } | null>(null);
+  const [linkDialog, setLinkDialog] = useState<{ text: string; url: string } | null>(null);
 
   if (!view) return null;
 
-  const format = (formatter: Parameters<typeof formatSelection>[1]) =>
-    formatSelection(view, formatter);
   const getSelectedText = () => {
     const { from, to } = view.state.selection.main;
     return view.state.sliceDoc(from, to);
@@ -56,20 +64,69 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
       selection: { anchor: position + text.length },
     });
 
-  const insertLink = async () =>
-    setLink({ text: getSelectedText(), url: await readClipboardUrl() });
-  const addTask = () =>
-    insert("- [ ] ", view.state.doc.lineAt(view.state.selection.main.from).from);
-  const addBookmark = () => insert("{#}", view.state.selection.main.from);
-  const addComment = () => openComments({ quote: getSelectedText() });
+  const action = (
+    Icon: LucideIcon,
+    title: string,
+    isEnabled: boolean,
+    run: () => void,
+  ): FormattingAction => ({ Icon, title, run, disabled: disabled || !isEnabled });
+  const format = (Icon: LucideIcon, title: string, formatter: Formatter) =>
+    action(Icon, title, hasSelection, () => formatSelection(view, formatter));
+  const cursor = () => view.state.selection.main.from;
 
-  const needsSelection = !hasSelection || disabled;
-  const needsNoSelection = hasSelection || disabled;
+  const undo = action(Undo, "Undo", canUndo, () => commands.undo(view));
+  const redo = action(Redo, "Redo", canRedo, () => commands.redo(view));
+  const bold = format(Bold, "Bold", "bold");
+  const italic = format(Italic, "Italic", "italic");
+  const underline = format(Underline, "Underline", "underline");
+  const strikethrough = format(Strikethrough, "Strikethrough", "strikethrough");
+  const code = format(Code, "Code", "code");
+  const quote = format(Quote, "Block quote", "blockQuote");
+  const link = action(Link, "Insert link", hasSelection, async () =>
+    setLinkDialog({ text: getSelectedText(), url: await readClipboardUrl() }),
+  );
+  const bookmark = action(Bookmark, "Add bookmark", !hasSelection, () => insert("{#}", cursor()));
+  const task = action(CheckSquare, "Add task", !hasSelection, () =>
+    insert("- [ ] ", view.state.doc.lineAt(cursor()).from),
+  );
+  const comment = action(MessageSquare, "Add comment", hasSelection, () =>
+    openComments({ quote: getSelectedText() }),
+  );
+  const search = action(Search, "Search in file", true, () => openSearchPanel(view));
 
-  const button = (Icon: LucideIcon, title: string, onClick: () => void, isDisabled: boolean) => (
-    <Button variant="ghost" size="icon-sm" title={title} onClick={onClick} disabled={isDisabled}>
+  // Mobile only has room for the most common actions, so the rest are moved into a menu
+  const groups = isMobile
+    ? [
+        [undo, redo],
+        [bold, italic, underline],
+        [code, link, task],
+      ]
+    : [
+        [undo, redo],
+        [bold, italic, underline, strikethrough],
+        [code, quote],
+        [link, bookmark, task],
+        [comment],
+      ];
+  const overflow = [quote, strikethrough, bookmark, comment];
+
+  const button = ({ Icon, title, run, disabled }: FormattingAction) => (
+    <Button
+      key={title}
+      variant="ghost"
+      size="icon-sm"
+      title={title}
+      onClick={run}
+      disabled={disabled}
+    >
       <Icon />
     </Button>
+  );
+
+  const menuItem = ({ Icon, title, run, disabled }: FormattingAction) => (
+    <DropdownMenuItem key={title} onClick={run} disabled={disabled}>
+      <Icon /> {title}
+    </DropdownMenuItem>
   );
 
   // (Vertical separators stretch by default, which would pin a fixed-height one to the top of the row)
@@ -79,69 +136,37 @@ export function FormattingToolbar({ disabled = false }: { disabled?: boolean }) 
 
   return (
     <div className="border-b bg-muted/30 px-2 py-1 flex gap-1 items-center">
-      {button(Undo, "Undo", () => undo(view), !canUndo || disabled)}
-      {button(Redo, "Redo", () => redo(view), !canRedo || disabled)}
+      {groups.map((group, i) => (
+        <Fragment key={i}>
+          {i > 0 && separator}
+          {group.map(button)}
+        </Fragment>
+      ))}
 
-      {separator}
-
-      {button(Bold, "Bold", () => format("bold"), needsSelection)}
-      {button(Italic, "Italic", () => format("italic"), needsSelection)}
-      {button(Underline, "Underline", () => format("underline"), needsSelection)}
-      {!isMobile &&
-        button(Strikethrough, "Strikethrough", () => format("strikethrough"), needsSelection)}
-
-      {separator}
-
-      {button(Code, "Code", () => format("code"), needsSelection)}
-      {!isMobile && (
+      {isMobile && (
         <>
-          {button(Quote, "Block quote", () => format("blockQuote"), needsSelection)}
           {separator}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={disabled}
+              render={<Button variant="ghost" size="icon-sm" aria-label="More formatting" />}
+            >
+              <MoreHorizontal />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {overflow.map(menuItem)}
+              <DropdownMenuSeparator />
+              {menuItem(search)}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       )}
 
-      {button(Link, "Insert link", insertLink, needsSelection)}
-      {!isMobile && button(Bookmark, "Add bookmark", addBookmark, needsNoSelection)}
-      {button(CheckSquare, "Add task", addTask, needsNoSelection)}
-
-      {separator}
-
-      {!isMobile ? (
-        button(MessageSquare, "Add comment", addComment, needsSelection)
-      ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            disabled={disabled}
-            render={<Button variant="ghost" size="icon-sm" aria-label="More formatting" />}
-          >
-            <MoreHorizontal />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => format("blockQuote")} disabled={needsSelection}>
-              <Quote /> Block quote
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => format("strikethrough")} disabled={needsSelection}>
-              <Strikethrough /> Strikethrough
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={addBookmark} disabled={needsNoSelection}>
-              <Bookmark /> Add bookmark
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={addComment} disabled={needsSelection}>
-              <MessageSquare /> Add comment
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => openSearchPanel(view)} disabled={disabled}>
-              <Search /> Search in file
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
-      {link && (
+      {linkDialog && (
         <LinkDialog
-          initialText={link.text}
-          initialUrl={link.url}
-          onClose={() => setLink(null)}
+          initialText={linkDialog.text}
+          initialUrl={linkDialog.url}
+          onClose={() => setLinkDialog(null)}
           onInsert={(text, url) => formatSelection(view, "link", text, { url })}
         />
       )}

@@ -1,6 +1,7 @@
+import type { AiMode } from "../commands";
 import { createOpenAIClient } from "./openai";
 
-const actionTriggerWords = {
+const modeTriggerWords: Record<AiMode, Set<string>> = {
   ask: new Set([
     "what",
     "whats",
@@ -64,31 +65,29 @@ const actionTriggerWords = {
     "correct",
     "clean",
   ]),
-  discuss: new Set(["review", "comment", "suggest", "provide", "critique"]),
+  review: new Set(["discuss", "comment", "suggest", "provide", "critique"]),
   research: new Set(["find", "search", "investigate", "look", "explore"]),
 };
-
-type AiAction = keyof typeof actionTriggerWords;
 
 // In order to balance speed and accuracy, we leverage a two-step classification process,
 // which first attempts to statically classify the request based on high confidence heuristics,
 // and then falls back to performing semantic classification using an LLM if necessary.
 //
 // 1. Static classification
-//    1. If the request starts with an action name (e.g. "research"), then we assume that's the mode they want.
-//    2. If the request starts with a known "trigger word" for an action (e.g. "delete" -> "edit"), then we assume that's the mode they want.
-//    3. If the user's context strongly suggests a specific action (e.g. they're currently editing with AI).
+//    1. If the request starts with a mode's name (e.g. "research"), then we assume that's the mode they want.
+//    2. If the request starts with a known "trigger word" for a mode (e.g. "delete" -> "edit"), then we assume that's the mode they want.
+//    3. If the user's context strongly suggests a specific mode (e.g. they're currently editing with AI).
 // 2. Semantic classification (using an LLM)
 
-export async function classifyAction(
+export async function classifyMode(
   request: string,
   hasGistSelected: boolean,
-  suspectedAction?: AiAction,
-) {
-  // Determine which actions are available based
-  // on whether the user currently has a gist opened.
-  const availableActions: AiAction[] = hasGistSelected
-    ? ["research", "ask", "edit", "discuss"]
+  suspectedMode?: AiMode,
+): Promise<AiMode> {
+  // Determine which modes are available based on whether the user currently has a gist opened.
+  // (The classification prompt returns a mode's position in this list, so its order matters.)
+  const availableModes: AiMode[] = hasGistSelected
+    ? ["research", "ask", "edit", "review"]
     : ["research", "ask"];
 
   const firstWord = request
@@ -96,20 +95,14 @@ export async function classifyAction(
     .toLowerCase()
     .replace(/[-,]|(['’](s|re)\b)/g, "");
 
-  // If the request starts with one of the available actions' names, or trigger words,
-  // then return that action directly. (None of the action names are trigger words.)
-  const staticAction = availableActions.find(
-    (action) => action === firstWord || actionTriggerWords[action].has(firstWord),
+  // If the request starts with one of the available modes' names, or trigger words,
+  // then return that mode directly. (None of the mode names are trigger words.)
+  const staticMode = availableModes.find(
+    (mode) => mode === firstWord || modeTriggerWords[mode].has(firstWord),
   );
-  if (staticAction) {
-    return staticAction;
-  }
+  if (staticMode) return staticMode;
 
-  if (suspectedAction && availableActions.includes(suspectedAction)) {
-    // If a suspected action is provided and it's available,
-    // return it directly.
-    return suspectedAction;
-  }
+  if (suspectedMode && availableModes.includes(suspectedMode)) return suspectedMode;
 
   // None of the static heuristics matches, so perform semantic classification
   const { output_text } = await createOpenAIClient().responses.create({
@@ -120,6 +113,6 @@ export async function classifyAction(
     model: "gpt-4.1-nano",
   });
 
-  const actionIndex = parseInt(output_text.trim()) - 1;
-  return availableActions[actionIndex] || "ask";
+  const modeIndex = parseInt(output_text.trim()) - 1;
+  return availableModes[modeIndex] || "ask";
 }

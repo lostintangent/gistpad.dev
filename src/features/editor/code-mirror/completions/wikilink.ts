@@ -1,6 +1,8 @@
 import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
+import { getFileDisplayName } from "@/shared/github";
 
 export function wikilinkCompletions(
+  /** The markdown files that can be linked to. */
   files: string[],
   context: CompletionContext,
 ): CompletionResult | null {
@@ -11,8 +13,7 @@ export function wikilinkCompletions(
   return {
     from: wikiWord.from + 2,
     options: files
-      .filter((file) => file.endsWith(".md"))
-      .map((file) => file.slice(0, -3))
+      .map(getFileDisplayName)
       .filter((file) => file.toLowerCase().includes(prefix))
       .map((file) => ({ label: file, type: "file" })),
     validFor: /^[^\]]*$/,

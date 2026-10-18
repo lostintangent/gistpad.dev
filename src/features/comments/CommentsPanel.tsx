@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import type { GistDocument } from "@/features/editor/document";
 import { useAiReview, useRunningMode } from "@/features/ai/store";
 import { commentsStore, updateComments } from "./store";
-import { zenModeAtom } from "@/features/editor/store";
+import { zenModeAtom } from "@/features/editor/layout";
 import { useSelector } from "@tanstack/react-store";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense } from "react";
@@ -11,12 +11,12 @@ import UserComments from "./UserComments";
 import { useCommentThreads } from "./useCommentThreads";
 
 // AI reviews require AI to be configured, so their comments are loaded on demand
-const AiComments = lazy(() => import("./AiComments"));
+const AiComments = lazy(() => import("@/features/ai/AiComments"));
 
 /** The gist's comments, and the comments from an AI review of the document (when there is one). */
 export default function CommentsPanel({ doc }: { doc: GistDocument }) {
   const review = useAiReview(doc.documentKey);
-  const isReviewing = useRunningMode() === "discuss";
+  const isReviewing = useRunningMode() === "review";
   const isZenMode = useSelector(zenModeAtom);
   const tab = useSelector(commentsStore, (state) => state.tab);
   const { comments } = useCommentThreads(doc);

@@ -3,16 +3,14 @@ import { CommentTooltips } from "@/features/comments/CommentTooltips";
 import { openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable";
-import { useDocument, useDocumentContent, useSaveDocument, type GistDocument } from "./document";
-import { useEditorMode } from "./mode";
+import { useDocument, useSaveDocument } from "./document";
+import { useEditorMode, type EditorMode } from "./mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { gistQueries } from "@/features/gists/queries";
 import { useIsAiEnabled } from "@/features/ai/settings";
-import { draftAtom, editorPanelSizeAtom, editorViewAtom, revisionAtom, zenModeAtom } from "./store";
+import { editorPaneSizeAtom, zenModeAtom } from "./layout";
+import { draftAtom, editorViewAtom } from "./store";
 import { commentsPanelOpenAtom, commentsPanelSizeAtom } from "@/features/comments/store";
 import { undo, undoDepth } from "@codemirror/commands";
-import type { EditorMode } from "@/router";
-import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "@tanstack/react-store";
 import {
   Activity,
@@ -28,43 +26,13 @@ import { useGroupRef } from "react-resizable-panels";
 import ForkGistDialog from "./dialogs/ForkGistDialog";
 import { EditorPane } from "./EditorPane";
 import { RevisionBanner } from "./history/RevisionBanner";
+import { useRevision } from "./history/revision";
 import LoadingSkeleton from "./LoadingSkeleton";
 import { PreviewPane } from "./PreviewPane";
 import EditorToolbar from "./toolbar/EditorToolbar";
 
 // AI features are only loaded for users who've configured AI
 const AiAssistant = lazy(() => import("@/features/ai/AiAssistant"));
-
-/** The content of a past revision of the document, and of the revision before it (to diff against). */
-function useRevisionContent(doc: GistDocument, revisionId: string | null) {
-  const { data: revisions = [] } = useQuery({
-    ...gistQueries.revisions(doc.gistId ?? ""),
-    enabled: !!revisionId,
-  });
-
-  const index = revisions.findIndex(({ version }) => version === revisionId);
-  const previousRevisionId = index >= 0 ? revisions[index + 1]?.version : undefined;
-
-  const revision = useQuery({
-    ...gistQueries.revision(doc.gistId ?? "", revisionId ?? ""),
-    enabled: !!revisionId,
-    select: (gist) => gist.files[doc.filename]?.content ?? "",
-  });
-
-  const previousRevision = useQuery({
-    ...gistQueries.revision(doc.gistId ?? "", previousRevisionId ?? ""),
-    enabled: !!previousRevisionId,
-    select: (gist) => gist.files[doc.filename]?.content ?? "",
-  });
-
-  if (!revisionId) return null;
-
-  return {
-    content: revision.data ?? "",
-    previousContent: previousRevision.data ?? "",
-    isLoading: revision.isPending || (!!previousRevisionId && previousRevision.isPending),
-  };
-}
 
 /** Keyboard shortcuts that work anywhere in the editor (not just while CodeMirror is focused). */
 function useWorkspaceShortcuts(onSave: () => void) {
@@ -92,14 +60,14 @@ function useWorkspaceShortcuts(onSave: () => void) {
   }, []);
 }
 
-/** The sizes of the editor and preview panes (as percentages), for a view mode. */
+/** The sizes of the editor and preview panes (as percentages), for a mode. */
 function getPaneLayout(mode: EditorMode, editorSize: number) {
   const editor = mode === "edit" ? 100 : mode === "preview" ? 0 : editorSize;
   return { editor, preview: 100 - editor };
 }
 
 /**
- * Lays out the editor and preview, based on the view mode. Hidden panes are collapsed
+ * Lays out the editor and preview, based on the mode. Hidden panes are collapsed
  * (rather than unmounted), so that switching modes preserves their state.
  */
 function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactNode }) {
@@ -114,7 +82,7 @@ function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactN
   );
 
   useEffect(() => {
-    groupRef.current?.setLayout(getPaneLayout(mode, editorPanelSizeAtom.get()));
+    groupRef.current?.setLayout(getPaneLayout(mode, editorPaneSizeAtom.get()));
   }, [groupRef, mode]);
 
   if (isMobile) {
@@ -130,14 +98,14 @@ function DocumentPanes({ editor, preview }: { editor: ReactNode; preview: ReactN
     <ResizablePanelGroup
       orientation="horizontal"
       groupRef={groupRef}
-      defaultLayout={getPaneLayout(mode, editorPanelSizeAtom.get())}
+      defaultLayout={getPaneLayout(mode, editorPaneSizeAtom.get())}
       onLayoutChanged={(layout, { isUserInteraction }) => {
         if (!isUserInteraction) return;
 
         // Dragging a pane closed switches to the mode that only shows the other one
         if (layout.editor === 0) setMode("preview");
         else if (layout.preview === 0) setMode("edit");
-        else editorPanelSizeAtom.set(layout.editor);
+        else editorPaneSizeAtom.set(layout.editor);
       }}
     >
       <ResizablePanel id="editor" minSize="25" collapsible collapsedSize={0}>
@@ -156,27 +124,26 @@ const WORKSPACE_CLASS = "raised rounded-xl overflow-clip w-full h-full";
 
 export default function Workspace() {
   const doc = useDocument();
-  const content = useDocumentContent(doc);
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
   const isAiEnabled = useIsAiEnabled();
   const isCommentsOpen = useSelector(commentsPanelOpenAtom);
-  const revisionId = useSelector(revisionAtom);
-  const revision = useRevisionContent(doc, revisionId);
+  const revision = useRevision(doc);
   const save = useSaveDocument(doc);
   const { quotedThreads, isEnabled: isCommentsEnabled } = useCommentThreads(doc);
   const previewRef = useRef<HTMLDivElement>(null);
   const [isForkDialogOpen, setIsForkDialogOpen] = useState(false);
 
-  const saveOrFork = () => (doc.isReadOnly ? setIsForkDialogOpen(true) : save());
+  // Saving someone else's gist forks it, so the user is asked first
+  const requestSave = () => (doc.isReadOnly ? setIsForkDialogOpen(true) : save());
 
-  useWorkspaceShortcuts(saveOrFork);
+  useWorkspaceShortcuts(requestSave);
 
   // Comments are hidden while viewing a past revision
-  const showComments = isCommentsEnabled && isCommentsOpen && !revisionId;
+  const showComments = isCommentsEnabled && isCommentsOpen && !revision;
 
   // The action bar doesn't fit alongside the comments on mobile
-  const showActionBar = isAiEnabled && !revisionId && !(isMobile && showComments);
+  const showActionBar = isAiEnabled && !revision && !(isMobile && showComments);
 
   const aiAssistant = isAiEnabled && (
     <Suspense>
@@ -188,38 +155,38 @@ export default function Workspace() {
     return <div className={`${WORKSPACE_CLASS} relative`}>{aiAssistant}</div>;
   }
 
+  const isLoading = doc.isLoading || revision?.isLoading;
   const body = doc.error ? (
     <div className="h-full flex items-center justify-center text-muted-foreground italic">
       This gist couldn't be loaded
     </div>
-  ) : doc.isLoading || revision?.isLoading ? (
-    <LoadingSkeleton />
   ) : (
     <DocumentPanes
       editor={
-        <EditorPane
-          doc={doc}
-          content={revision?.content ?? content}
-          originalContent={revision?.previousContent ?? doc.savedContent}
-          revisionId={revisionId}
-          previewRef={previewRef}
-        />
+        isLoading ? (
+          <LoadingSkeleton />
+        ) : (
+          <EditorPane doc={doc} revision={revision} previewRef={previewRef} />
+        )
       }
       preview={
-        <PreviewPane
-          ref={previewRef}
-          doc={doc}
-          content={revision?.content ?? content}
-          isViewingRevision={!!revisionId}
-          showActionBar={showActionBar}
-        />
+        isLoading ? (
+          <LoadingSkeleton />
+        ) : (
+          <PreviewPane
+            ref={previewRef}
+            doc={doc}
+            revision={revision}
+            showActionBar={showActionBar}
+          />
+        )
       }
     />
   );
 
   const documentArea = (
     <div className="relative flex flex-col h-full min-h-0">
-      {revision && <RevisionBanner doc={doc} content={revision.content} />}
+      {revision && <RevisionBanner doc={doc} revision={revision} />}
       <div className="flex-1 min-h-0">{body}</div>
     </div>
   );
@@ -227,7 +194,7 @@ export default function Workspace() {
   return (
     <div className={`${WORKSPACE_CLASS} relative flex flex-col`}>
       {aiAssistant}
-      {!isZenMode && <EditorToolbar key={doc.documentKey} doc={doc} onSave={saveOrFork} />}
+      {!isZenMode && <EditorToolbar key={doc.documentKey} doc={doc} onSave={requestSave} />}
 
       <div className="flex-1 min-h-0">
         {isMobile ? (

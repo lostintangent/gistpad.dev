@@ -1,7 +1,8 @@
 import { Skeleton } from "@/shared/ui/skeleton";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { Media, WidgetDefinition, WidgetProps } from "../types";
+import { MediaDialog, type Media } from "../MediaDialog";
+import type { WidgetDefinition, WidgetProps } from "../types";
 
 interface Apod {
   title: string;
@@ -45,8 +46,9 @@ async function fetchData(): Promise<Apod> {
 
 const PREVIEW_CLASS = "w-full rounded-md cursor-pointer hover:opacity-90 transition-opacity";
 
-function NasaApodWidget({ data, displayMediaDialog }: WidgetProps<Apod>) {
+function NasaApodWidget({ data }: WidgetProps<Apod>) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMediaOpen, setIsMediaOpen] = useState(false);
 
   if (!data) {
     return (
@@ -68,14 +70,14 @@ function NasaApodWidget({ data, displayMediaDialog }: WidgetProps<Apod>) {
           muted
           playsInline
           className={PREVIEW_CLASS}
-          onClick={() => displayMediaDialog(media)}
+          onClick={() => setIsMediaOpen(true)}
         />
       ) : media ? (
         <img
           src={media.url}
           alt={data.title}
           className={PREVIEW_CLASS}
-          onClick={() => displayMediaDialog(media)}
+          onClick={() => setIsMediaOpen(true)}
         />
       ) : (
         <a
@@ -102,6 +104,7 @@ function NasaApodWidget({ data, displayMediaDialog }: WidgetProps<Apod>) {
       >
         <p className="text-sm text-muted-foreground mt-1">{data.explanation}</p>
       </div>
+      {isMediaOpen && media && <MediaDialog media={media} onClose={() => setIsMediaOpen(false)} />}
     </div>
   );
 }

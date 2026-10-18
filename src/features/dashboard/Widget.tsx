@@ -1,10 +1,11 @@
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Separator } from "@/shared/ui/separator";
 import { Slider } from "@/shared/ui/slider";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryClient } from "@/shared/query-client";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronRight,
@@ -13,16 +14,12 @@ import {
   Pencil,
   RefreshCw,
   X,
+  type LucideIcon,
 } from "lucide-react";
-import { useId, useRef, useState } from "react";
-import {
-  getRequiredOptions,
-  getWidgetTitle,
-  isConfigured,
-  widgetRegistry,
-  type WidgetState,
-} from "./registry";
-import type { WidgetDefinition, WidgetProps as WidgetComponentProps } from "./types";
+import { Fragment, useId, useRef, useState } from "react";
+import { getWidgetTitle, isConfigured, widgetRegistry } from "./registry";
+import { configureWidget, moveWidget, removeWidget, updateWidget } from "./store";
+import type { WidgetDefinition, WidgetState } from "./types";
 
 const LONG_PRESS_DELAY = 500;
 
@@ -83,19 +80,11 @@ function WidgetConfigForm({
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-
-        const missingOption = getRequiredOptions(definition).find(
-          (option) => !pendingConfig[option.id]?.trim(),
-        );
-        setError(
-          missingOption ? `${missingOption.name} is required` : (onSave(pendingConfig) ?? null),
-        );
+        setError(onSave(pendingConfig) ?? null);
       }}
     >
       {options.map((option) => {
         const inputId = `${id}-${option.id}`;
-        const isRequired = option.default === undefined;
-        const isRange = option.minValue !== undefined || option.maxValue !== undefined;
 
         if (typeof option.default === "boolean") {
           return (
@@ -116,8 +105,7 @@ function WidgetConfigForm({
           <div key={option.id} className="flex items-center gap-3">
             <Label htmlFor={inputId} className="text-sm font-medium min-w-24 shrink-0">
               {option.name}
-              {isRequired && <span className="text-red-500 ml-1">*</span>}
-              {isRange && (
+              {!option.options && (
                 <span className="text-muted-foreground ml-1">({pendingConfig[option.id]})</span>
               )}
             </Label>
@@ -137,7 +125,7 @@ function WidgetConfigForm({
                   ))}
                 </SelectContent>
               </Select>
-            ) : isRange ? (
+            ) : (
               <Slider
                 id={inputId}
                 min={option.minValue || 1}
@@ -147,13 +135,6 @@ function WidgetConfigForm({
                 onValueChange={(values) =>
                   setValue(option.id, String(Array.isArray(values) ? values[0] : values))
                 }
-                className="flex-1"
-              />
-            ) : (
-              <Input
-                id={inputId}
-                value={pendingConfig[option.id]}
-                onChange={(e) => setValue(option.id, e.target.value)}
                 className="flex-1"
               />
             )}
@@ -175,44 +156,30 @@ function WidgetConfigForm({
   );
 }
 
-interface WidgetProps extends Pick<
-  WidgetComponentProps<unknown>,
-  "openCommentsDialog" | "displayMediaDialog"
-> {
-  widget: WidgetState;
-  /** Whether the dashboard is in edit mode (where widgets can be configured, moved and removed). */
-  isEditMode: boolean;
-  isFirst: boolean;
-  isLast: boolean;
-  onEnterEditMode: () => void;
-  onExitEditMode: () => void;
-  onToggleCollapsed: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onRemove: () => void;
-  /** Returns an error message, if the config can't be saved (e.g. it duplicates another widget). */
-  onSaveConfig: (config: Record<string, string>) => string | void;
+interface WidgetAction {
+  Icon: LucideIcon;
+  title: string;
+  run: () => void;
+  disabled?: boolean;
+  /** Whether the action is in progress (e.g. refreshing), which spins its icon. */
+  isBusy?: boolean;
 }
 
-export function Widget({
-  widget,
-  isEditMode,
-  isFirst,
-  isLast,
-  onEnterEditMode,
-  onExitEditMode,
-  onToggleCollapsed,
-  onMoveUp,
-  onMoveDown,
-  onRemove,
-  onSaveConfig,
-  openCommentsDialog,
-  displayMediaDialog,
-}: WidgetProps) {
-  const queryClient = useQueryClient();
+interface WidgetProps {
+  widget: WidgetState;
+  /** The widget's position on the dashboard (which it can be moved up or down from). */
+  index: number;
+  isLast: boolean;
+  /** Whether the dashboard is in edit mode (where widgets can be configured, moved and removed). */
+  isEditMode: boolean;
+  onEditModeChange: (isEditMode: boolean) => void;
+}
+
+export function Widget({ widget, index, isLast, isEditMode, onEditModeChange }: WidgetProps) {
   const definition = widgetRegistry[widget.type];
   const title = getWidgetTitle(widget);
-  const { collapsed, config = {} } = widget;
+  const { id, collapsed, config = {} } = widget;
+  const toggleCollapsed = () => updateWidget(id, { collapsed: !collapsed });
   const isReady = isConfigured(definition, config);
   const canEditConfig = !!definition.config?.length && Object.keys(config).length > 0;
 
@@ -222,18 +189,18 @@ export function Widget({
 
   const finishEditingConfig = () => {
     setConfigEdit(null);
-    if (configEdit?.exitsEditMode) onExitEditMode();
+    if (configEdit?.exitsEditMode) onEditModeChange(false);
   };
 
   const longPress = useLongPress(() => {
-    if (isEditMode) return onExitEditMode();
+    if (isEditMode) return onEditModeChange(false);
 
-    onEnterEditMode();
+    onEditModeChange(true);
     if (canEditConfig) {
-      if (collapsed) onToggleCollapsed();
+      if (collapsed) toggleCollapsed();
       setConfigEdit({ exitsEditMode: true });
     }
-  }, onToggleCollapsed);
+  }, toggleCollapsed);
 
   const queryKey = ["widgets", widget.type, config];
   const { data, isLoading, isFetching, error } = useQuery({
@@ -248,6 +215,51 @@ export function Widget({
 
   const isEmpty = !data || (Array.isArray(data) && data.length === 0);
 
+  const { getExternalUrl } = definition;
+  const lowerTitle = title.toLowerCase();
+  const editConfig: WidgetAction = {
+    Icon: Pencil,
+    title: "Edit configuration",
+    run: () => setConfigEdit({ exitsEditMode: false }),
+    disabled: !!configEdit,
+  };
+  const moveUp: WidgetAction = {
+    Icon: ChevronUp,
+    title: "Move up",
+    run: () => moveWidget(id, index - 1),
+    disabled: index === 0,
+  };
+  const moveDown: WidgetAction = {
+    Icon: ChevronDown,
+    title: "Move down",
+    run: () => moveWidget(id, index + 1),
+    disabled: isLast,
+  };
+  const remove: WidgetAction = {
+    Icon: X,
+    title: `Remove ${lowerTitle}`,
+    run: () => removeWidget(id),
+  };
+  const openWebsite: WidgetAction = {
+    Icon: ExternalLink,
+    title: "Open external website",
+    run: () => window.open(getExternalUrl!(config), "_blank", "noopener,noreferrer"),
+  };
+  const refresh: WidgetAction = {
+    Icon: RefreshCw,
+    title: `Refresh ${lowerTitle}`,
+    // (Resetting the query shows its loading state, unlike a background refetch)
+    run: () => queryClient.resetQueries({ queryKey, exact: true }),
+    disabled: isFetching || !isReady,
+    isBusy: isFetching,
+  };
+
+  const actionGroups = (
+    isEditMode
+      ? [canEditConfig && [editConfig], [moveUp, moveDown], [remove]]
+      : [getExternalUrl && [openWebsite], [refresh]]
+  ).filter((group) => !!group);
+
   return (
     // Widgets sit directly on the dashboard (like the gist list on the sidebar), and are only
     // outlined in edit mode (where they can be moved)
@@ -261,94 +273,39 @@ export function Widget({
           <h3 className="font-semibold">{title}</h3>
         </button>
         <div className="flex items-center pr-1">
-          {isEditMode ? (
-            <>
-              {canEditConfig && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setConfigEdit({ exitsEditMode: false })}
-                    title="Edit configuration"
-                    disabled={!!configEdit}
-                  >
-                    <Pencil />
-                  </Button>
-                  <div className="mx-1 h-4 w-px bg-separator" />
-                </>
+          {actionGroups.map((group, i) => (
+            <Fragment key={i}>
+              {i > 0 && (
+                <Separator
+                  orientation="vertical"
+                  className="mx-1 h-4 data-vertical:self-center bg-separator"
+                />
               )}
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={onMoveUp}
-                title="Move up"
-                disabled={isFirst}
-              >
-                <ChevronUp />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={onMoveDown}
-                title="Move down"
-                disabled={isLast}
-              >
-                <ChevronDown />
-              </Button>
-              <div className="mx-1 h-4 w-px bg-separator" />
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={onRemove}
-                title={`Remove ${title.toLowerCase()}`}
-              >
-                <X />
-              </Button>
-            </>
-          ) : (
-            <>
-              {definition.getExternalUrl && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() =>
-                      window.open(
-                        definition.getExternalUrl!(config),
-                        "_blank",
-                        "noopener,noreferrer",
-                      )
-                    }
-                    title="Open external website"
-                  >
-                    <ExternalLink />
-                  </Button>
-                  <div className="mx-1 h-4 w-px bg-separator" />
-                </>
-              )}
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                // (Resetting the query shows its loading state, unlike a background refetch)
-                onClick={() => queryClient.resetQueries({ queryKey, exact: true })}
-                title={`Refresh ${title.toLowerCase()}`}
-                disabled={isFetching || !isReady}
-              >
-                <RefreshCw className={isFetching ? "animate-spin" : undefined} />
-              </Button>
-            </>
-          )}
+              {group.map(({ Icon, title, run, disabled, isBusy }) => (
+                <Button
+                  key={title}
+                  variant="ghost"
+                  size="icon-xs"
+                  title={title}
+                  onClick={run}
+                  disabled={disabled}
+                >
+                  <Icon className={isBusy ? "animate-spin" : undefined} />
+                </Button>
+              ))}
+            </Fragment>
+          ))}
         </div>
       </div>
       {!collapsed && (
-        // (Its content is indented under its title, like the sidebar's sections; see `styles.ts`)
+        // (Its content is indented under its title, like the sidebar's sections; see `HackerNews`)
         <div className="[--widget-indent:--spacing(5)] pl-(--widget-indent) pr-2 pt-1 pb-2 relative">
           {!isReady || configEdit ? (
             <WidgetConfigForm
               definition={definition}
               config={config}
               onSave={(config) => {
-                const error = onSaveConfig(config);
+                const error = configureWidget(widget, config);
                 if (!error) finishEditingConfig();
                 return error;
               }}
@@ -359,18 +316,9 @@ export function Widget({
               Error: {error.message || "Failed to load data"}
             </div>
           ) : !isLoading && isEmpty ? (
-            definition.emptyStateMessage !== null && (
-              <div className="text-muted-foreground text-sm">
-                {definition.emptyStateMessage ?? "No data available"}
-              </div>
-            )
+            <div className="text-muted-foreground text-sm">No data available</div>
           ) : (
-            <definition.component
-              data={data}
-              config={config}
-              openCommentsDialog={openCommentsDialog}
-              displayMediaDialog={displayMediaDialog}
-            />
+            <definition.component data={data} config={config} />
           )}
           {isEditMode && !configEdit && isReady && (
             <div className="absolute inset-0 bg-backdrop/50 backdrop-blur-[0.5px] rounded-b-lg" />

@@ -1,4 +1,4 @@
-import { githubToken, type GistComment } from "@/shared/github";
+import { githubToken, toMarkdownFilename, type GistComment } from "@/shared/github";
 import { createOpenAIClient, getModelProperties, userCommentsAsContext } from "./openai";
 
 export async function researchTopic(
@@ -107,7 +107,7 @@ export async function pollResearchTask(
       const { title, filename, content } = JSON.parse(response.output_text);
       return {
         title,
-        filename: filename.endsWith(".md") ? filename : `${filename}.md`,
+        filename: toMarkdownFilename(filename),
         content: content.trim(),
       };
     }

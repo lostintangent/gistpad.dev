@@ -1,7 +1,7 @@
 import { timeAgo } from "@/shared/dates";
 import { EmojiInput } from "@/shared/EmojiInput";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
+import { UserAvatar } from "@/shared/UserAvatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupButton } from "@/shared/ui/input-group";
@@ -14,13 +14,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import type { GistDocument } from "@/features/editor/document";
-import {
-  createReplyMarker,
-  getCommentPrefix,
-  getDisplayBody,
-  getSidebarDisplayBody,
-  type CommentThread,
-} from "./threads";
+import { createReplyMarker, parseCommentBody, type CommentThread } from "./threads";
 import type { GistComment } from "@/shared/github";
 import { useCreateComment, useDeleteComment, useUpdateComment } from "@/features/gists/queries";
 import { useSession } from "@/features/account/queries";
@@ -60,7 +54,7 @@ function CommentActions({
   const canReply = depth < MAX_REPLY_DEPTH;
   const canEdit = currentUser === comment.user?.login;
   const canDelete = canEdit || isGistOwner;
-  const reply = () => openComments({ commentId: comment.id, reply: true });
+  const reply = () => openComments({ replyTo: comment.id });
 
   return (
     <div className="flex gap-1">
@@ -124,7 +118,8 @@ function CommentActions({
 function CommentEditor({ comment, onDone }: { comment: GistComment; onDone: () => void }) {
   const { gistId } = use(CommentsContext);
   const { mutate: updateComment } = useUpdateComment(gistId);
-  const [text, setText] = useState(() => getDisplayBody(comment.body));
+  const { prefix, text: initialText } = parseCommentBody(comment.body);
+  const [text, setText] = useState(initialText);
 
   return (
     <InputGroup className="mt-1" onClick={(e) => e.stopPropagation()}>
@@ -142,10 +137,7 @@ function CommentEditor({ comment, onDone }: { comment: GistComment; onDone: () =
           variant="default"
           disabled={!text.trim()}
           onClick={() =>
-            updateComment(
-              { commentId: comment.id, body: getCommentPrefix(comment.body) + text },
-              { onSuccess: onDone },
-            )
+            updateComment({ commentId: comment.id, body: prefix + text }, { onSuccess: onDone })
           }
         >
           Save
@@ -163,6 +155,9 @@ function CommentItem({ comment, depth }: { comment: GistComment; depth: number }
   const isSelected = useSelector(commentsStore, (state) => state.selectedCommentId === comment.id);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Replies are nested under their parent comment, but quotes are shown (since they provide context)
+  const { parentId, text } = parseCommentBody(comment.body);
+
   return (
     <div
       ref={isSelected ? scrollIntoView : undefined}
@@ -177,10 +172,7 @@ function CommentItem({ comment, depth }: { comment: GistComment; depth: number }
       }`}
       style={{ marginLeft: depth * INDENT_PX || undefined }}
     >
-      <Avatar className="h-8 w-8 shrink-0">
-        <AvatarImage src={comment.user?.avatar_url} />
-        <AvatarFallback>{comment.user?.login?.[0]?.toUpperCase() ?? "A"}</AvatarFallback>
-      </Avatar>
+      <UserAvatar user={comment.user} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -200,7 +192,7 @@ function CommentItem({ comment, depth }: { comment: GistComment; depth: number }
         ) : (
           <div className="mt-1">
             <MarkdownPreview shouldInvert={!isSelected} enableBlockquoteCopying={false}>
-              {getSidebarDisplayBody(comment.body)}
+              {parentId ? text : comment.body}
             </MarkdownPreview>
           </div>
         )}

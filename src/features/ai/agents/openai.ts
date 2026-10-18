@@ -1,5 +1,6 @@
 import type { GistComment } from "@/shared/github";
-import { aiSettingsStore, type ModelType } from "../settings";
+import type { AiMode } from "../commands";
+import { aiSettingsStore } from "../settings";
 import OpenAI from "openai";
 
 export interface AgentFollowUp {
@@ -45,9 +46,10 @@ export function createOpenAIClient() {
   return new OpenAI({ apiKey: aiSettingsStore.state.apiKey, dangerouslyAllowBrowser: true });
 }
 
-export function getModelProperties(modelType: ModelType) {
+/** The model (and its reasoning settings) that the user has chosen for a mode. */
+export function getModelProperties(mode: AiMode) {
   const { models, showReasoningSummaries } = aiSettingsStore.state;
-  let model = models[modelType];
+  let model = models[mode];
 
   const reasoning: OpenAI.Reasoning = {};
   if ((model.startsWith("o") || model === "gpt-5") && showReasoningSummaries) {

@@ -1,75 +1,46 @@
-import { ScrollableText } from "@/shared/ScrollableText";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { getGistDisplayName, type Gist } from "@/shared/github";
-import { useParams } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import type { Gist } from "@/shared/github";
+import { useDocument } from "@/features/editor/document";
+import { Archive, Star } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
-import { GistRow } from "./GistLink";
+import { GistItem } from "./GistItem";
+
+const SECTIONS = {
+  starred: { icon: <Star className="fill-yellow-400 text-yellow-400" />, title: "Starred gists" },
+  archived: { icon: <Archive />, title: "Archived gists" },
+};
 
 /** A secondary list of gists (e.g. starred or archived gists), below the user's main gists. */
 export function GistSection({
   section,
-  icon,
   gists,
   totalCount,
   isFiltered,
-  renderAction,
 }: {
-  section: "starred" | "archived";
-  icon: ReactNode;
+  section: keyof typeof SECTIONS;
   /** The gists that match the current filter. */
   gists: Gist[];
   totalCount: number;
   isFiltered: boolean;
-  renderAction: (gist: Gist) => ReactNode;
 }) {
-  const { gistId: openGistId } = useParams({ strict: false });
-  // Starred gists can belong to anyone, so they show who owns them (rather than if they're public).
-  const isStarred = section === "starred";
+  const { gistId: openGistId } = useDocument();
 
   return (
     <CollapsibleSection
       section={section}
-      title={
-        <>
-          {icon}
-          {isStarred ? "Starred" : "Archived"} gists
-        </>
-      }
+      {...SECTIONS[section]}
       count={isFiltered ? `${gists.length} of ${totalCount}` : totalCount}
-      openGistId={gists.some(({ id }) => id === openGistId) ? openGistId : undefined}
+      containsOpenGist={gists.some(({ id }) => id === openGistId)}
       rowCount={gists.length}
     >
-      <ScrollArea className="h-full">
-        <div className="py-1 pl-3 pr-2 space-y-0.5">
-          {gists.length === 0 ? (
-            <div className="p-2 text-muted-foreground text-center italic text-sm">
-              No {section} gists match your filter
-            </div>
-          ) : (
-            gists.map((gist) => (
-              <GistRow
-                key={gist.id}
-                gistId={gist.id}
-                isSelected={gist.id === openGistId}
-                action={renderAction(gist)}
-                className="py-1.5 px-2"
-              >
-                <div className="flex items-center gap-2 text-sm">
-                  {isStarred && (
-                    <Avatar className="size-5">
-                      <AvatarImage src={gist.owner?.avatar_url} alt={gist.owner?.login} />
-                      <AvatarFallback>{gist.owner?.login[0]?.toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                  )}
-                  <ScrollableText className="flex-1">{getGistDisplayName(gist)}</ScrollableText>
-                </div>
-              </GistRow>
-            ))
-          )}
+      {gists.length === 0 ? (
+        <div className="p-2 text-muted-foreground text-center italic text-sm">
+          No {section} gists match your filter
         </div>
-      </ScrollArea>
+      ) : (
+        gists.map((gist) => (
+          <GistItem key={gist.id} gist={gist} isOpen={gist.id === openGistId} compact />
+        ))
+      )}
     </CollapsibleSection>
   );
 }

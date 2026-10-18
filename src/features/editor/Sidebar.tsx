@@ -10,9 +10,9 @@ import { useSelector } from "@tanstack/react-store";
 import { cn } from "cn";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { NewsDashboardButton } from "./NewsDashboard";
+import { DashboardButton } from "./Dashboard";
 import { SidePanel } from "./SidePanel";
-import { SIDEBAR_WIDTH, sidebarCollapsedAtom, sidebarWidthAtom, zenModeAtom } from "./store";
+import { SIDEBAR_WIDTH, sidebarCollapsedAtom, sidebarWidthAtom, zenModeAtom } from "./layout";
 
 /** The size of the sidebar's actions, which the rail is one of across. */
 const ACTION_SIZE = "size-6";
@@ -53,7 +53,7 @@ function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
       </div>
       <div className="flex items-center gap-3">
         <ResearchStatus className={ACTION_SIZE} />
-        <NewsDashboardButton className={ACTION_SIZE} />
+        <DashboardButton className={ACTION_SIZE} />
       </div>
     </div>
   );
@@ -80,7 +80,7 @@ function SidebarRail({ isVisible }: { isVisible: boolean }) {
       <CreateGistButton isRail />
       <div className="flex-1" />
       <ResearchStatus className={ACTION_SIZE} />
-      <NewsDashboardButton className={ACTION_SIZE} />
+      <DashboardButton className={ACTION_SIZE} />
       <Separator className={RAIL_SEPARATOR} />
       <ActionSpacer />
     </div>
@@ -166,7 +166,7 @@ function HoverSheet() {
 
 /**
  * The gist list, between a header (for filtering and creating gists) and a footer (for the user's
- * account and the news dashboard), which is a panel beside the workspace.
+ * account and the dashboard), which is a panel beside the workspace.
  */
 export function Sidebar() {
   const isMobile = useIsMobile();

@@ -1,5 +1,5 @@
 import UnsavedChangesDialog from "./dialogs/UnsavedChangesDialog";
-import { NewsDashboard } from "./NewsDashboard";
+import { Dashboard } from "./Dashboard";
 import { MobilePanels } from "./SidePanel";
 import { Sidebar } from "./Sidebar";
 import Workspace from "./Workspace";
@@ -7,11 +7,13 @@ import ResearchStatus from "@/features/ai/research/ResearchStatus";
 import { SpotifyPlayer } from "@/features/spotify/SpotifyPlayer";
 import { Button } from "@/shared/ui/button";
 import { useDocument, useIsSaving, useSaveDocument, type GistDocument } from "./document";
-import { getGistDisplayName } from "@/shared/github";
-import { useStarredGists } from "@/features/gists/queries";
-import { usePreferences, useRecordRecentlyViewed } from "@/features/account/queries";
+import { getFileDisplayName, getGistDisplayName } from "@/shared/github";
+import { useIsStarred } from "@/features/gists/queries";
+import { usePreferences, useUpdatePreferences } from "@/features/account/queries";
 import DeleteGistDialog from "@/features/gists/dialogs/DeleteGistDialog";
-import { draftAtom, mobilePanelAtom, useDraft, zenModeAtom } from "./store";
+import EditTagsDialog from "@/features/gists/dialogs/EditTagsDialog";
+import { mobilePanelAtom, zenModeAtom } from "./layout";
+import { draftAtom, readDraft, useDraft } from "./store";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { useBlocker } from "@tanstack/react-router";
 import { useSelector } from "@tanstack/react-store";
@@ -29,17 +31,13 @@ function UnsavedChangesGuard({ doc }: { doc: GistDocument }) {
   const save = useSaveDocument(doc);
   const isSaving = useIsSaving(doc);
   const { isAutoSaveEnabled } = usePreferences();
-  const draftContent = useDraft(doc.documentKey)?.content;
+  const draftContent = useDraft(doc)?.content;
 
   /** Saves the changes, if they can be saved automatically, and returns whether they were. */
   const autoSave = async () => {
     // (AI edits aren't saved until the user accepts them)
-    const draft = draftAtom.get();
-    const canAutoSave =
-      isAutoSaveEnabled &&
-      !doc.isReadOnly &&
-      draft?.documentKey === doc.documentKey &&
-      !draft.hasPendingAiEdit;
+    const draft = readDraft(doc);
+    const canAutoSave = isAutoSaveEnabled && !doc.isReadOnly && !!draft && !draft.hasPendingAiEdit;
 
     if (canAutoSave) await save();
     return canAutoSave;
@@ -91,18 +89,36 @@ function UnsavedChangesGuard({ doc }: { doc: GistDocument }) {
   );
 }
 
-/** Adds other people's gists to the user's recently viewed list (unless they've starred it). */
-function useRecentlyViewed(doc: GistDocument) {
-  const recordRecentlyViewed = useRecordRecentlyViewed();
-  const starredGists = useStarredGists();
+/**
+ * Adds other people's gist files to the user's recently viewed files (unless they've starred
+ * the gist), most recent first.
+ */
+function useRecordRecentlyViewed(doc: GistDocument) {
+  const updatePreferences = useUpdatePreferences();
+  const isStarred = useIsStarred(doc.gistId);
 
-  const shouldRecord =
-    !!doc.gist &&
-    !doc.isLoading &&
-    doc.isReadOnly &&
-    !starredGists.some((gist) => gist.id === doc.gistId);
+  const shouldRecord = !!doc.gist && !doc.isLoading && doc.isReadOnly && !isStarred;
 
-  const record = useEffectEvent(() => recordRecentlyViewed(doc.gist!, doc.filename));
+  const record = useEffectEvent(() => {
+    const { gist, filename } = doc;
+    if (!gist) return;
+
+    updatePreferences(({ recentlyViewedGistFiles }) => ({
+      recentlyViewedGistFiles: [
+        {
+          id: gist.id,
+          description: gist.description || getFileDisplayName(filename),
+          owner: gist.owner?.login ?? "unknown",
+          ownerId: gist.owner?.id ?? 0,
+          filename,
+          viewedDate: new Date().toISOString(),
+        },
+        ...recentlyViewedGistFiles.filter(
+          (file) => file.id !== gist.id || file.filename !== filename,
+        ),
+      ].slice(0, 5),
+    }));
+  });
 
   useEffect(() => {
     if (shouldRecord) record();
@@ -133,7 +149,7 @@ export default function EditorPage() {
   // (While there's no gist to show, e.g. for a new user, the gist list stays open)
   const mobilePanel = useSelector(mobilePanelAtom) ?? (doc.gistId ? null : "sidebar");
 
-  useRecentlyViewed(doc);
+  useRecordRecentlyViewed(doc);
 
   const workspace = (
     <div className="relative min-w-0 flex-1 h-full">
@@ -154,7 +170,7 @@ export default function EditorPage() {
           }
           onClose={() => mobilePanelAtom.set(null)}
           left={<Sidebar />}
-          right={<NewsDashboard />}
+          right={<Dashboard />}
         >
           {workspace}
         </MobilePanels>
@@ -162,12 +178,13 @@ export default function EditorPage() {
         <div className="h-full flex">
           <Sidebar />
           {workspace}
-          <NewsDashboard />
+          <Dashboard />
         </div>
       )}
 
       <UnsavedChangesGuard doc={doc} />
       <DeleteGistDialog />
+      <EditTagsDialog />
       <SpotifyPlayer />
     </div>
   );

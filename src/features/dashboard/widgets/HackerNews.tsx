@@ -1,8 +1,15 @@
 import { timeAgo } from "@/shared/dates";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { ArrowUp, Clock, MessageSquare } from "lucide-react";
-import { HANGING_LIST, HANGING_MARKER } from "../styles";
-import type { Comment, WidgetDefinition, WidgetProps } from "../types";
+import { useState } from "react";
+import { CommentsDialog, type Comment } from "../CommentsDialog";
+import type { WidgetDefinition, WidgetProps } from "../types";
+
+// A widget's content is indented under its title (by `--widget-indent`, which `Widget` sets). The
+// stories' numbers start at the tip of the widget's chevron (which is 0.75rem in, past the header's
+// padding and half of the chevron), so they hang into that indent.
+const HANGING_LIST = "-ml-[calc(var(--widget-indent)-0.75rem)]";
+const HANGING_MARKER = "w-6 shrink-0";
 
 interface Story {
   id: number;
@@ -77,7 +84,9 @@ async function fetchReplies(ids: number[] = []): Promise<Comment[]> {
   return replies.filter((reply) => reply !== null);
 }
 
-function HackerNewsWidget({ data, config, openCommentsDialog }: WidgetProps<Story[]>) {
+function HackerNewsWidget({ data, config }: WidgetProps<Story[]>) {
+  const [commentsStory, setCommentsStory] = useState<Story | null>(null);
+
   if (!data) {
     return (
       <div className={`space-y-3 ${HANGING_LIST}`}>
@@ -103,59 +112,67 @@ function HackerNewsWidget({ data, config, openCommentsDialog }: WidgetProps<Stor
   }
 
   return (
-    <div className={`space-y-3 ${HANGING_LIST}`}>
-      {data.map((story, index) => (
-        <div key={story.id} className="border-b pb-2 last:border-0 last:pb-0">
-          <div className="flex">
-            <span className={`${HANGING_MARKER} text-sm text-muted-foreground mt-0.5`}>
-              {index + 1}.
-            </span>
-            <div className="flex-1">
-              <a
-                href={story.url || `https://news.ycombinator.com/item?id=${story.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium hover:underline"
-              >
-                {story.title}
-              </a>
-              {story.url && (
-                <span className="text-xs text-muted-foreground ml-1">({getDomain(story.url)})</span>
-              )}
-              <div className="flex gap-3 text-xs text-muted-foreground mt-1 mb-2">
-                {story.descendants !== undefined && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openCommentsDialog({
-                        title: story.title,
-                        text: cleanHackerNewsText(story.text),
-                        queryKey: ["hn-comments", story.id],
-                        // (The story is refetched, so that refreshing the dialog shows new comments)
-                        fetchComments: async () => fetchReplies((await fetchItem(story.id)).kids),
-                      });
-                    }}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors hover:underline"
-                  >
-                    <MessageSquare className="h-3 w-3" />
-                    {story.descendants}
-                  </button>
+    <>
+      <div className={`space-y-3 ${HANGING_LIST}`}>
+        {data.map((story, index) => (
+          <div key={story.id} className="border-b pb-2 last:border-0 last:pb-0">
+            <div className="flex">
+              <span className={`${HANGING_MARKER} text-sm text-muted-foreground mt-0.5`}>
+                {index + 1}.
+              </span>
+              <div className="flex-1">
+                <a
+                  href={story.url || `https://news.ycombinator.com/item?id=${story.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium hover:underline"
+                >
+                  {story.title}
+                </a>
+                {story.url && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({getDomain(story.url)})
+                  </span>
                 )}
-                <span className="flex items-center gap-1">
-                  <ArrowUp className="h-3 w-3" />
-                  {story.score}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {timeAgo(story.time * 1000)}
-                </span>
+                <div className="flex gap-3 text-xs text-muted-foreground mt-1 mb-2">
+                  {story.descendants !== undefined && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCommentsStory(story);
+                      }}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors hover:underline"
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      {story.descendants}
+                    </button>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <ArrowUp className="h-3 w-3" />
+                    {story.score}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {timeAgo(story.time * 1000)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      {commentsStory && (
+        <CommentsDialog
+          title={commentsStory.title}
+          text={cleanHackerNewsText(commentsStory.text)}
+          queryKey={["hn-comments", commentsStory.id]}
+          // (The story is refetched, so that refreshing the dialog shows new comments)
+          fetchComments={async () => fetchReplies((await fetchItem(commentsStory.id)).kids)}
+          onClose={() => setCommentsStory(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -164,6 +181,5 @@ export default {
   fetchData,
   config: [{ id: "postCount", name: "Post count", default: 10, minValue: 1, maxValue: 20 }],
   component: HackerNewsWidget,
-  emptyStateMessage: null,
   getExternalUrl: () => "https://news.ycombinator.com",
 } satisfies WidgetDefinition<Story[]>;

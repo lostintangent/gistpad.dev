@@ -1,6 +1,6 @@
 import { autocompletion } from "@codemirror/autocomplete";
 import { emojiCompletions } from "./emoji";
-import { frontmatterCompletions } from "./frontmatter";
+import { frontmatterCompletions } from "@/features/ai/frontmatterCompletions";
 import { wikilinkCompletions } from "./wikilink";
 
 export const createEditorCompletions = (files: string[], isAiEnabled: boolean) =>

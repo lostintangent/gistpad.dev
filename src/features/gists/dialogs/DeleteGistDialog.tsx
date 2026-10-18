@@ -1,4 +1,4 @@
-import { getGistDisplayName, type Gist } from "@/shared/github";
+import { getFileDisplayName, getGistDisplayName, type Gist } from "@/shared/github";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +32,7 @@ export default function DeleteGistDialog() {
 
         const { gist, filename } = payload;
         const isFile = !deletesGist(gist, filename);
-        const name = isFile ? filename!.replace(/\.md$/, "") : getGistDisplayName(gist);
+        const name = isFile ? getFileDisplayName(filename!) : getGistDisplayName(gist);
 
         return (
           <AlertDialogContent>

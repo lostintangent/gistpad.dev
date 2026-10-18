@@ -1,4 +1,4 @@
-import { evaluateMathExpression, extractVariableAssignments } from "@/shared/utils";
+import { evaluateMathExpression, extractVariableAssignments } from "@/shared/calculations";
 import { RangeSetBuilder } from "@codemirror/state";
 import { Decoration, WidgetType } from "@codemirror/view";
 import { decorationsPlugin } from "./plugin";

@@ -1,32 +1,17 @@
 import { Button } from "@/shared/ui/button";
 import type { GistDocument } from "../document";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { gistQueries } from "@/features/gists/queries";
-import { revisionAtom, updateDraft } from "../store";
-import { useQuery } from "@tanstack/react-query";
-import { useSelector } from "@tanstack/react-store";
+import { updateDraft } from "../store";
 import { History, RotateCcw, X } from "lucide-react";
+import { revisionAtom, type Revision } from "./revision";
 import { RevisionLabel } from "./RevisionLabel";
 
 /** Indicates that a past revision of the document is being viewed, which can be restored. */
-export function RevisionBanner({
-  doc,
-  content,
-}: {
-  doc: GistDocument;
-  /** The revision's content, which replaces the document's content when it's restored. */
-  content: string;
-}) {
-  const revisionId = useSelector(revisionAtom);
+export function RevisionBanner({ doc, revision }: { doc: GistDocument; revision: Revision }) {
   const isMobile = useIsMobile();
-  const { data: revision } = useQuery({
-    ...gistQueries.revisions(doc.gistId ?? ""),
-    select: (revisions) => revisions.find(({ version }) => version === revisionId),
-  });
 
-  if (!revision || !doc.gist) return null;
-
-  const isCurrentVersion = Date.parse(revision.committed_at) === Date.parse(doc.gist.updated_at);
+  // (Restoring a revision that matches the document wouldn't change anything)
+  const canRestore = !revision.isLoading && revision.content !== doc.savedContent;
   const close = () => revisionAtom.set(null);
 
   return (
@@ -37,18 +22,18 @@ export function RevisionBanner({
           Viewing version from{" "}
           <RevisionLabel
             revision={revision}
-            gistCreatedAt={doc.gist.created_at}
+            gistCreatedAt={doc.gist?.created_at}
             showChangeStats={!isMobile}
           />
         </span>
       </div>
       <div className="flex items-center gap-1">
-        {!isCurrentVersion && (
+        {canRestore && (
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={() => {
-              updateDraft(doc.documentKey, doc.savedContent, { content });
+              updateDraft(doc, { content: revision.content });
               close();
             }}
             title="Restore to this version"

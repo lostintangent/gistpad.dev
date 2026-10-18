@@ -1,4 +1,5 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
+import type { EditorView } from "@codemirror/view";
 import nspell from "nspell";
 
 // Common programming terms to exclude from spell checking
@@ -303,13 +304,18 @@ export const spellChecker = linter(async (view) => {
         to: line.from + to,
         severity: "warning",
         message: `Possible spelling error: "${word}".`,
-        actions: dictionary
-          .suggest(normalizedWord)
-          .slice(0, 3)
-          .map((suggestion) => ({
-            name: `"${suggestion}"`,
-            apply: (view, from, to) => view.dispatch({ changes: { from, to, insert: suggestion } }),
-          })),
+        // Suggestions are slow to compute (up to hundreds of milliseconds per word), and
+        // so they're only computed when the diagnostic is shown (e.g. on hover).
+        get actions() {
+          return dictionary
+            .suggest(normalizedWord)
+            .slice(0, 3)
+            .map((suggestion) => ({
+              name: `"${suggestion}"`,
+              apply: (view: EditorView, from: number, to: number) =>
+                view.dispatch({ changes: { from, to, insert: suggestion } }),
+            }));
+        },
       });
     }
   }

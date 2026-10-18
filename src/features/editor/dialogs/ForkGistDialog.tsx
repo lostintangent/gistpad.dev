@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
-import { useForkAndSave, type GistDocument } from "../document";
+import { useSaveDocument, type GistDocument } from "../document";
 
 /** Offers to fork the open gist (which belongs to someone else), in order to save the user's changes. */
 export default function ForkGistDialog({
@@ -20,7 +20,7 @@ export default function ForkGistDialog({
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }) {
-  const forkAndSave = useForkAndSave(doc);
+  const save = useSaveDocument(doc);
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -36,7 +36,7 @@ export default function ForkGistDialog({
           <AlertDialogAction
             onClick={() => {
               onOpenChange(false);
-              forkAndSave();
+              save();
             }}
           >
             Fork and save

@@ -1,40 +1,38 @@
 import { Button } from "@/shared/ui/button";
-import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useDocument } from "@/features/editor/document";
 import { useOpenDailyTemplate } from "../actions";
-import { TEMPLATE_FILENAME, type Gist } from "@/shared/github";
-import { useQuery } from "@tanstack/react-query";
-import { parse, startOfToday } from "date-fns";
-import { gistQueries } from "../queries";
+import { getFileDisplayName, TEMPLATE_FILENAME, type Gist } from "@/shared/github";
+import { parseDateFilename } from "@/shared/dates";
+import { startOfToday } from "date-fns";
+import { useGist } from "../queries";
+import { cn } from "cn";
 import { Calendar, CheckSquare, FileText, Trash2 } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
-import { GistRow } from "./GistLink";
+import { ListItem } from "./ListItem";
 import { deleteGistDialog } from "../dialogs/DeleteGistDialog";
 
-function getDailyTaskStats(gist: Gist) {
-  return Object.values(gist.files)
+/** The daily notes in a gist (i.e. not its template), with overdue notes first, then the newest. */
+function getNotes(dailyNotes: Gist) {
+  return Object.values(dailyNotes.files)
+    .filter(({ filename }) => filename !== TEMPLATE_FILENAME)
     .map(({ filename, content = "" }) => {
       // Markdown task syntax: - [ ] or - [x]
       const totalTasks = content.match(/- \[[ x]\]/g)?.length ?? 0;
       const completedTasks = content.match(/- \[x\]/g)?.length ?? 0;
 
-      // (e.g. `2025-01-31.md`, where other files, like the template, have an invalid date)
-      const date = parse(filename.replace(/\.md$/, ""), "yyyy-MM-dd", new Date());
+      // Notes are named after their date (e.g. `2025-01-31.md`), unlike other files (e.g. a README)
+      const date = parseDateFilename(filename, "YYYY-MM-DD")?.date;
 
       return {
         filename,
         totalTasks,
         completedTasks,
-        time: date.getTime() || 0,
+        time: date?.getTime() ?? 0,
         // Whether the note is from a previous day, and still has incomplete tasks
-        isPastDueWithTasks: date < startOfToday() && completedTasks < totalTasks,
+        isOverdue: !!date && date < startOfToday() && completedTasks < totalTasks,
       };
     })
-    .sort(
-      (a, b) =>
-        // Past-due notes first, and then newest first
-        Number(b.isPastDueWithTasks) - Number(a.isPastDueWithTasks) || b.time - a.time,
-    );
+    .sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || b.time - a.time);
 }
 
 const OVERDUE_BADGE_CLASSES =
@@ -43,35 +41,22 @@ const OVERDUE_BADGE_CLASSES =
 export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
   const { gistId: openGistId, filename: openFilename } = useDocument();
   // The gist list doesn't include file contents, so load the full gist to count its tasks.
-  const { data: taskStats = [] } = useQuery({
-    ...gistQueries.detail(dailyNotes.id),
-    select: getDailyTaskStats,
-  });
+  const { data: gist = dailyNotes } = useGist(dailyNotes.id);
   const openTemplate = useOpenDailyTemplate();
 
-  const filenames = Object.keys(dailyNotes.files).filter((name) => name !== TEMPLATE_FILENAME);
-  if (filenames.length === 0) return null;
+  const notes = getNotes(gist);
+  if (notes.length === 0) return null;
 
-  // Past-due notes (with incomplete tasks) come first, followed by the newest notes.
-  const sortedFilenames = [
-    ...taskStats.map(({ filename }) => filename).filter((name) => filenames.includes(name)),
-    ...filenames.filter((name) => !taskStats.some((stats) => stats.filename === name)),
-  ];
-
-  const overdueTaskCount = taskStats
-    .filter((stats) => stats.isPastDueWithTasks)
-    .reduce((total, stats) => total + stats.totalTasks - stats.completedTasks, 0);
+  const overdueTaskCount = notes
+    .filter((note) => note.isOverdue)
+    .reduce((total, note) => total + note.totalTasks - note.completedTasks, 0);
 
   return (
     <CollapsibleSection
       section="daily"
-      title={
-        <>
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-          Daily notes
-        </>
-      }
-      count={filenames.length}
+      icon={<Calendar />}
+      title="Daily notes"
+      count={notes.length}
       collapsedDetails={
         overdueTaskCount > 0 && (
           <span className={OVERDUE_BADGE_CLASSES}>{overdueTaskCount} overdue</span>
@@ -87,60 +72,53 @@ export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
           <FileText />
         </Button>
       }
-      openGistId={openGistId === dailyNotes.id ? openGistId : undefined}
-      rowCount={filenames.length}
+      containsOpenGist={openGistId === dailyNotes.id}
+      rowCount={notes.length}
     >
-      <ScrollArea className="h-full">
-        <div className="py-1 pl-3 pr-2 space-y-0.5">
-          {sortedFilenames.map((filename) => {
-            const stats = taskStats.find((stats) => stats.filename === filename);
-            const isSelected = openGistId === dailyNotes.id && openFilename === filename;
-
-            return (
-              <GistRow
-                key={filename}
-                gistId={dailyNotes.id}
-                filename={filename}
-                isSelected={isSelected}
-                className="py-1.5 px-2"
-                action={
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => deleteGistDialog.openWithPayload({ gist: dailyNotes, filename })}
-                    title="Delete daily note"
-                  >
-                    <Trash2 className="text-red-500" />
-                  </Button>
-                }
+      {notes.map((note) => (
+        <ListItem
+          key={note.filename}
+          gistId={dailyNotes.id}
+          filename={note.filename}
+          isOpen={openGistId === dailyNotes.id && openFilename === note.filename}
+          compact
+          action={
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() =>
+                deleteGistDialog.openWithPayload({ gist: dailyNotes, filename: note.filename })
+              }
+              title="Delete daily note"
+            >
+              <Trash2 className="text-red-500" />
+            </Button>
+          }
+        >
+          <div
+            className={cn(
+              "flex justify-between items-center text-sm",
+              note.isOverdue && "text-amber-700 dark:text-amber-400",
+            )}
+          >
+            <span className="truncate">
+              {getFileDisplayName(note.filename)}
+              {note.isOverdue && <span className={OVERDUE_BADGE_CLASSES}>overdue</span>}
+            </span>
+            {note.totalTasks > 0 && (
+              <span
+                className={cn(
+                  "text-xs flex items-center gap-1",
+                  !note.isOverdue && "text-muted-foreground",
+                )}
               >
-                <div className="flex justify-between items-center text-sm">
-                  <span
-                    className={`truncate ${stats?.isPastDueWithTasks ? "text-amber-700 dark:text-amber-400" : ""}`}
-                  >
-                    {filename.replace(/\.md$/, "")}
-                    {stats?.isPastDueWithTasks && (
-                      <span className={OVERDUE_BADGE_CLASSES}>overdue</span>
-                    )}
-                  </span>
-                  {stats && stats.totalTasks > 0 && (
-                    <span
-                      className={`text-xs flex items-center gap-1 ${
-                        stats.isPastDueWithTasks
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      <CheckSquare className="h-3 w-3" />
-                      {stats.completedTasks}/{stats.totalTasks}
-                    </span>
-                  )}
-                </div>
-              </GistRow>
-            );
-          })}
-        </div>
-      </ScrollArea>
+                <CheckSquare className="h-3 w-3" />
+                {note.completedTasks}/{note.totalTasks}
+              </span>
+            )}
+          </div>
+        </ListItem>
+      ))}
     </CollapsibleSection>
   );
 }

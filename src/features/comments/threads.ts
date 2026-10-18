@@ -6,6 +6,14 @@ const REPLY_MARKER_REGEX = /^>\s*\[comment:(\d+)\]\s*$/;
 // Minimum length for quoted text to be highlightable
 const MIN_QUOTE_LENGTH = 3;
 
+// Selecting text (in the editor or preview) shows a button for commenting on it, once the selection
+// is long enough to quote, and the browser has had time to paint it.
+export const SELECTION_COMMENT = {
+  minLength: 4,
+  delay: 300,
+  title: "Add comment with selected text",
+};
+
 // Highlights of quoted text (in the editor and preview), which are identified by their class and
 // comment ID attribute (so that their tooltips and clicks can be handled in one place).
 
@@ -27,40 +35,38 @@ export interface CommentThread {
 
 /** A thread whose top-level comment quotes the document (so it's highlighted in the editor/preview). */
 export interface QuotedCommentThread extends CommentThread {
-  quotedText: string;
+  quote: string;
 }
 
-// Comments that quote the document (or reply to another comment) start with a blockquote line,
-// e.g. `> quoted text` or `> [comment:123]`.
-
-const getFirstLine = (body: string) => body.split("\n")[0].trim();
-const isReplyMarker = (line: string) => REPLY_MARKER_REGEX.test(line);
-const stripFirstLine = (body: string) => body.split("\n").slice(1).join("\n").trim();
-
-/** The document text that a comment quotes (as opposed to a reply marker), if any. */
-function getQuotedText(comment: GistComment) {
-  const firstLine = getFirstLine(comment.body);
-  return firstLine.startsWith(">") && !isReplyMarker(firstLine) ? firstLine.slice(1).trim() : null;
-}
-
-/** A comment's body, without its quote or reply marker (e.g. where the quote is highlighted already). */
-export function getDisplayBody(body: string) {
-  return getFirstLine(body).startsWith(">") ? stripFirstLine(body) : body;
-}
-
-/** A comment's body, without its reply marker (but keeping its quote, which provides context). */
-export function getSidebarDisplayBody(body: string) {
-  return isReplyMarker(getFirstLine(body)) ? stripFirstLine(body) : body;
+/** The threads whose quotes are highlighted in a document (and the selected comment, if any). */
+export interface CommentHighlights {
+  threads: QuotedCommentThread[];
+  selectedId?: number | null;
 }
 
 /**
- * A comment's hidden prefix (i.e. its quote or reply marker), which is its first line and any blank
- * lines after it (or an empty string, if it doesn't have one).
+ * Comments that quote the document (or reply to another comment) start with a blockquote line (e.g.
+ * `> quoted text` or `> [comment:123]`). That line, and any blank lines after it, is the comment's
+ * prefix, which is hidden when it's displayed or edited (i.e. only its text is).
  */
-export function getCommentPrefix(body: string) {
-  return getFirstLine(body).startsWith(">")
-    ? body.match(/^[^\n]*(?:\n[^\S\n]*(?=\n|$))*\n?/)![0]
-    : "";
+export function parseCommentBody(body: string): {
+  prefix: string;
+  /** The document text that the comment quotes. */
+  quote?: string;
+  /** The ID of the comment that this comment is a reply to. */
+  parentId?: number;
+  text: string;
+} {
+  const firstLine = body.split("\n")[0].trim();
+  if (!firstLine.startsWith(">")) return { prefix: "", text: body };
+
+  const prefix = body.match(/^[^\n]*(?:\n[^\S\n]*(?=\n|$))*\n?/)![0];
+  const text = body.slice(prefix.length).trim();
+  const parentId = firstLine.match(REPLY_MARKER_REGEX)?.[1];
+
+  return parentId
+    ? { prefix, parentId: Number(parentId), text }
+    : { prefix, quote: firstLine.slice(1).trim(), text };
 }
 
 /** Organizes comments into threads, where comments (and their replies) are sorted newest first. */
@@ -74,8 +80,9 @@ export function buildCommentThreads(comments: GistComment[]) {
   // Replies whose parent doesn't exist (e.g. it was deleted) are treated as top-level comments.
   const topLevel: CommentThread[] = [];
   for (const thread of threads.values()) {
-    const parentId = getFirstLine(thread.comment.body).match(REPLY_MARKER_REGEX)?.[1];
-    (threads.get(Number(parentId))?.replies ?? topLevel).push(thread);
+    const { parentId } = parseCommentBody(thread.comment.body);
+    const parent = parentId ? threads.get(parentId) : undefined;
+    (parent?.replies ?? topLevel).push(thread);
   }
 
   return topLevel;
@@ -86,8 +93,8 @@ export const createReplyMarker = (parentCommentId: number) => `> [comment:${pare
 /** The threads whose top-level comment quotes the document. */
 export function getQuotedCommentThreads(threads: CommentThread[]): QuotedCommentThread[] {
   return threads.flatMap((thread) => {
-    const quotedText = getQuotedText(thread.comment);
-    return quotedText ? [{ ...thread, quotedText }] : [];
+    const { quote } = parseCommentBody(thread.comment.body);
+    return quote ? [{ ...thread, quote }] : [];
   });
 }
 
@@ -97,16 +104,16 @@ export function getQuotedCommentThreads(threads: CommentThread[]): QuotedComment
  */
 export function findQuoteMatches(threads: QuotedCommentThread[], segments: string[]) {
   return threads.flatMap((thread) => {
-    if (thread.quotedText.length < MIN_QUOTE_LENGTH) return [];
+    if (thread.quote.length < MIN_QUOTE_LENGTH) return [];
 
-    const escaped = thread.quotedText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = thread.quote.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(`\\b${escaped}\\b`, "g");
     const matches = segments.flatMap((text, segment) =>
       [...text.matchAll(pattern)].map(({ index }) => ({
         thread,
         segment,
         start: index,
-        end: index + thread.quotedText.length,
+        end: index + thread.quote.length,
       })),
     );
 

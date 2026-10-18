@@ -1,6 +1,7 @@
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
+import { toMarkdownFilename } from "@/shared/github";
 import { useState } from "react";
 
 // oxlint-disable-next-line no-control-regex
@@ -29,7 +30,7 @@ export default function AddFileDialog({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmit(filename.endsWith(".md") ? filename : `${filename}.md`);
+            onSubmit(toMarkdownFilename(filename));
             onClose();
           }}
         >

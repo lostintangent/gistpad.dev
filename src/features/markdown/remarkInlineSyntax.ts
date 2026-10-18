@@ -1,4 +1,4 @@
-import { evaluateMathExpression, extractVariableAssignments } from "@/shared/utils";
+import { evaluateMathExpression, extractVariableAssignments } from "@/shared/calculations";
 
 // A remark plugin for GistPad's custom inline syntax, which is converted into annotated elements
 // (rendered by the preview's components). Since some syntax depends on what came before it

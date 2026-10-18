@@ -23,7 +23,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { useDocument, useOpenDocument } from "@/features/editor/document";
+import { useDocument, openDocument } from "@/features/editor/document";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import {
   signOut,
@@ -65,7 +65,6 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
   const { user } = useSession();
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const openDocument = useOpenDocument();
   const doc = useDocument();
   const isMobile = useIsMobile();
 

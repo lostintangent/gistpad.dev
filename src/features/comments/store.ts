@@ -36,20 +36,26 @@ export function resetComments() {
   commentsStore.setState(() => initialState);
 }
 
-/** Opens the comments panel (e.g. to a specific comment, or with a quote of the selected text). */
+/**
+ * Opens the comments panel, e.g. to a specific comment, or to write a new comment (that replies to
+ * another comment, or quotes the selected text).
+ */
 export function openComments({
   commentId,
-  reply = false,
+  replyTo,
   quote,
   tab = "user",
-}: { commentId?: number; reply?: boolean; quote?: string; tab?: "user" | "ai" } = {}) {
+}: { commentId?: number; replyTo?: number; quote?: string; tab?: "user" | "ai" } = {}) {
+  const selectedCommentId = replyTo ?? commentId;
+  const isWriting = replyTo !== undefined || !!quote;
+
   commentsPanelOpenAtom.set(true);
   updateComments({
     tab,
-    ...(commentId !== undefined && { selectedCommentId: commentId }),
-    ...(reply && { replyingToCommentId: commentId }),
+    ...(selectedCommentId !== undefined && { selectedCommentId }),
+    ...(replyTo !== undefined && { replyingToCommentId: replyTo }),
     ...(quote && { newCommentText: `> ${quote}\n\n` }),
-    ...((reply || quote) && { shouldFocusInput: true }),
+    ...(isWriting && { shouldFocusInput: true }),
   });
 }
 

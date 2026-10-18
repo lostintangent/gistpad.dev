@@ -2,7 +2,7 @@ import { RESIZE_HANDLE_RULE } from "@/shared/ui/resizable";
 import { cn } from "cn";
 import { useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 
-// The panels beside the workspace (the sidebar and the news dashboard) are recessed into the
+// The panels beside the workspace (the sidebar and the dashboard) are recessed into the
 // backdrop. On desktop, they're resizable (and collapsible), and on mobile, they slide in.
 
 /** How far one arrow key nudges a panel's edge. */

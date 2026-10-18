@@ -46,10 +46,6 @@ export function detectDateFormat(filenames: string[]) {
   return formats.find((format) => names.every((name) => parseDateFilename(name, format))) ?? null;
 }
 
-export function isDateBasedGist(gist: { files: Record<string, unknown> }) {
-  return detectDateFormat(Object.keys(gist.files).filter((file) => file.endsWith(".md"))) !== null;
-}
-
 /** Groups dated files by year and month (with the most recent files first). */
 export function groupFilesByDate(filenames: string[]) {
   const format = detectDateFormat(filenames);

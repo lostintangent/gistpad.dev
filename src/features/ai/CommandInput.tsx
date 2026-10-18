@@ -4,20 +4,10 @@ import { Textarea } from "@/shared/ui/textarea";
 import { getGistDisplayName, type Gist } from "@/shared/github";
 import { Globe } from "lucide-react";
 import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import type { CustomCommand } from "./commands";
+import { findReferences, type CustomCommand } from "./commands";
 
-// Commands can reference gists (`@[Gist]`) and files in the open gist (`#[File]`), which are
-// highlighted by an overlay (since the textarea's own text is transparent), and edited as a unit.
-
-const REFERENCE_PATTERN = /([@#])\[([^\]]+)]/g;
-
-const findReferences = (text: string) =>
-  [...text.matchAll(REFERENCE_PATTERN)].map((match) => ({
-    start: match.index,
-    end: match.index + match[0].length,
-    symbol: match[1],
-    name: match[2],
-  }));
+// Gist and file references are highlighted by an overlay (since the textarea's own text is
+// transparent), and are edited as a unit.
 
 /** The command's text, with its references highlighted (where their brackets are invisible). */
 function HighlightedText({ text }: { text: string }) {

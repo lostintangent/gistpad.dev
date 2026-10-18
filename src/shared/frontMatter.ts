@@ -1,30 +1,16 @@
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { splitFrontMatter, withFrontMatter } from "./utils";
+// Only AI features parse frontmatter (see `features/ai/frontMatter.ts`), since its YAML parser is
+// large, so these helpers just split it from (and rejoin it to) a document's content.
+const FRONT_MATTER = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
 
-/** A document's (YAML) frontmatter, which can contain arbitrary settings (e.g. for AI features). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type FrontMatter = Record<string, any>;
-
-/** Parses markdown content's frontmatter (which is null if it doesn't have any, or it's invalid). */
-export function parseFrontMatter(content: string): {
-  frontMatter: FrontMatter | null;
-  frontMatterYaml?: string;
-  content: string;
-} {
-  const { frontMatterYaml, content: remainingContent } = splitFrontMatter(content);
-  if (frontMatterYaml === undefined) return { frontMatter: null, content };
-
-  try {
-    return { frontMatter: parseYaml(frontMatterYaml), frontMatterYaml, content: remainingContent };
-  } catch (error) {
-    console.warn("Error parsing frontmatter:", error);
-    return { frontMatter: null, content };
-  }
+/** Splits markdown content into its (YAML) frontmatter, and the content that follows it. */
+export function splitFrontMatter(content: string): { frontMatterYaml?: string; content: string } {
+  const [, frontMatterYaml, remainingContent] = content.match(FRONT_MATTER) ?? [];
+  return frontMatterYaml === undefined
+    ? { content }
+    : { frontMatterYaml, content: remainingContent.trim() };
 }
 
-/** Replaces the frontmatter of markdown content (or removes it, if it's empty). */
-export function updateFrontMatter(content: string, frontMatter: FrontMatter) {
-  const yaml =
-    Object.keys(frontMatter).length > 0 ? stringifyYaml(frontMatter).trimEnd() : undefined;
-  return withFrontMatter(splitFrontMatter(content).content, yaml);
+/** Prepends (YAML) frontmatter to markdown content. */
+export function withFrontMatter(content: string, frontMatterYaml?: string) {
+  return frontMatterYaml ? `---\n${frontMatterYaml}\n---\n\n${content}` : content;
 }

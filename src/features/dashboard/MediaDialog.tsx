@@ -1,7 +1,9 @@
 import { Dialog, DialogContent } from "@/shared/ui/dialog";
 import { useEffect, useEffectEvent } from "react";
 import { useSwipeable } from "react-swipeable";
-import type { Media } from "./types";
+
+export type Media =
+  { type: "image"; url: string } | { type: "video"; url: string; posterUrl?: string };
 
 /** Displays an image or video, which is mounted while it's open. */
 export function MediaDialog({ media, onClose }: { media: Media; onClose: () => void }) {

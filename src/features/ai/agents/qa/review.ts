@@ -1,6 +1,6 @@
 import z from "zod";
 import { createOpenAIClient } from "../openai";
-import { runStreamingAgent, type QaAgentOptions } from "./base";
+import { runStreamingAgent, type QaAgentOptions, type QaProgress } from "./base";
 
 export interface ReviewComment {
   id: number;
@@ -49,14 +49,13 @@ const systemPrompt = `# Objective
     - If the user asks for a checklist or tasklist, then use the \`- []\` format for the checklist items, as opposed to appending an \`☐\` character to the start of each item.
 * CRITICAL: Make sure to create distinct/individual comments for each distinct piece of feedback/suggestion you have, even if they are related to the same topic. Do not combine multiple suggestions into a single comment.`;
 
-interface ReviewOptions extends QaAgentOptions {
-  /** Called with the review's comments, as they're streamed. */
-  onComments: (comments: ReviewComment[]) => void;
-  /** Called with the review's title, as it's streamed. */
-  onTitle: (title: string) => void;
+/** A review of a document (whose title summarizes the user's request). */
+export interface ReviewResult extends QaProgress {
+  title: string | null;
+  comments: ReviewComment[];
 }
 
-export async function reviewContent(options: ReviewOptions) {
+export async function reviewContent(options: QaAgentOptions<ReviewResult>) {
   const titlePromise = (async () => {
     try {
       const stream = createOpenAIClient().responses.stream(
@@ -73,7 +72,7 @@ export async function reviewContent(options: ReviewOptions) {
       for await (const event of stream) {
         if (event.type === "response.output_text.delta") {
           title += event.delta;
-          options.onTitle(title);
+          options.onUpdate({ title });
         }
       }
     } catch (e) {
@@ -85,7 +84,7 @@ export async function reviewContent(options: ReviewOptions) {
   const comments: ReviewComment[] = [];
   const responseId = await runStreamingAgent({
     ...options,
-    agentType: "review",
+    mode: "review",
     systemPrompt,
     outputSchema: z.object({
       comments: z.array(
@@ -135,7 +134,7 @@ export async function reviewContent(options: ReviewOptions) {
           break;
       }
 
-      options.onComments([...comments]);
+      options.onUpdate({ comments: [...comments] });
     },
   });
 

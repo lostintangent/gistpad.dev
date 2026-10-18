@@ -1,10 +1,9 @@
 import { CountBadge } from "@/shared/ui/count-badge";
 import { EmojiInput } from "@/shared/EmojiInput";
-import TagBadge from "./TagBadge";
+import { TagMenuItems } from "./tags";
 import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -86,19 +85,8 @@ function CreateGistForm({ onCreated }: { onCreated: () => void }) {
                 <TagIcon />
                 <CountBadge count={tagIds.length} />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-45">
-                {Object.entries(tags).map(([id, tag]) => (
-                  <DropdownMenuCheckboxItem
-                    key={id}
-                    checked={tagIds.includes(id)}
-                    onCheckedChange={(checked) =>
-                      setTagIds((ids) => (checked ? [...ids, id] : ids.filter((t) => t !== id)))
-                    }
-                    closeOnClick={false}
-                  >
-                    <TagBadge tag={tag.name} color={tag.color} />
-                  </DropdownMenuCheckboxItem>
-                ))}
+              <DropdownMenuContent align="start">
+                <TagMenuItems tagIds={tagIds} onChange={setTagIds} />
               </DropdownMenuContent>
             </DropdownMenu>
           )}

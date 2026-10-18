@@ -1,5 +1,5 @@
 import tailwind from "bun-plugin-tailwind";
-import { cp, rm } from "node:fs/promises";
+import { cp, readdir, rm } from "node:fs/promises";
 import { basename } from "node:path";
 
 // Builds GistPad as a static site in `dist/`, whose code is split into (content-hashed) chunks.
@@ -82,7 +82,7 @@ await Bun.build({
   target: "browser",
   minify: true,
   define: {
-    BUILD_FILES: JSON.stringify(["./", "icon.png", ...outputs.keys()]),
+    BUILD_FILES: JSON.stringify(["./", ...(await readdir(outdir))]),
     STARTUP_FILES: JSON.stringify(["./", ...editorFiles]),
   },
 });

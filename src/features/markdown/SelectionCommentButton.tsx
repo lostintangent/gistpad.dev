@@ -1,11 +1,7 @@
 import { MessageSquare } from "lucide-react";
 import { useEffect, useEffectEvent, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-
-const MIN_SELECTION_LENGTH = 4;
-
-// Wait for the browser to paint the selection, before showing the button.
-const SHOW_DELAY = 300;
+import { SELECTION_COMMENT } from "@/features/comments/threads";
 
 /** A floating button for commenting on the text the user selected in the preview. */
 export function SelectionCommentButton({
@@ -26,7 +22,7 @@ export function SelectionCommentButton({
 
     if (
       !range ||
-      text.trim().length < MIN_SELECTION_LENGTH ||
+      text.trim().length < SELECTION_COMMENT.minLength ||
       !containerRef.current?.contains(range.commonAncestorContainer)
     ) {
       setSelection(null);
@@ -44,7 +40,7 @@ export function SelectionCommentButton({
     let timeout: ReturnType<typeof setTimeout>;
     const onMouseUp = () => {
       clearTimeout(timeout);
-      timeout = setTimeout(updateSelection, SHOW_DELAY);
+      timeout = setTimeout(updateSelection, SELECTION_COMMENT.delay);
     };
     const onMouseDown = () => setSelection(null);
 
@@ -63,7 +59,7 @@ export function SelectionCommentButton({
     <button
       className="fixed z-50 p-1 bg-primary text-primary-foreground rounded-md shadow-md hover:bg-primary/90 transition-colors"
       style={{ top: selection.top, left: selection.left }}
-      title="Add comment with selected text"
+      title={SELECTION_COMMENT.title}
       // Prevent the document's mousedown handler from dismissing the button, before it's clicked
       onMouseDown={(event) => event.stopPropagation()}
       onClick={() => {

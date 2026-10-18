@@ -7,16 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Textarea } from "@/shared/ui/textarea";
 import { MessageCircleQuestion, Mic, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
-import type { FrontMatter } from "@/shared/frontMatter";
+import { parseFrontMatter, updateFrontMatter, type FrontMatter } from "../frontMatter";
+import { useDocument, useDocumentContent, useSaveDocument } from "@/features/editor/document";
+import { readDraft, updateDraft } from "@/features/editor/store";
+import { usePreferences, useUpdatePreferences } from "@/features/account/queries";
 import { useState } from "react";
+import { DEFAULT_VOICE, parseGlobalFrontMatter, VOICES } from "../commands";
 
 // The action bar is configured via frontmatter (in a document, or the user's global settings),
 // which this dialog edits as a form, while preserving any other frontmatter properties.
 
-const VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"].map(
-  (voice) => ({ value: voice, label: `${voice[0].toUpperCase()}${voice.slice(1)}` }),
-);
-const DEFAULT_VOICE = "alloy";
+const VOICE_ITEMS = VOICES.map(({ name }) => ({
+  value: name,
+  label: `${name[0].toUpperCase()}${name.slice(1)}`,
+}));
 
 const asString = (value: unknown) => (typeof value === "string" ? value : "");
 
@@ -205,136 +209,134 @@ function CommandSectionFields({
   );
 }
 
-function SettingsForm({
+/** Configures the action bar's instructions and custom commands (for the open document, or globally). */
+export default function ActionBarSettingsDialog({
   scope,
-  frontMatter,
-  onSave,
+  onClose,
 }: {
   scope: "document" | "global";
-  frontMatter: FrontMatter;
-  onSave: (frontMatter: FrontMatter) => void;
+  onClose: () => void;
 }) {
+  const doc = useDocument();
+  const content = useDocumentContent(doc);
+  const preferences = usePreferences();
+  const updatePreferences = useUpdatePreferences();
+  const saveDocument = useSaveDocument(doc);
+
+  const frontMatter =
+    scope === "global"
+      ? parseGlobalFrontMatter(preferences)
+      : (parseFrontMatter(content).frontMatter ?? {});
+
   const [settings, setSettings] = useState(() => toSettings(frontMatter));
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     setSettings((settings) => ({ ...settings, [key]: value }));
 
+  const save = () => {
+    const updated = toFrontMatter(frontMatter, settings);
+    if (scope === "global") {
+      updatePreferences({ globalFrontMatter: JSON.stringify(updated) });
+    } else {
+      // If the document didn't have unsaved changes, then save the settings right away.
+      const hadChanges = !!readDraft(doc);
+      updateDraft(doc, { content: updateFrontMatter(content, updated) });
+      if (!hadChanges && !doc.isReadOnly) saveDocument();
+    }
+    onClose();
+  };
+
   return (
-    <>
-      <Tabs defaultValue="general" className="mt-4">
-        <TabsList className="w-full">
-          <TabsTrigger value="general">
-            <NotebookPen /> General
-          </TabsTrigger>
-          <TabsTrigger value="discuss">
-            <MessageCircleQuestion /> Ask / Review
-          </TabsTrigger>
-          <TabsTrigger value="edit">
-            <Pencil /> Edit
-          </TabsTrigger>
-          <TabsTrigger value="talk">
-            <Mic /> Talk
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="grid grid-cols-[80px_1fr] gap-4 mt-6 items-center">
-          <Label htmlFor="general-instructions" className="self-start pt-2">
-            Instructions
-          </Label>
-          <Textarea
-            id="general-instructions"
-            value={settings.general.instructions}
-            onChange={(e) => update("general", { instructions: e.target.value })}
-            placeholder="General instructions for AI"
-            rows={4}
-          />
-        </TabsContent>
-
-        {(["discuss", "edit"] as const).map((type) => (
-          <TabsContent key={type} value={type}>
-            <CommandSectionFields
-              id={type}
-              section={settings[type]}
-              onChange={(section) => update(type, section)}
-              placeholder={`Custom instructions for ${type === "edit" ? "edit" : "review"} commands`}
-              canOverrideGlobalSettings={scope === "document"}
-            />
-          </TabsContent>
-        ))}
-
-        <TabsContent value="talk" className="grid grid-cols-[80px_1fr] gap-4 mt-6 items-center">
-          <Label htmlFor="voice">Voice</Label>
-          <Select
-            items={VOICES}
-            value={settings.talk.voice}
-            onValueChange={(voice) => voice && update("talk", { ...settings.talk, voice })}
-          >
-            <SelectTrigger id="voice" className="w-full">
-              <SelectValue placeholder="Select a voice..." />
-            </SelectTrigger>
-            <SelectContent>
-              {VOICES.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Label htmlFor="persona">Persona</Label>
-          <Input
-            id="persona"
-            value={settings.talk.persona}
-            onChange={(e) => update("talk", { ...settings.talk, persona: e.target.value })}
-            placeholder="The voice assistant's personality"
-          />
-
-          <Label htmlFor="talk-instructions" className="self-start pt-2">
-            Instructions
-          </Label>
-          <Textarea
-            id="talk-instructions"
-            value={settings.talk.instructions}
-            onChange={(e) => update("talk", { ...settings.talk, instructions: e.target.value })}
-            placeholder="Custom instructions for the voice assistant"
-            rows={4}
-          />
-        </TabsContent>
-      </Tabs>
-      <DialogFooter>
-        <Button onClick={() => onSave(toFrontMatter(frontMatter, settings))}>Save</Button>
-      </DialogFooter>
-    </>
-  );
-}
-
-/** Configures the action bar's instructions and custom commands (for a document, or globally). */
-export default function ActionBarSettingsDialog({
-  isOpen,
-  onOpenChange,
-  scope,
-  frontMatter,
-  onSave,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  scope: "document" | "global";
-  frontMatter: FrontMatter;
-  onSave: (frontMatter: FrontMatter) => void;
-}) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="p-5">
         <DialogHeader>
           <DialogTitle>Configure action bar ({scope})</DialogTitle>
         </DialogHeader>
-        <SettingsForm
-          scope={scope}
-          frontMatter={frontMatter}
-          onSave={(frontMatter) => {
-            onSave(frontMatter);
-            onOpenChange(false);
-          }}
-        />
+        <Tabs defaultValue="general" className="mt-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="general">
+              <NotebookPen /> General
+            </TabsTrigger>
+            <TabsTrigger value="discuss">
+              <MessageCircleQuestion /> Ask / Review
+            </TabsTrigger>
+            <TabsTrigger value="edit">
+              <Pencil /> Edit
+            </TabsTrigger>
+            <TabsTrigger value="talk">
+              <Mic /> Talk
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent
+            value="general"
+            className="grid grid-cols-[80px_1fr] gap-4 mt-6 items-center"
+          >
+            <Label htmlFor="general-instructions" className="self-start pt-2">
+              Instructions
+            </Label>
+            <Textarea
+              id="general-instructions"
+              value={settings.general.instructions}
+              onChange={(e) => update("general", { instructions: e.target.value })}
+              placeholder="General instructions for AI"
+              rows={4}
+            />
+          </TabsContent>
+
+          {(["discuss", "edit"] as const).map((type) => (
+            <TabsContent key={type} value={type}>
+              <CommandSectionFields
+                id={type}
+                section={settings[type]}
+                onChange={(section) => update(type, section)}
+                placeholder={`Custom instructions for ${type === "edit" ? "edit" : "review"} commands`}
+                canOverrideGlobalSettings={scope === "document"}
+              />
+            </TabsContent>
+          ))}
+
+          <TabsContent value="talk" className="grid grid-cols-[80px_1fr] gap-4 mt-6 items-center">
+            <Label htmlFor="voice">Voice</Label>
+            <Select
+              items={VOICE_ITEMS}
+              value={settings.talk.voice}
+              onValueChange={(voice) => voice && update("talk", { ...settings.talk, voice })}
+            >
+              <SelectTrigger id="voice" className="w-full">
+                <SelectValue placeholder="Select a voice..." />
+              </SelectTrigger>
+              <SelectContent>
+                {VOICE_ITEMS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Label htmlFor="persona">Persona</Label>
+            <Input
+              id="persona"
+              value={settings.talk.persona}
+              onChange={(e) => update("talk", { ...settings.talk, persona: e.target.value })}
+              placeholder="The voice assistant's personality"
+            />
+
+            <Label htmlFor="talk-instructions" className="self-start pt-2">
+              Instructions
+            </Label>
+            <Textarea
+              id="talk-instructions"
+              value={settings.talk.instructions}
+              onChange={(e) => update("talk", { ...settings.talk, instructions: e.target.value })}
+              placeholder="Custom instructions for the voice assistant"
+              rows={4}
+            />
+          </TabsContent>
+        </Tabs>
+        <DialogFooter>
+          <Button onClick={save}>Save</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

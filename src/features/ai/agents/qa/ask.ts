@@ -1,6 +1,6 @@
 import diagramPlaceholderUrl from "@/assets/diagram-placeholder.svg";
 import { z } from "zod";
-import { runStreamingAgent, type QaAgentOptions } from "./base";
+import { runStreamingAgent, type QaAgentOptions, type QaProgress } from "./base";
 
 const MERMAID_PLACEHOLDER = `![Mermaid diagram in progress](${diagramPlaceholderUrl})`;
 
@@ -28,16 +28,17 @@ const systemPrompt = `# Objective
    - If a graph node's label needs to include parentheses, make sure to wrap the entire label in double quotes (e.g. \`M --> N["TLS Shutdown (if any)"]\`). If you don't do this, the diagram will fail to render.
 `;
 
-interface AskOptions extends QaAgentOptions {
-  /** Called with the (markdown) answer, as it's streamed. */
-  onAnswer: (answer: string) => void;
+/** The answer to a question. */
+export interface AskResult extends QaProgress {
+  /** The (markdown) answer, which is empty while the AI is thinking. */
+  text: string;
 }
 
-export default async function askContent(options: AskOptions) {
+export default async function askContent(options: QaAgentOptions<AskResult>) {
   let title = "";
   return runStreamingAgent({
     ...options,
-    agentType: "ask",
+    mode: "ask",
     systemPrompt,
     outputSchema: z.object({
       title: z.string(),
@@ -50,10 +51,10 @@ export default async function askContent(options: AskOptions) {
     onParserValue: ({ key, value }) => {
       if (key === "title") {
         title = `## ${value}`;
-        options.onAnswer(title);
+        options.onUpdate({ text: title });
       } else if (key === "answer") {
         const answer = String(value ?? "").replace(/citeturn\d+(search|view)\d+/g, "");
-        options.onAnswer(`${title}\n\n${replaceIncompleteMermaid(answer)}`);
+        options.onUpdate({ text: `${title}\n\n${replaceIncompleteMermaid(answer)}` });
       }
     },
   });

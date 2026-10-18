@@ -3,7 +3,6 @@ import {
   AgentOutputType,
   run as runAgent,
   setDefaultOpenAIClient,
-  Tool,
   webSearchTool,
 } from "@openai/agents";
 import { JSONParser, type ParsedElementInfo } from "@streamparser/json";
@@ -15,6 +14,7 @@ import {
   type AgentFollowUp,
   type AgentRequest,
 } from "../openai";
+import { gistTools } from "../tools";
 
 const baseSystemPrompt = `## Using context
 * If the user provides a document(with a < current_document > tag), you should use that document to inform / contextualize the question, since this is precisely what they're currently reading, and therefore, is likely directly relevant to the question. And if you need to refer to the document in your answer, simply refer to it as "this document" or use it's provided title(depending on what feels most natural).
@@ -44,18 +44,20 @@ const baseSystemPrompt = `## Using context
 * The follow-up question/topic won't be rendered as markdown, so just use plain text (e.g. don't use bold, italics, etc.).
 * The follow-up can only be a subsequent question to ask, as opposed to an action to take (e.g. editing a document, or creating a new gist).`;
 
-/** The options that the Q&A agents (ask and review) have in common. */
-export interface QaAgentOptions extends AgentRequest {
-  tools?: Tool[];
-
-  // Callbacks for observing the progress of the agent, while it streams its response.
-  onFollowUp?: (followUp: AgentFollowUp) => void;
-  onReasoning?: (summary: string) => void;
-  onWebSearching?: (isSearching: boolean) => void;
+/** The progress that the Q&A agents (ask and review) report, while they stream their response. */
+export interface QaProgress {
+  followUp: AgentFollowUp | null;
+  reasoningSummary: string | null;
+  isWebSearching: boolean;
 }
 
-interface StreamingAgentOptions extends QaAgentOptions {
-  agentType: "ask" | "review";
+/** The options that the Q&A agents have in common, where `onUpdate` is called as their result streams in. */
+export interface QaAgentOptions<Result extends QaProgress> extends AgentRequest {
+  onUpdate: (changes: Partial<Result>) => void;
+}
+
+interface StreamingAgentOptions extends QaAgentOptions<QaProgress> {
+  mode: "ask" | "review";
   systemPrompt: string;
   outputSchema: AgentOutputType;
   onParserValue: (info: ParsedElementInfo) => void;
@@ -64,14 +66,14 @@ interface StreamingAgentOptions extends QaAgentOptions {
 export async function runStreamingAgent(options: StreamingAgentOptions) {
   setDefaultOpenAIClient(createOpenAIClient());
 
-  const modelProperties = getModelProperties(options.agentType);
+  const modelProperties = getModelProperties(options.mode);
   const agent = new Agent({
-    name: options.agentType,
+    name: options.mode,
     instructions: `${options.systemPrompt}\n\n${baseSystemPrompt}`,
     model: modelProperties.model,
     modelSettings: { providerData: modelProperties },
     outputType: options.outputSchema,
-    tools: [webSearchTool(), ...(options.tools ?? [])],
+    tools: [webSearchTool(), ...gistTools],
   });
 
   const { prompt, content, description, instructions, userComments, references } = options;
@@ -100,7 +102,7 @@ export async function runStreamingAgent(options: StreamingAgentOptions) {
     const { key, value, stack } = info;
     if (stack[1]?.key === "follow_up") {
       if (key === "question" || key === "topic") followUp[key] = String(value ?? "");
-      options.onFollowUp?.({ ...followUp });
+      options.onUpdate({ followUp: { ...followUp } });
     }
   };
 
@@ -118,11 +120,11 @@ export async function runStreamingAgent(options: StreamingAgentOptions) {
         reasoningSummary = "";
       } else if (type === "response.reasoning_summary_text.delta") {
         reasoningSummary += delta;
-        options.onReasoning?.(reasoningSummary);
+        options.onUpdate({ reasoningSummary });
       } else if (type === "response.web_search_call.in_progress") {
-        options.onWebSearching?.(true);
+        options.onUpdate({ isWebSearching: true });
       } else if (type === "response.web_search_call.completed") {
-        options.onWebSearching?.(false);
+        options.onUpdate({ isWebSearching: false });
       }
     }
   }

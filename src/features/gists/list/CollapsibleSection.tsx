@@ -1,5 +1,7 @@
 import { Badge } from "@/shared/ui/badge";
+import { ScrollArea } from "@/shared/ui/scroll-area";
 import { persistedAtom } from "@/shared/persistedAtom";
+import { useDocument } from "@/features/editor/document";
 import { useAtom } from "@tanstack/react-store";
 import { ChevronRight } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -12,15 +14,16 @@ const sectionCollapsedAtoms = {
 
 interface CollapsibleSectionProps {
   section: keyof typeof sectionCollapsedAtoms;
-  title: ReactNode;
+  icon: ReactNode;
+  title: string;
   /** The number of gists (or notes) in the section, which is shown at the end of its header. */
   count: ReactNode;
   /** Shown in the header, while the section is collapsed (e.g. a summary). */
   collapsedDetails?: ReactNode;
   /** Shown in the header (before its count), while the section is expanded. */
   actions?: ReactNode;
-  /** The ID of the open gist, if it's in this section (which reveals the section). */
-  openGistId?: string;
+  /** Whether the open gist is in this section (which expands it, even if it's collapsed). */
+  containsOpenGist: boolean;
   /** The number of rows in the section (which it's sized to fit, up to a limit). */
   rowCount: number;
   children: ReactNode;
@@ -33,23 +36,25 @@ const MAX_ROWS = 5;
 /** A collapsible section of the gist list, which remembers whether the user collapsed it. */
 export function CollapsibleSection({
   section,
+  icon,
   title,
   count,
   collapsedDetails,
   actions,
-  openGistId,
+  containsOpenGist,
   rowCount,
   children,
 }: CollapsibleSectionProps) {
   const [isCollapsed, setIsCollapsed] = useAtom(sectionCollapsedAtoms[section]);
+  const { gistId: openGistId } = useDocument();
 
-  // Reveal the section when one of its gists is opened, until the user explicitly collapses it.
+  // Expand the section when one of its gists is opened, until the user explicitly collapses it.
   const [dismissedGistId, setDismissedGistId] = useState<string>();
-  const isOpen = !isCollapsed || (!!openGistId && openGistId !== dismissedGistId);
+  const isExpanded = !isCollapsed || (containsOpenGist && openGistId !== dismissedGistId);
 
   const toggle = () => {
-    setIsCollapsed(isOpen);
-    setDismissedGistId(isOpen ? openGistId : undefined);
+    setIsCollapsed(isExpanded);
+    setDismissedGistId(isExpanded ? openGistId : undefined);
   };
 
   // The section spans the sidebar, and its header and rows are inset within it, so that its scroll
@@ -59,29 +64,32 @@ export function CollapsibleSection({
       <div className="mx-2 pl-1 pr-2 py-2 flex items-center gap-1 rounded-lg hover:bg-foreground/5 transition-colors">
         <button className="flex items-center gap-2 grow" onClick={toggle}>
           <ChevronRight
-            className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+            className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
           />
-          <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+          <span className="text-sm font-medium text-muted-foreground flex items-center gap-1 [&>svg]:size-3.5 [&>svg]:mr-1">
+            {icon}
             {title}
-            {!isOpen && collapsedDetails}
+            {!isExpanded && collapsedDetails}
           </span>
           {/* (A rule from the title to the header's end, which separates the sections) */}
           <span aria-hidden className="mr-1 h-px flex-1 bg-border" />
         </button>
-        {isOpen && actions}
+        {isExpanded && actions}
         {/* (Last in the header, so that the sections' counts line up) */}
         <Badge variant="count">{count}</Badge>
       </div>
       <div
         className="transition-[height,opacity] duration-200 ease-in-out overflow-hidden"
         style={{
-          height: isOpen ? Math.min(Math.max(rowCount, 1), MAX_ROWS) * ROW_HEIGHT + 8 : 0,
-          opacity: isOpen ? 1 : 0,
+          height: isExpanded ? Math.min(Math.max(rowCount, 1), MAX_ROWS) * ROW_HEIGHT + 8 : 0,
+          opacity: isExpanded ? 1 : 0,
         }}
         // Collapsed sections are hidden from keyboard and screen reader users too
-        inert={!isOpen}
+        inert={!isExpanded}
       >
-        {children}
+        <ScrollArea className="h-full">
+          <div className="py-1 pl-3 pr-2 space-y-0.5">{children}</div>
+        </ScrollArea>
       </div>
     </div>
   );

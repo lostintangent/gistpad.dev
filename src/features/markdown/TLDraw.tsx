@@ -1,17 +1,25 @@
 import { Button } from "@/shared/ui/button";
-import { useDocument } from "@/features/editor/document";
-import { setEmbeddedFile } from "@/features/editor/store";
 import { ChevronDown } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 
 const TldrawCanvas = lazy(() => import("./TldrawCanvas"));
 
-/** A whiteboard that's embedded in a document (via a ```tldraw block), and saved as a sidecar file. */
-export function TLDraw({ isReadOnly = false }: { isReadOnly?: boolean }) {
-  const doc = useDocument();
-  const [isExpanded, setIsExpanded] = useState(true);
+/** A whiteboard that's embedded in a document (via a ```tldraw block). */
+export interface Whiteboard {
+  /** Identifies the whiteboard, so that it's reloaded when it changes (e.g. when another document opens). */
+  key: string;
+  snapshot: string | undefined;
+  onChange: (serialize: () => string) => void;
+}
 
-  if (!doc.gist || doc.isLoading) return null;
+export function TLDraw({
+  whiteboard,
+  isReadOnly = false,
+}: {
+  whiteboard: Whiteboard;
+  isReadOnly?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(true);
 
   if (!isExpanded) {
     return (
@@ -22,17 +30,13 @@ export function TLDraw({ isReadOnly = false }: { isReadOnly?: boolean }) {
     );
   }
 
-  const filename = `${doc.filename}.tldraw`;
-
   return (
     <Suspense fallback={<div className="aspect-video animate-pulse rounded-md bg-muted" />}>
       <TldrawCanvas
-        key={doc.documentKey}
-        snapshot={doc.gist.files[filename]?.content}
+        key={whiteboard.key}
+        snapshot={whiteboard.snapshot}
         isReadOnly={isReadOnly}
-        onChange={(serialize) =>
-          setEmbeddedFile(doc.documentKey, doc.savedContent, filename, serialize)
-        }
+        onChange={whiteboard.onChange}
         onCollapse={() => setIsExpanded(false)}
       />
     </Suspense>

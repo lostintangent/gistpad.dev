@@ -1,15 +1,19 @@
-import { scrollToHeading } from "@/features/markdown/headings";
+import { useLinkedHeading } from "@/features/markdown/headings";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import { ScrollToTop } from "@/features/markdown/ScrollToTop";
-import { readDocumentContent, useOpenDocument, type GistDocument } from "./document";
-import { useSelectedHeading } from "./mode";
+import {
+  getWhiteboard,
+  readDocumentContent,
+  useDocumentContent,
+  openDocument,
+  type GistDocument,
+} from "./document";
+import type { Revision } from "./history/revision";
 import { useGists } from "@/features/gists/queries";
-import { usePreferences } from "@/features/account/queries";
-import { commentsStore, openComments } from "@/features/comments/store";
+import { openComments } from "@/features/comments/store";
 import { updateDraft } from "./store";
-import { useSelector } from "@tanstack/react-store";
-import { useDeferredValue, useEffect, useEffectEvent, type RefObject } from "react";
-import { useCommentThreads } from "@/features/comments/useCommentThreads";
+import { useDeferredValue, type RefObject } from "react";
+import { useCommentHighlights } from "@/features/comments/useCommentThreads";
 
 /** Toggles a task list item (identified by its text) between complete and incomplete. */
 function toggleTask(content: string, text: string) {
@@ -25,33 +29,24 @@ function toggleTask(content: string, text: string) {
 
 export function PreviewPane({
   doc,
-  content,
-  isViewingRevision,
+  revision,
   showActionBar,
   ref,
 }: {
   doc: GistDocument;
-  content: string;
-  isViewingRevision: boolean;
+  /** The past revision that's being viewed (if any), which is shown read-only. */
+  revision: Revision | null;
   /** Whether the action bar is shown (over the bottom of the preview). */
   showActionBar: boolean;
   ref: RefObject<HTMLDivElement | null>;
 }) {
+  const documentContent = useDocumentContent(doc);
   const { gists } = useGists();
-  const { showInlineComments } = usePreferences();
-  const openDocument = useOpenDocument();
-  const [heading, selectHeading] = useSelectedHeading();
-  const { quotedThreads } = useCommentThreads(doc);
-  const selectedCommentId = useSelector(commentsStore, (state) => state.selectedCommentId);
+  const [, selectHeading] = useLinkedHeading(ref, doc);
+  const commentHighlights = useCommentHighlights(doc);
 
   // Rendering markdown is relatively slow, so let it lag behind typing (in split mode)
-  const deferredContent = useDeferredValue(content);
-
-  // When a link to a heading is opened, scroll to the heading (once the document has rendered).
-  const scrollToLinkedHeading = useEffectEvent(() => {
-    if (heading) scrollToHeading(ref.current, heading);
-  });
-  useEffect(() => scrollToLinkedHeading(), [doc.documentKey]);
+  const deferredContent = useDeferredValue(revision?.content ?? documentContent);
 
   return (
     <div ref={ref} className="overflow-y-auto p-4 h-full">
@@ -60,23 +55,14 @@ export function PreviewPane({
         onOpenFile={(filename) => openDocument(doc.gistId, filename)}
         gists={gists}
         onOpenGist={(gistId) => openDocument(gistId)}
-        onSelectHeading={async (id) => {
-          await selectHeading(id);
-          scrollToHeading(ref.current, id);
-          navigator.clipboard.writeText(location.href);
-        }}
+        onSelectHeading={selectHeading}
         onToggleTask={(text) =>
-          updateDraft(doc.documentKey, doc.savedContent, {
-            content: toggleTask(readDocumentContent(doc), text),
-          })
+          updateDraft(doc, { content: toggleTask(readDocumentContent(doc), text) })
         }
         onAddComment={(text) => openComments({ quote: text })}
-        comments={
-          showInlineComments && !isViewingRevision
-            ? { threads: quotedThreads, selectedId: selectedCommentId }
-            : undefined
-        }
-        isReadOnly={doc.isReadOnly || isViewingRevision}
+        commentHighlights={commentHighlights}
+        whiteboard={getWhiteboard(doc)}
+        isReadOnly={doc.isReadOnly || !!revision}
         scrollPastEnd={showActionBar}
       >
         {deferredContent}

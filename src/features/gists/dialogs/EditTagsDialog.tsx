@@ -2,8 +2,12 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { usePreferences, useUpdatePreferences, type TagData } from "@/features/account/queries";
-import { tagFiltersAtom } from "../store";
+import {
+  usePreferences,
+  useTagCounts,
+  useUpdatePreferences,
+  type TagData,
+} from "@/features/account/queries";
 import { Plus, Trash2 } from "lucide-react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { cn } from "cn";
@@ -163,7 +167,7 @@ function TagRow({
 function TagList() {
   const { tags, gistTags } = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const tagUses = Object.groupBy(Object.values(gistTags).flat(), (tagId) => tagId);
+  const tagCounts = useTagCounts();
 
   const addTag = (name: string) =>
     updatePreferences(({ tags }) => ({
@@ -180,7 +184,6 @@ function TagList() {
     const taggedGists = Object.fromEntries(
       Object.entries(gistTags).filter(([, tagIds]) => tagIds.includes(id)),
     );
-    const wasFiltered = tagFiltersAtom.get().includes(id);
 
     updatePreferences(({ tags: { [id]: _, ...remainingTags }, gistTags }) => ({
       tags: remainingTags,
@@ -190,7 +193,6 @@ function TagList() {
           .filter(([, tagIds]) => tagIds.length > 0),
       ),
     }));
-    tagFiltersAtom.set((tagIds) => tagIds.filter((tagId) => tagId !== id));
 
     toast(`Deleted the "${tag.name}" tag`, {
       action: {
@@ -200,7 +202,6 @@ function TagList() {
             tags: Object.fromEntries(Object.entries(tags).toSpliced(index, 0, [id, tag])),
             gistTags: { ...gistTags, ...taggedGists },
           }));
-          if (wasFiltered) tagFiltersAtom.set((tagIds) => [...tagIds, id]);
         },
       },
     });
@@ -221,7 +222,7 @@ function TagList() {
           <TagRow
             key={id}
             tag={tag}
-            useCount={tagUses[id]?.length ?? 0}
+            useCount={tagCounts[id] ?? 0}
             onChange={(changes) => updateTag(id, changes)}
             onDelete={() => deleteTag(id)}
           />

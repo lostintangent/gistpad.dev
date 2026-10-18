@@ -1,13 +1,13 @@
 import { timeAgo } from "@/shared/dates";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
 import type { GistComment } from "@/shared/github";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
+import { UserAvatar } from "@/shared/UserAvatar";
 import { Popover, PopoverContent } from "@/shared/ui/popover";
 import { useEffect, useEffectEvent, useState } from "react";
 import {
   COMMENT_ID_ATTR,
-  getDisplayBody,
   HIGHLIGHT_CLASS,
+  parseCommentBody,
   type CommentThread,
   type QuotedCommentThread,
 } from "./threads";
@@ -114,15 +114,12 @@ function Comment({ comment }: { comment: GistComment }) {
   return (
     <>
       <div className="flex items-center gap-2 mb-1">
-        <Avatar className="h-6 w-6">
-          <AvatarImage src={comment.user?.avatar_url} />
-          <AvatarFallback>{comment.user?.login?.[0]?.toUpperCase() ?? "A"}</AvatarFallback>
-        </Avatar>
+        <UserAvatar user={comment.user} size="sm" />
         <span className="text-sm font-medium">{comment.user?.login || "Anonymous"}</span>
         <span className="text-xs text-muted-foreground">{timeAgo(comment.created_at)}</span>
       </div>
       <MarkdownPreview enableBlockquoteCopying={false}>
-        {getDisplayBody(comment.body)}
+        {parseCommentBody(comment.body).text}
       </MarkdownPreview>
     </>
   );

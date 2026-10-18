@@ -1,9 +1,9 @@
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Dialog, DialogContent } from "@/shared/ui/dialog";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { getHighlightClasses, type QuotedCommentThread } from "@/features/comments/threads";
+import { getHighlightClasses, type CommentHighlights } from "@/features/comments/threads";
 import { emojisQuery, type Emoji } from "@/shared/emojis";
-import { getGistDisplayName, type Gist } from "@/shared/github";
+import { getGistDisplayName, toMarkdownFilename, type Gist } from "@/shared/github";
 import { useTransientState } from "@/shared/useTransientState";
 import { cn } from "cn";
 import { Bookmark, Check, Copy, Link } from "lucide-react";
@@ -27,7 +27,7 @@ import rehypeCommentHighlights from "./rehypeCommentHighlights";
 import rehypeToc from "./rehypeToc";
 import remarkInlineSyntax from "./remarkInlineSyntax";
 import { SelectionCommentButton } from "./SelectionCommentButton";
-import { TLDraw } from "./TLDraw";
+import { TLDraw, type Whiteboard } from "./TLDraw";
 
 /*
 Renders GitHub-flavored markdown, with GistPad's extensions:
@@ -51,6 +51,8 @@ interface MarkdownOptions {
   onToggleTask?: (text: string) => void;
   isReadOnly?: boolean;
   enableBlockquoteCopying?: boolean;
+  /** The document's whiteboard, which ```tldraw blocks render. */
+  whiteboard?: Whiteboard;
   /** The comment whose quote is highlighted as selected. */
   selectedCommentId?: number | null;
   /** Expands an image or diagram into a dialog. */
@@ -103,7 +105,7 @@ function Anchor({ href, children, node: _, ...props }: ElementProps<"a">) {
       );
     }
 
-    const filename = `${wikilink}.md`;
+    const filename = toMarkdownFilename(wikilink);
     return files.includes(filename) && onOpenFile ? (
       <button onClick={() => onOpenFile(filename)} className="cm-wikilink-content">
         {wikilink}
@@ -300,7 +302,7 @@ function Pre({ children, node, ...props }: ElementProps<"pre">) {
 }
 
 function Code({ className, children, node: _, ...props }: ElementProps<"code">) {
-  const { onExpand, isReadOnly } = use(MarkdownContext);
+  const { onExpand, isReadOnly, whiteboard } = use(MarkdownContext);
   const language = className?.match(/language-(\w+)/)?.[1];
 
   switch (language) {
@@ -312,7 +314,7 @@ function Code({ className, children, node: _, ...props }: ElementProps<"code">) 
         />
       );
     case "tldraw":
-      return <TLDraw isReadOnly={isReadOnly} />;
+      return whiteboard ? <TLDraw whiteboard={whiteboard} isReadOnly={isReadOnly} /> : null;
     default:
       return (
         <code className={className} {...props}>
@@ -363,7 +365,7 @@ interface MarkdownPreviewProps extends Omit<MarkdownOptions, "onExpand"> {
   /** Allows commenting on selected text. */
   onAddComment?: (selectedText: string) => void;
   /** Highlights the text that comments quote (whose hovers and clicks are handled by `CommentTooltips`). */
-  comments?: { threads: QuotedCommentThread[]; selectedId?: number | null };
+  commentHighlights?: CommentHighlights;
 }
 
 export function MarkdownPreview({
@@ -371,7 +373,7 @@ export function MarkdownPreview({
   scrollPastEnd = false,
   shouldInvert = true,
   onAddComment,
-  comments,
+  commentHighlights,
   ...options
 }: MarkdownPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -401,7 +403,7 @@ export function MarkdownPreview({
   // Raw HTML is parsed first, so that its headings get IDs (and are included in tables of contents).
   const rehypePlugins: NonNullable<Options["rehypePlugins"]> = [rehypeSlug, rehypeToc];
   if (rehypeRaw) rehypePlugins.unshift(rehypeRaw);
-  if (comments) rehypePlugins.push([rehypeCommentHighlights, { threads: comments.threads }]);
+  if (commentHighlights) rehypePlugins.push([rehypeCommentHighlights, commentHighlights]);
 
   return (
     <div
@@ -415,7 +417,7 @@ export function MarkdownPreview({
       <MarkdownContext
         value={{
           ...options,
-          selectedCommentId: comments?.selectedId,
+          selectedCommentId: commentHighlights?.selectedId,
           onExpand: (media) => expandDialog.openWithPayload(media),
         }}
       >

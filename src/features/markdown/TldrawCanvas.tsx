@@ -13,9 +13,10 @@ import {
   TldrawUiMenuItem,
   type Editor,
 } from "tldraw";
-import "tldraw/tldraw.css";
+import tldrawStylesheet from "tldraw/tldraw.css" with { type: "file" };
 
-// The whiteboard itself, which is loaded on demand (since tldraw is large).
+// The whiteboard itself, which is loaded on demand (since tldraw is large). Its stylesheet is loaded
+// along with it (rather than being bundled into the app's), so it doesn't delay the app's first paint.
 
 export default function TldrawCanvas({
   snapshot,
@@ -47,37 +48,40 @@ export default function TldrawCanvas({
   useEffect(() => store.listen(handleChange, { scope: "document", source: "user" }), [store]);
 
   const whiteboard = (
-    <Tldraw
-      store={store}
-      inferDarkMode
-      options={{ maxPages: 1 }}
-      onMount={setEditor}
-      components={{
-        MainMenu: () => (
-          <DefaultMainMenu>
-            <TldrawUiMenuGroup id="custom">
-              {!isFullscreen && (
+    <>
+      <link rel="stylesheet" href={tldrawStylesheet} precedence="default" />
+      <Tldraw
+        store={store}
+        inferDarkMode
+        options={{ maxPages: 1 }}
+        onMount={setEditor}
+        components={{
+          MainMenu: () => (
+            <DefaultMainMenu>
+              <TldrawUiMenuGroup id="custom">
+                {!isFullscreen && (
+                  <TldrawUiMenuItem
+                    id="collapse"
+                    label="Collapse whiteboard"
+                    icon="minimize"
+                    readonlyOk
+                    onSelect={onCollapse}
+                  />
+                )}
                 <TldrawUiMenuItem
-                  id="collapse"
-                  label="Collapse whiteboard"
-                  icon="minimize"
+                  id="expand"
+                  label={isFullscreen ? "Exit fullscreen" : "Expand fullscreen"}
+                  icon={isFullscreen ? "minimize" : "maximize"}
                   readonlyOk
-                  onSelect={onCollapse}
+                  onSelect={() => setIsFullscreen(!isFullscreen)}
                 />
-              )}
-              <TldrawUiMenuItem
-                id="expand"
-                label={isFullscreen ? "Exit fullscreen" : "Expand fullscreen"}
-                icon={isFullscreen ? "minimize" : "maximize"}
-                readonlyOk
-                onSelect={() => setIsFullscreen(!isFullscreen)}
-              />
-            </TldrawUiMenuGroup>
-            <DefaultMainMenuContent />
-          </DefaultMainMenu>
-        ),
-      }}
-    />
+              </TldrawUiMenuGroup>
+              <DefaultMainMenuContent />
+            </DefaultMainMenu>
+          ),
+        }}
+      />
+    </>
   );
 
   return isFullscreen ? (

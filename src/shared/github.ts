@@ -1,8 +1,8 @@
-import { generateDateFilename, getMostRecentDatedFilename } from "@/shared/dates";
+import { detectDateFormat, generateDateFilename, getMostRecentDatedFilename } from "@/shared/dates";
 
 // Types
 
-interface GistOwner {
+export interface GitHubUser {
   id: number;
   login: string;
   avatar_url: string;
@@ -22,7 +22,7 @@ export interface Gist {
   updated_at: string;
   created_at: string;
   public: boolean;
-  owner?: GistOwner;
+  owner?: GitHubUser;
   comments: number;
   history?: GistRevision[];
 }
@@ -30,14 +30,14 @@ export interface Gist {
 export interface GistComment {
   id: number;
   body: string;
-  user: GistOwner | null;
+  user: GitHubUser | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface GistRevision {
   version: string;
-  user: GistOwner;
+  user: GitHubUser;
   committed_at: string;
   change_status: {
     total: number;
@@ -138,8 +138,28 @@ export function getGistDescription(gist: Gist) {
   return (gist.description ?? "").replace(ARCHIVED_SUFFIX, "");
 }
 
+/** A markdown file's name, without its extension (e.g. `Notes.md` → `Notes`). */
+export function getFileDisplayName(filename: string) {
+  return filename.replace(/\.md$/, "");
+}
+
+/** The markdown filename for a (user-entered) name, which may or may not include the extension. */
+export function toMarkdownFilename(name: string) {
+  return name.endsWith(".md") ? name : `${name}.md`;
+}
+
+export function getMarkdownFiles(gist: Gist | undefined) {
+  return Object.keys(gist?.files ?? {}).filter((filename) => filename.endsWith(".md"));
+}
+
+/** Whether a gist's files are named after dates (e.g. a journal, with a file per day). */
+export function isDateBasedGist(gist: Gist) {
+  return detectDateFormat(getMarkdownFiles(gist)) !== null;
+}
+
 export function getGistDisplayName(gist: Gist) {
-  const displayName = getGistDescription(gist) || Object.keys(gist.files)[0]?.replace(/\.md$/, "");
+  const firstFile = Object.keys(gist.files)[0];
+  const displayName = getGistDescription(gist) || (firstFile && getFileDisplayName(firstFile));
 
   if (!displayName) return "Empty";
   return displayName === "README" ? "Untitled" : displayName;
@@ -148,7 +168,7 @@ export function getGistDisplayName(gist: Gist) {
 export function getDefaultFile(gist: Gist) {
   const filenames = Object.keys(gist.files);
   return (
-    getMostRecentDatedFilename(filenames.filter((f) => f.endsWith(".md"))) ??
+    getMostRecentDatedFilename(getMarkdownFiles(gist)) ??
     (gist.files["README.md"] ? "README.md" : (filenames[0] ?? "README.md"))
   );
 }
@@ -241,7 +261,7 @@ export function saveGistFiles(gistId: string, files: { filename: string; content
 export function addGistFile(
   gistId: string,
   filename: string,
-  content = `# ${filename.replace(/\.md$/, "")}\n\n`,
+  content = `# ${getFileDisplayName(filename)}\n\n`,
 ) {
   return updateGist(gistId, { files: { [filename]: { content } } });
 }
@@ -328,5 +348,5 @@ export function getGistRevision(gistId: string, revisionId: string) {
 // Users
 
 export function getAuthenticatedUser() {
-  return request<GistOwner & { name: string | null }>("/user");
+  return request<GitHubUser & { name: string | null }>("/user");
 }

@@ -1,5 +1,11 @@
 import { MOBILE_MEDIA_QUERY } from "@/shared/useMediaQuery";
-import { createGist, EMPTY_CONTENT, getTodayNoteFilename, GitHubError } from "@/shared/github";
+import {
+  createGist,
+  EMPTY_CONTENT,
+  getTodayNoteFilename,
+  GitHubError,
+  githubToken,
+} from "@/shared/github";
 import { queryClient } from "@/shared/query-client";
 import ErrorCard from "@/shared/cards/ErrorCard";
 import LoadingCard from "@/shared/cards/LoadingCard";
@@ -8,12 +14,14 @@ import NotFoundCard from "@/shared/cards/NotFoundCard";
 import {
   getMostRecentGist,
   gistQueries,
-  openDailyNote,
+  ensureTodaysNote,
   setGistData,
 } from "@/features/gists/queries";
-import { sessionQuery, usePreferences, useSession } from "@/features/account/queries";
+import { loadSession, usePreferences, useSession } from "@/features/account/queries";
 import { openComments } from "@/features/comments/store";
-import { mobilePanelAtom, resetDocumentState } from "@/features/editor/store";
+import { mobilePanelAtom } from "@/features/editor/layout";
+import { EDITOR_MODES, type EditorMode } from "@/features/editor/mode";
+import { resetDocumentState } from "@/features/editor/store";
 import { useEffect } from "react";
 import {
   createHashHistory,
@@ -51,10 +59,8 @@ const root = createRootRoute({
 const authenticatedRoute = createRoute({
   getParentRoute: () => root,
   id: "authenticated",
-  // (Using cached data when it's available, so that returning users don't wait)
-  beforeLoad: async () => ({
-    session: await queryClient.query({ ...sessionQuery, staleTime: "static" }),
-  }),
+  // (Loading the session alongside the routes' data, since loaders run in parallel)
+  loader: loadSession,
   component: function Authenticated() {
     return useSession().session ? <Outlet /> : <SignInCard />;
   },
@@ -70,9 +76,6 @@ const omitReadmeFilePath = <T extends { filePath?: string }>({ filePath, ...para
   filePath: filePath === "README.md" ? undefined : filePath,
 });
 
-const EDITOR_MODES = ["edit", "preview", "split"] as const;
-export type EditorMode = (typeof EDITOR_MODES)[number];
-
 interface EditorSearch {
   view?: EditorMode;
   heading?: string;
@@ -82,7 +85,7 @@ interface EditorSearch {
   replyTo?: number;
 }
 
-export const editorRoute = createRoute({
+const editorRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/{-$gistId}/{-$filePath}",
   params: { stringify: omitReadmeFilePath },
@@ -94,8 +97,12 @@ export const editorRoute = createRoute({
   }),
   // When the app is opened without a gist, open the most recent one. But since the user didn't
   // choose it, mobile (where the gist fills the screen) shows the gist list beside it.
-  beforeLoad: async ({ params, cause, context }) => {
-    if (cause !== "enter" || params.gistId || !context.session) return;
+  beforeLoad: async ({ params, cause }) => {
+    if (cause !== "enter" || params.gistId) return;
+
+    // (The user's gists only need their GitHub token, so they're loaded alongside their session)
+    if (githubToken.get()) queryClient.prefetchQuery(gistQueries.list());
+    if (!(await loadSession())) return;
 
     const mostRecentGist = await getMostRecentGist();
     if (!mostRecentGist) return;
@@ -114,7 +121,7 @@ export const editorRoute = createRoute({
 
     // Links can ask to comment on (or reply to) the gist, e.g. from the share page.
     if (!preload && (quote || replyTo)) {
-      openComments({ quote, commentId: replyTo, reply: !!replyTo });
+      openComments({ quote, replyTo });
       throw redirect({
         to: ".",
         search: ({ quote: _, replyTo: __, ...search }) => search,
@@ -129,10 +136,10 @@ export const editorRoute = createRoute({
 const todayRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/today",
-  loader: async ({ context }) => {
-    if (!context.session) return;
+  loader: async () => {
+    if (!(await loadSession())) return;
 
-    const gist = await openDailyNote();
+    const gist = await ensureTodaysNote();
     throw redirect({
       to: "/{-$gistId}/{-$filePath}",
       params: { gistId: gist.id, filePath: getTodayNoteFilename() },
@@ -156,8 +163,8 @@ const newRoute = createRoute({
     public: optionalString(search.public),
   }),
   loaderDeps: ({ search }) => search,
-  loader: async ({ deps, context }) => {
-    if (!context.session) return;
+  loader: async ({ deps }) => {
+    if (!(await loadSession())) return;
 
     const filename = deps.filename || "README.md";
     const gist = await createGist({
@@ -178,7 +185,7 @@ const newRoute = createRoute({
   pendingComponent: () => <LoadingCard message="Creating gist..." />,
 });
 
-export const shareRoute = createRoute({
+const shareRoute = createRoute({
   getParentRoute: () => root,
   path: "/share/$gistId/{-$filePath}",
   params: { stringify: omitReadmeFilePath },

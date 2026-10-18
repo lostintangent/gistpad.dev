@@ -6,7 +6,7 @@ import { ArrowUp } from "lucide-react";
  * container, and is only revealed once it's been scrolled (via a scroll-driven animation).
  * And so, it must be the last child of the scrolled content.
  */
-export function ScrollToTop({ isActionBarVisible }: { isActionBarVisible: boolean }) {
+export function ScrollToTop({ isActionBarVisible = false }: { isActionBarVisible?: boolean }) {
   return (
     <div
       className={`sticky ${isActionBarVisible ? "bottom-24" : "bottom-8"} h-0 flex justify-center pointer-events-none`}
