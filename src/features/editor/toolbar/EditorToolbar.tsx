@@ -346,7 +346,7 @@ function DesktopActions({ doc, onSave }: { doc: GistDocument; onSave: () => void
           >
             <History />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-auto min-w-60">
+          <DropdownMenuContent>
             <RevisionItems doc={doc} />
           </DropdownMenuContent>
         </DropdownMenu>
@@ -466,7 +466,7 @@ function MobileActions({
               <DropdownMenuSubTrigger>
                 <History /> History
               </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-auto min-w-60">
+              <DropdownMenuSubContent>
                 <RevisionItems doc={doc} />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
@@ -574,10 +574,11 @@ export default function EditorToolbar({ doc, onSave }: { doc: GistDocument; onSa
                   <Button
                     variant="ghost"
                     size="icon-xs"
+                    className="text-muted-foreground"
                     onClick={() => setIsEditingTitle(true)}
                     title={isReadme ? "Edit description" : "Rename file"}
                   >
-                    <Pencil className="text-blue-500" />
+                    <Pencil />
                   </Button>
                 ))}
             </>

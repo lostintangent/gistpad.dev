@@ -4,7 +4,6 @@ import hackerNewsWidget from "./widgets/HackerNews";
 import onThisDayWidget from "./widgets/OnThisDay";
 import weatherWidget from "./widgets/Weather";
 import nasaApodWidget from "./widgets/NasaApod";
-import aiWidget from "./widgets/AI";
 
 /** A widget on the user's dashboard (which is persisted in localStorage). */
 export interface WidgetState {
@@ -20,7 +19,6 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
   onthisday: onThisDayWidget,
   espnnews: espnWidget,
   nasaapod: nasaApodWidget,
-  ai: aiWidget,
 };
 
 /** The config options that the user has to set (i.e. the ones without a default value). */

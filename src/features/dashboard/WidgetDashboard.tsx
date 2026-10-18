@@ -28,7 +28,7 @@ import {
 import type { CommentThread, Media } from "./types";
 import { Widget } from "./Widget";
 
-/** The widgets on the dashboard (skipping any whose type no longer exists, e.g. Reddit). */
+/** The widgets on the dashboard (skipping any whose type no longer exists, e.g. Reddit or AI). */
 const widgetsAtom = persistedAtom<WidgetState[]>("gistpad-widget-config", getDefaultWidgets(), {
   parse: (value) => (JSON.parse(value) as WidgetState[]).filter(({ type }) => widgetRegistry[type]),
   stringify: JSON.stringify,
@@ -46,7 +46,7 @@ const moveWidget = (id: string, toIndex: number) =>
     return widgets.filter((widget) => widget.id !== id).toSpliced(toIndex, 0, widget);
   });
 
-/** Removes widgets that weren't configured (e.g. a new AI widget that wasn't given a prompt). */
+/** Removes widgets that weren't configured (e.g. a new ESPN widget that wasn't given a sport). */
 const removeUnconfiguredWidgets = () =>
   widgetsAtom.set((widgets) =>
     widgets.filter((widget) => isConfigured(widgetRegistry[widget.type], widget.config)),

@@ -9,6 +9,10 @@ function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+function PopoverClose({ ...props }: PopoverPrimitive.Close.Props) {
+  return <PopoverPrimitive.Close data-slot="popover-close" {...props} />;
+}
+
 type PopoverContentProps = PopoverPrimitive.Popup.Props &
   Pick<
     PopoverPrimitive.Positioner.Props,
@@ -47,4 +51,4 @@ function PopoverContent({
   );
 }
 
-export { Popover, PopoverContent, PopoverTrigger };
+export { Popover, PopoverClose, PopoverContent, PopoverTrigger };

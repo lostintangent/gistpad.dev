@@ -68,7 +68,7 @@ export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
       section="daily"
       title={
         <>
-          <Calendar className="h-3.5 w-3.5 text-blue-400 mr-1" />
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground mr-1" />
           Daily notes
           <Badge variant="count">{filenames.length}</Badge>
         </>
@@ -85,7 +85,7 @@ export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
           onClick={() => openTemplate(dailyNotes)}
           title="Edit template"
         >
-          <FileText className="text-blue-400" />
+          <FileText />
         </Button>
       }
       openGistId={openGistId === dailyNotes.id ? openGistId : undefined}

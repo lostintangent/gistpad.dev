@@ -1,143 +1,299 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog";
+import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { usePreferences, useUpdatePreferences, type TagData } from "@/features/account/queries";
 import { tagFiltersAtom } from "../store";
+import TagBadge, { isLightColor } from "../TagBadge";
 import { Plus, Trash2 } from "lucide-react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { useState } from "react";
+import { cn } from "cn";
+import { useState, type ComponentProps } from "react";
+import { toast } from "sonner";
 
-const DEFAULT_TAG_COLOR = "#3b82f6";
+/** The colors that tags can be (or any other), which are legible (with black or white text) in light and dark mode. */
+const TAG_COLORS = [
+  "#f43f5e",
+  "#f97316",
+  "#f59e0b",
+  "#facc15",
+  "#84cc16",
+  "#22c55e",
+  "#14b8a6",
+  "#0ea5e9",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#6b7280",
+];
 
-const newTag = () => ({ [crypto.randomUUID()]: { name: "", color: DEFAULT_TAG_COLOR } });
+/** A new tag's color, which is the first one that isn't used yet (or else, the next one in turn). */
+function getNextColor(tags: Record<string, TagData>) {
+  const usedColors = new Set(Object.values(tags).map(({ color }) => color));
+  return (
+    TAG_COLORS.find((color) => !usedColors.has(color)) ??
+    TAG_COLORS[Object.keys(tags).length % TAG_COLORS.length]
+  );
+}
 
 /** Opens the dialog for editing the user's tags (e.g. from the tag filter, or a gist's menu). */
 export const editTagsDialog = DialogPrimitive.createHandle();
 
-function TagsForm() {
-  const { tags } = usePreferences();
-  const updatePreferences = useUpdatePreferences();
-
-  // If there aren't any tags yet, then start with an empty one, so the user can type its name.
-  const [edits, setEdits] = useState<Record<string, TagData>>(() =>
-    Object.keys(tags).length > 0 ? tags : newTag(),
+/** A tag's name, while it's being typed (e.g. to rename the tag), which looks like the tag's pill. */
+function TagNameInput({ color, ...props }: ComponentProps<"input"> & { color: string }) {
+  return (
+    <Badge
+      render={<input autoFocus placeholder="Tag name" {...props} />}
+      style={{ backgroundColor: color }}
+      className={cn(
+        "min-w-0 flex-1 justify-start outline-none",
+        isLightColor(color) ? "text-black" : "text-white",
+      )}
+    />
   );
-  const [tagToDelete, setTagToDelete] = useState<{ id: string; name: string }>();
+}
 
-  const updateTag = (id: string, changes: Partial<TagData>) =>
-    setEdits((edits) => ({ ...edits, [id]: { ...edits[id], ...changes } }));
+/** Picks a tag's color, from the palette (or a custom one, from the system's color picker). */
+function TagColorPicker({ color, onChange }: { color: string; onChange: (color: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const isCustom = !TAG_COLORS.includes(color);
 
-  /** Saves the tags, where tags that were deleted (or whose names were cleared) are removed from gists. */
-  const saveTags = (edits: Record<string, TagData>) => {
-    const updatedTags = Object.fromEntries(
-      Object.entries(edits)
-        .filter(([, tag]) => tag.name.trim())
-        .map(([id, tag]) => [id, { name: tag.name.trim(), color: tag.color }]),
+  const pick = (color: string) => {
+    onChange(color);
+    setIsOpen(false);
+  };
+
+  const swatchClass = (isSelected: boolean) =>
+    cn(
+      "size-6 rounded-full",
+      isSelected && "ring-2 ring-foreground ring-offset-2 ring-offset-popover",
     );
 
-    updatePreferences(({ gistTags }) => ({
-      tags: updatedTags,
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger
+        aria-label="Change color"
+        style={{ backgroundColor: color }}
+        className="size-4 shrink-0 rounded-full hover:ring-2 hover:ring-ring/50 hover:ring-offset-2 hover:ring-offset-background"
+      />
+      <PopoverContent align="start" className="grid w-auto grid-cols-6 gap-2 p-3">
+        {TAG_COLORS.map((swatch) => (
+          <button
+            key={swatch}
+            aria-label={swatch}
+            style={{ backgroundColor: swatch }}
+            className={swatchClass(swatch === color)}
+            onClick={() => pick(swatch)}
+          />
+        ))}
+        <label
+          title="Custom color"
+          className={cn(
+            swatchClass(isCustom),
+            "relative bg-[conic-gradient(red,yellow,lime,cyan,blue,magenta,red)]",
+          )}
+        >
+          {/* (Covered by the color input, so that clicking it opens the system's color picker, and
+              the color is only saved once it's chosen, rather than as it's dragged) */}
+          <input
+            type="color"
+            defaultValue={color}
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
+            ref={(input) => {
+              const save = () => input && pick(input.value);
+              input?.addEventListener("change", save);
+              return () => input?.removeEventListener("change", save);
+            }}
+          />
+        </label>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** A tag, whose name is edited by clicking its pill, and whose color is edited by clicking its dot. */
+function TagRow({
+  tag,
+  useCount,
+  onChange,
+  onDelete,
+}: {
+  tag: TagData;
+  useCount: number;
+  onChange: (changes: Partial<TagData>) => void;
+  onDelete: () => void;
+}) {
+  const [isRenaming, setIsRenaming] = useState(false);
+
+  return (
+    <li className="flex items-center gap-3 px-2 py-1.5">
+      <TagColorPicker color={tag.color} onChange={(color) => onChange({ color })} />
+      {isRenaming ? (
+        <TagNameInput
+          color={tag.color}
+          defaultValue={tag.name}
+          onFocus={(e) => e.currentTarget.select()}
+          onKeyDown={(e) => {
+            // (Escape reverts the name, rather than closing the dialog)
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              e.currentTarget.value = tag.name;
+            }
+            if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
+          }}
+          onBlur={(e) => {
+            const name = e.currentTarget.value.trim();
+            if (name && name !== tag.name) onChange({ name });
+            setIsRenaming(false);
+          }}
+        />
+      ) : (
+        <button
+          title="Rename tag"
+          className="min-w-0 flex-1 text-left"
+          onClick={() => setIsRenaming(true)}
+        >
+          <TagBadge tag={tag.name} color={tag.color} />
+        </button>
+      )}
+      <Badge variant="count" title={`Used by ${useCount} ${useCount === 1 ? "gist" : "gists"}`}>
+        {useCount}
+      </Badge>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Delete ${tag.name}`}
+        onClick={onDelete}
+      >
+        <Trash2 />
+      </Button>
+    </li>
+  );
+}
+
+/** Adds tags, by typing their names, one after another (since pressing Enter starts the next one). */
+function NewTagRow({
+  color,
+  isInitiallyAdding,
+  onAdd,
+}: {
+  color: string;
+  isInitiallyAdding: boolean;
+  onAdd: (name: string) => void;
+}) {
+  const [isAdding, setIsAdding] = useState(isInitiallyAdding);
+
+  if (!isAdding) {
+    return (
+      <li className="px-2 py-1.5">
+        <button
+          className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground"
+          onClick={() => setIsAdding(true)}
+        >
+          <Plus className="size-4" />
+          New tag
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-3 px-2 py-1.5">
+      <span className="size-4 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <TagNameInput
+        color={color}
+        onKeyDown={(e) => {
+          const input = e.currentTarget;
+          if (e.key === "Enter" && input.value.trim()) {
+            onAdd(input.value.trim());
+            input.value = "";
+          } else if (e.key === "Escape") {
+            e.stopPropagation();
+            input.value = "";
+            input.blur();
+          }
+        }}
+        onBlur={(e) => {
+          const name = e.currentTarget.value.trim();
+          if (name) onAdd(name);
+          setIsAdding(false);
+        }}
+      />
+    </li>
+  );
+}
+
+/** The user's tags, whose changes are saved as they're made (and whose deletion can be undone). */
+function TagList() {
+  const { tags, gistTags } = usePreferences();
+  const updatePreferences = useUpdatePreferences();
+  const tagUses = Object.groupBy(Object.values(gistTags).flat(), (tagId) => tagId);
+
+  const addTag = (name: string) =>
+    updatePreferences(({ tags }) => ({
+      tags: { ...tags, [crypto.randomUUID()]: { name, color: getNextColor(tags) } },
+    }));
+
+  const updateTag = (id: string, changes: Partial<TagData>) =>
+    updatePreferences(({ tags }) => ({ tags: { ...tags, [id]: { ...tags[id], ...changes } } }));
+
+  /** Deletes a tag (and removes it from its gists), which can be undone, from a toast. */
+  const deleteTag = (id: string) => {
+    const tag = tags[id];
+    const index = Object.keys(tags).indexOf(id);
+    const taggedGists = Object.fromEntries(
+      Object.entries(gistTags).filter(([, tagIds]) => tagIds.includes(id)),
+    );
+    const wasFiltered = tagFiltersAtom.get().includes(id);
+
+    updatePreferences(({ tags: { [id]: _, ...remainingTags }, gistTags }) => ({
+      tags: remainingTags,
       gistTags: Object.fromEntries(
         Object.entries(gistTags)
-          .map(([gistId, ids]) => [gistId, ids.filter((id) => updatedTags[id])] as const)
-          .filter(([, ids]) => ids.length > 0),
+          .map(([gistId, tagIds]) => [gistId, tagIds.filter((tagId) => tagId !== id)] as const)
+          .filter(([, tagIds]) => tagIds.length > 0),
       ),
     }));
-    tagFiltersAtom.set((ids) => ids.filter((tagId) => updatedTags[tagId]));
+    tagFiltersAtom.set((tagIds) => tagIds.filter((tagId) => tagId !== id));
+
+    toast(`Deleted the "${tag.name}" tag`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          updatePreferences(({ tags, gistTags }) => ({
+            tags: Object.fromEntries(Object.entries(tags).toSpliced(index, 0, [id, tag])),
+            gistTags: { ...gistTags, ...taggedGists },
+          }));
+          if (wasFiltered) tagFiltersAtom.set((tagIds) => [...tagIds, id]);
+        },
+      },
+    });
   };
 
-  const removeTag = (id: string) => {
-    const { [id]: _, ...remainingEdits } = edits;
-    setEdits(remainingEdits);
-
-    // Deleting a saved tag (which is confirmed) takes effect immediately
-    // (without saving the other tags' edits)
-    if (tags[id]) saveTags({ ...tags, [id]: { ...tags[id], name: "" } });
-  };
-
-  const tagCount = Object.values(tags).filter((tag) => tag.name.trim()).length;
+  const tagCount = Object.keys(tags).length;
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Manage tags{tagCount > 0 ? ` (${tagCount})` : ""}</DialogTitle>
+        <DialogTitle className="flex items-center justify-center gap-2 sm:justify-start">
+          Tags
+          {tagCount > 0 && <Badge variant="count">{tagCount}</Badge>}
+        </DialogTitle>
       </DialogHeader>
-      <div className="space-y-2 py-2 max-h-60 overflow-y-auto">
-        {Object.entries(edits).map(([id, tag]) => (
-          <div key={id} className="flex items-center gap-2 p-1">
-            <input
-              type="color"
-              value={tag.color}
-              onChange={(e) => updateTag(id, { color: e.target.value })}
-              className="h-7 w-7 p-0 border-0 bg-transparent"
-              aria-label="Tag color"
-            />
-            <Input
-              value={tag.name}
-              onChange={(e) => updateTag(id, { name: e.target.value })}
-              className="h-7 flex-1"
-              // Focus new tags (whose rows are only mounted once), so the user can type their name
-              autoFocus={!tags[id]}
-              placeholder="Tag name..."
-            />
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => (tags[id] ? setTagToDelete({ id, name: tag.name }) : removeTag(id))}
-              aria-label="Delete tag"
-            >
-              <Trash2 className="text-red-500" />
-            </Button>
-          </div>
+      <ul className="-mx-2 min-h-0 overflow-y-auto">
+        {Object.entries(tags).map(([id, tag]) => (
+          <TagRow
+            key={id}
+            tag={tag}
+            useCount={tagUses[id]?.length ?? 0}
+            onChange={(changes) => updateTag(id, changes)}
+            onDelete={() => deleteTag(id)}
+          />
         ))}
-      </div>
-      <DialogFooter className="flex-row justify-between sm:justify-between">
-        <Button variant="accent" onClick={() => setEdits({ ...edits, ...newTag() })}>
-          <Plus /> Add tag
-        </Button>
-        <Button
-          onClick={() => {
-            saveTags(edits);
-            editTagsDialog.close();
-          }}
-        >
-          Save
-        </Button>
-      </DialogFooter>
-
-      <AlertDialog open={!!tagToDelete} onOpenChange={(open) => !open && setTagToDelete(undefined)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete tag</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the "{tagToDelete?.name}" tag? This will also remove
-              the tag from all associated gists.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (tagToDelete) removeTag(tagToDelete.id);
-                setTagToDelete(undefined);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* (If there aren't any tags yet, the user can start typing the first one's name) */}
+        <NewTagRow color={getNextColor(tags)} isInitiallyAdding={tagCount === 0} onAdd={addTag} />
+      </ul>
     </>
   );
 }
@@ -145,9 +301,8 @@ function TagsForm() {
 export default function EditTagsDialog() {
   return (
     <Dialog handle={editTagsDialog}>
-      <DialogContent>
-        {/* (The form is remounted, and so its edits are reset, whenever the dialog is opened) */}
-        <TagsForm />
+      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-sm">
+        <TagList />
       </DialogContent>
     </Dialog>
   );

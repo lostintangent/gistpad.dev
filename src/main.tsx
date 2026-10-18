@@ -18,7 +18,7 @@ if (redirectPath !== undefined) router.history.replace(redirectPath);
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
+      <Toaster theme="system" />
       <RouterProvider router={router} />
     </TooltipProvider>
   </QueryClientProvider>,

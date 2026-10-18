@@ -1,6 +1,6 @@
 import { Checkbox } from "@/shared/ui/checkbox";
 import { InputGroupButton } from "@/shared/ui/input-group";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Separator } from "@/shared/ui/separator";
 import { usePreferences } from "@/features/account/queries";
 import { tagFiltersAtom } from "../store";
@@ -42,12 +42,13 @@ export function TagFilter() {
           </label>
         ))}
         {Object.keys(tags).length > 0 && <Separator className="mt-3!" />}
-        <button
+        {/* (Which closes the filter, so that it isn't left open behind the dialog) */}
+        <PopoverClose
           className="text-sm w-full text-left hover:bg-muted p-1 rounded flex items-center gap-2"
           onClick={() => editTagsDialog.open(null)}
         >
           <Tag className="h-4 w-4" /> Manage tags
-        </button>
+        </PopoverClose>
       </PopoverContent>
     </Popover>
   );

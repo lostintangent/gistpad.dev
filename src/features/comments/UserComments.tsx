@@ -284,7 +284,8 @@ function CommentInput({ comments }: { comments: GistComment[] }) {
           value={text}
           onValueChange={(newCommentText) => updateComments({ newCommentText })}
           multiline
-          className="min-h-[80px]"
+          // (It's a single line, until it grows to fit the comment that's typed)
+          className="min-h-0"
         />
         <InputGroupAddon align="block-end">
           <InputGroupButton

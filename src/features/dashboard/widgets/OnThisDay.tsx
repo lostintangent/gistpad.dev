@@ -60,4 +60,6 @@ export default {
   fetchData,
   component: OnThisDayWidget,
   staleTime: 1000 * 60 * 60 * 8,
+  // (Today's article on Wikipedia, e.g. "October 17", whose events are the ones that the feed lists)
+  getExternalUrl: () => `https://en.wikipedia.org/wiki/${format(new Date(), "MMMM_d")}#Events`,
 } satisfies WidgetDefinition<EventItem[]>;

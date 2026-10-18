@@ -2,6 +2,7 @@ import { ScrollableText } from "@/shared/ScrollableText";
 import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -21,7 +22,6 @@ import { useSelector } from "@tanstack/react-store";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Archive,
-  Check,
   Copy,
   Fullscreen,
   Link,
@@ -109,10 +109,14 @@ export function GistListItem({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="z-100">
             {Object.entries(tags).map(([id, tag]) => (
-              <DropdownMenuItem key={id} onClick={() => toggleTag(id)}>
-                {tagIds.includes(id) ? <Check /> : <span className="w-4 mr-2" />}
+              <DropdownMenuCheckboxItem
+                key={id}
+                checked={tagIds.includes(id)}
+                onCheckedChange={() => toggleTag(id)}
+                closeOnClick
+              >
                 <TagBadge tag={tag.name} color={tag.color} />
-              </DropdownMenuItem>
+              </DropdownMenuCheckboxItem>
             ))}
             {Object.keys(tags).length > 0 && <DropdownMenuSeparator />}
             <DropdownMenuItem onClick={() => editTagsDialog.open(null)}>
