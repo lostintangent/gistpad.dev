@@ -1,4 +1,3 @@
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useDocument } from "@/features/editor/document";
@@ -70,9 +69,9 @@ export function DailyNotes({ dailyNotes }: { dailyNotes: Gist }) {
         <>
           <Calendar className="h-3.5 w-3.5 text-muted-foreground mr-1" />
           Daily notes
-          <Badge variant="count">{filenames.length}</Badge>
         </>
       }
+      count={filenames.length}
       collapsedDetails={
         overdueTaskCount > 0 && (
           <span className={OVERDUE_BADGE_CLASSES}>{overdueTaskCount} overdue</span>

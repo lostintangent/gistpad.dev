@@ -1,4 +1,3 @@
-import { Badge } from "@/shared/ui/badge";
 import { ScrollableText } from "@/shared/ScrollableText";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -36,11 +35,9 @@ export function GistSection({
         <>
           {icon}
           {isStarred ? "Starred" : "Archived"} gists
-          <Badge variant="count">
-            {isFiltered ? `${gists.length} of ${totalCount}` : totalCount}
-          </Badge>
         </>
       }
+      count={isFiltered ? `${gists.length} of ${totalCount}` : totalCount}
       openGistId={gists.some(({ id }) => id === openGistId) ? openGistId : undefined}
       rowCount={gists.length}
     >

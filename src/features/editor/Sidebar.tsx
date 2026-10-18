@@ -41,7 +41,8 @@ const layerClass = (isVisible: boolean) =>
 
 function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
   return (
-    <div className="px-2 py-3 flex items-center justify-between">
+    // (Its actions line up with the gist list's "..." buttons, and its sections' counts)
+    <div className="pl-2 pr-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
         {leadingSlot}
         <Separator

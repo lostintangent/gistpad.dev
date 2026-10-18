@@ -1,7 +1,6 @@
 import { Badge } from "@/shared/ui/badge";
 
-/** Whether a tag's color is light (and so, needs black text, rather than white, to be legible). */
-export function isLightColor(hex: string) {
+function isLightColor(hex: string) {
   const rgb = parseInt(hex.replace("#", ""), 16);
   const [r, g, b] = [16, 8, 0].map((shift) => (rgb >> shift) & 0xff);
 

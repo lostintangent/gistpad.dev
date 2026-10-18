@@ -1,3 +1,4 @@
+import { Badge } from "@/shared/ui/badge";
 import { persistedAtom } from "@/shared/persistedAtom";
 import { useAtom } from "@tanstack/react-store";
 import { ChevronRight } from "lucide-react";
@@ -12,6 +13,8 @@ const sectionCollapsedAtoms = {
 interface CollapsibleSectionProps {
   section: keyof typeof sectionCollapsedAtoms;
   title: ReactNode;
+  /** The number of gists (or notes) in the section, which is shown at the end of its header. */
+  count: ReactNode;
   /** Shown in the header, while the section is collapsed (e.g. a summary). */
   collapsedDetails?: ReactNode;
   /** Shown in the header, while the section is expanded. */
@@ -31,6 +34,7 @@ const MAX_ROWS = 5;
 export function CollapsibleSection({
   section,
   title,
+  count,
   collapsedDetails,
   actions,
   openGistId,
@@ -52,7 +56,7 @@ export function CollapsibleSection({
   // area doesn't clip the border (and shadow) of its selected row
   return (
     <div className="flex-none">
-      <div className="mx-2 px-1 py-2 flex items-center rounded-lg hover:bg-foreground/5 transition-colors">
+      <div className="mx-2 pl-1 pr-2 py-2 flex items-center gap-1 rounded-lg hover:bg-foreground/5 transition-colors">
         <button className="flex items-center gap-2 grow" onClick={toggle}>
           <ChevronRight
             className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
@@ -61,6 +65,10 @@ export function CollapsibleSection({
             {title}
             {!isOpen && collapsedDetails}
           </span>
+          {/* (At the end of the header, so that the sections' counts line up) */}
+          <Badge variant="count" className="ml-auto">
+            {count}
+          </Badge>
         </button>
         {isOpen && actions}
       </div>
