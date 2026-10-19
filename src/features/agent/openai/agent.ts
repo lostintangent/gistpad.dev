@@ -21,7 +21,7 @@ import {
   type Capabilities,
   type CustomInstructions,
 } from "./instructions";
-import { RESEARCH_TOOL, researchTool } from "./research";
+import { researchTool } from "./research";
 import { createReviewParser, REVIEW_TOOL, reviewTool, type Review } from "./review";
 
 /** The document (or selection) that the user is asking the agent about. */
@@ -60,6 +60,8 @@ export interface AgentRequest {
   /** Called when the agent starts writing a review (whose changes then stream in). */
   onReviewStart: () => void;
   onReview: (changes: Partial<Review>) => void;
+  /** Called once the review is complete (while the agent finishes responding). */
+  onReviewEnd: () => void;
   /** Starts a research task (which is only available when this is provided). */
   onResearch?: (topic: string) => Promise<void>;
 }
@@ -95,7 +97,7 @@ export async function runAgent(request: AgentRequest) {
 
   const tools: Tool[] = [webSearchTool(), ...gistTools];
   if (document && capabilities.canEdit) tools.push(editTool(document, request.onEdit));
-  if (capabilities.canReview) tools.push(reviewTool);
+  if (capabilities.canReview) tools.push(reviewTool(request.onReviewEnd));
   if (request.onResearch && capabilities.canResearch) tools.push(researchTool(request.onResearch));
 
   const agent = new Agent({
@@ -109,9 +111,6 @@ export async function runAgent(request: AgentRequest) {
     },
     outputType: answerSchema,
     tools,
-    // Reviews are displayed as they stream in, and research runs in the background, so
-    // there's nothing more for the agent to say after calling those tools.
-    toolUseBehavior: { stopAtToolNames: [REVIEW_TOOL, RESEARCH_TOOL] },
   });
 
   const documentContext =

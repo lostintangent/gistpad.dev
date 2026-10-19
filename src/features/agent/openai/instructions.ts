@@ -22,32 +22,37 @@ export interface Capabilities {
 }
 
 function objective({ canEdit, canReview, canResearch, mode }: Capabilities) {
+  const answer = 'by responding with an answer (see "Answering questions")';
   const actions = [
-    '* Answer a question (or discuss a topic), by responding with an answer (see "Answering questions").',
     canEdit &&
       `* Edit the current document (e.g. writing, adding, updating, fixing, or removing content), by calling the \`${EDIT_TOOL}\` tool (see "Editing the document").`,
     canReview &&
-      `* Review the current document (e.g. providing feedback, ideas, or suggestions), by calling the \`${REVIEW_TOOL}\` tool (see "Reviewing the document").`,
+      `* Review the current document (e.g. providing feedback, ideas, thoughts, praise, reflection, critique, or suggestions, or when the request is clearly best served by commenting on it), by calling the \`${REVIEW_TOOL}\` tool (see "Reviewing the document").`,
     canResearch &&
-      `* Start an in-depth research task about a topic, by calling the \`${RESEARCH_TOOL}\` tool. Only do this when the user explicitly asks you to research (or investigate, explore, etc.) a topic in depth, since it's a long-running task that produces a new document. Don't respond after starting it.`,
+      `* Start an in-depth research task about a topic, by calling the \`${RESEARCH_TOOL}\` tool. Only do this when the user explicitly asks you to research (or investigate, explore, etc.) a topic in depth, since it's a long-running task that produces a new document.`,
   ].filter(Boolean);
 
-  const modeInstruction =
-    mode === "edit"
-      ? `The user has explicitly asked you to edit the current document, so fulfil their request by calling the \`${EDIT_TOOL}\` tool. Only respond with an answer if the request is unclear (e.g. to ask for clarification).`
-      : mode === "review"
-        ? `The user has explicitly asked you to review the current document, so fulfil their request by calling the \`${REVIEW_TOOL}\` tool. Only respond with an answer if the request is unclear (e.g. to ask for clarification).`
-        : mode === "ask"
-          ? "The user has explicitly asked a question, so fulfil their request by responding with an answer."
-          : 'Analyze the user\'s request (and the available context) and decide which of these best fulfils it. Requests that start with a verb that implies changing the document (e.g. "add", "fix", "rewrite") are edits, requests for feedback or suggestions are reviews, and questions (or anything else) should be answered.';
+  const modeTool = mode === "edit" ? EDIT_TOOL : mode === "review" ? REVIEW_TOOL : null;
+  const modeInstruction = modeTool
+    ? `The user has explicitly asked you to ${mode} the current document, so fulfil their request by calling the \`${modeTool}\` tool. Only respond with an answer if the request is unclear (e.g. to ask for clarification).`
+    : "Decide which of these best fulfils the user's request (and the available context), and if none clearly does, answer it.";
+
+  // Without any tools to call (e.g. in "ask" mode), the agent can only answer
+  const body =
+    actions.length === 0
+      ? `Answer the user's question (or discuss a topic), ${answer}.`
+      : `Depending on the user's request, you can...
+* Answer a question (or discuss a topic), ${answer}.
+${actions.join("\n")}
+
+${modeInstruction}
+
+Once you've called one of these tools, its result is already shown to the user, so don't describe it. Instead, respond with an empty \`title\` and \`answer\`, and a \`null\` \`followUp\`.`;
 
   return `You are GistPad's agent: a writing assistant, copy editor, and thought partner, who helps users with their markdown documents (which are stored as GitHub gists). Their request is provided via a <request> tag.
 
 # Objective
-Depending on the user's request, you can...
-${actions.join("\n")}
-
-${modeInstruction}`;
+${body}`;
 }
 
 const contextInstructions = (date: string) => `# Using context

@@ -117,7 +117,7 @@ const tools: VoiceTool[] = [
   voiceTool({
     name: "generate_image",
     description:
-      "Generate an image URL based on a prompt. And then after you receive the resulting URL, insert it into the document by calling edit_gist with the necessary markdown image link (including the entire document comments + your edits). Only ever generate one image at a time, and so if the user asks for multiple images, then generate one, and then wait to recieve confirmation that it succeeded before generating the next one.",
+      "Generate an image URL based on a prompt. And then after you receive the resulting URL, insert it into the document by calling edit_gist with a request to add the markdown image link (e.g. where it should go). Only ever generate one image at a time, and so if the user asks for multiple images, then generate one, and then wait to recieve confirmation that it succeeded before generating the next one.",
     parameters: z.object({
       prompt: z.string().describe("The full prompt to use for generating the image."),
       summary: z
@@ -190,6 +190,19 @@ const tools: VoiceTool[] = [
         ),
     }),
     handler: ({ topic }, { runCommand }) => runCommand(topic, "review"),
+  }),
+  voiceTool({
+    name: "show_answer",
+    description:
+      "Show the user a written answer (e.g. a table, list, or summary), which is displayed alongside the document. Only call this when the user asks to see something, as opposed to just hearing it.",
+    parameters: z.object({
+      question: z
+        .string()
+        .describe(
+          "The question (or request) that the answer should address, including any context from the conversation that's necessary to answer it.",
+        ),
+    }),
+    handler: ({ question }, { runCommand }) => runCommand(question, "ask"),
   }),
   voiceTool({
     name: "perform_research",

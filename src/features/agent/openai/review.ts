@@ -27,7 +27,6 @@ export interface Review {
 export const REVIEW_TOOL = "review_document";
 
 export const reviewInstructions = `# Reviewing the document
-When the user asks for feedback, ideas, thoughts, praise, reflection, critique, or suggestions about the current document (or the request is clearly best served by commenting on it), review it by calling the \`${REVIEW_TOOL}\` tool with a set of comments.
 * Analyze the request and provide the kind of feedback that it asks for. If it explicitly asks for a specific type of feedback (praise, tips, suggestions, etc.) then focus on ONLY that (e.g. don't provide praise when you're asked for advice).
 * Provide a concise \`title\` that summarizes the objective of the user's request (prefixed with an emoji).
 * Unless the user request's otherwise, be very concise in your comment bodies, favoring 1-2 sentences when possible. However, don't compromise on important detail or nuance.
@@ -56,22 +55,24 @@ When the user asks for feedback, ideas, thoughts, praise, reflection, critique, 
     - Use inline \`text\` markers when 1) referencing headings in the content, or 2) when referring to the main subject/noun of the comment.
     - If the user asks for a checklist or tasklist, then use the \`- [ ]\` format for the checklist items, as opposed to appending an \`☐\` character to the start of each item.
 * CRITICAL: Create distinct/individual comments for each distinct piece of feedback/suggestion you have, even if they are related to the same topic. Do not combine multiple suggestions into a single comment.
-* Suggest a \`followUp\` question/topic for the review, following the same guidelines as an answer's follow-up.
-* The comments are displayed to the user as soon as you call the tool, so there's no need to respond after it.`;
+* Suggest a \`followUp\` question/topic for the review, following the same guidelines as an answer's follow-up.`;
 
 /** The tool that the agent reviews documents with (whose comments stream into the UI). */
-export const reviewTool = tool({
-  name: REVIEW_TOOL,
-  description:
-    "Adds a set of review comments to the current document (e.g. feedback, ideas, or suggestions), which are displayed alongside it.",
-  parameters: z.object({
-    title: z.string().describe("Summarizes the user's request, prefixed with an emoji"),
-    comments: z.array(reviewCommentSchema),
-    followUp: followUpSchema.nullable(),
-  }),
-  execute: ({ comments }) =>
-    `Added ${comments.length} comment${comments.length === 1 ? "" : "s"} to the document.`,
-});
+export const reviewTool = (onReviewEnd: () => void) =>
+  tool({
+    name: REVIEW_TOOL,
+    description:
+      "Adds a set of review comments to the current document (e.g. feedback, ideas, or suggestions), which are displayed alongside it.",
+    parameters: z.object({
+      title: z.string().describe("Summarizes the user's request, prefixed with an emoji"),
+      comments: z.array(reviewCommentSchema),
+      followUp: followUpSchema.nullable(),
+    }),
+    execute: ({ comments }) => {
+      onReviewEnd();
+      return `Added ${comments.length} comment${comments.length === 1 ? "" : "s"} to the document.`;
+    },
+  });
 
 const isCommentProperty = (key: unknown): key is keyof typeof reviewCommentSchema.shape =>
   typeof key === "string" && key in reviewCommentSchema.shape;

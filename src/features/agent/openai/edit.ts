@@ -1,19 +1,13 @@
-import { applyPatchTool, type ApplyPatchResult, type Editor } from "@openai/agents";
+import { applyDiff, applyPatchTool, type ApplyPatchResult, type Editor } from "@openai/agents";
 import type { AgentDocument } from "./agent";
-import { applyDiff } from "./applyDiff";
 
 export const EDIT_TOOL = "apply_patch";
 
 export const editInstructions = `# Editing the document
-When the user asks you to change the current document, edit it by calling the \`${EDIT_TOOL}\` tool (with the path of the <current_document>).
-* Analyze the request and the document (and any other context), and think about the best way to accomplish the request. Don't respond with a plan, or an edited version of the document. Simply make the edits.
+* Call the \`${EDIT_TOOL}\` tool with the path of the <current_document>. Don't respond with a plan, or an edited version of the document. Simply make the edits.
 * Match the tone, style, and formatting conventions of the existing document, unless the user asks otherwise.
-* Make all of the requested changes in a single patch when possible, and only change the lines that need to change. Lines that aren't changing should only be included as (unmodified) context, and never deleted and re-added.
-* Include enough context (usually 3 lines) around each change to uniquely identify it. When that isn't enough, use \`@@\` with the markdown heading that the change belongs to (and chain them to jump between nested headings). Always include entire lines (including their leading whitespace and formatting) as context.
-* If the document is empty, then simply add its new content.
-* The document can't be renamed or deleted, and you can't create other files.
-* If a patch fails to apply, then read its error, and try again with a corrected patch.
-* Once you've finished editing, the user will review your changes (in a diff), so don't describe them. Respond with an empty \`title\` and \`answer\`, and a \`null\` \`followUp\`.`;
+* Make all of the requested changes in a single patch when possible, and only change the lines that need to change (rather than deleting and re-adding unchanged lines).
+* The document can't be renamed or deleted, and you can't create other files.`;
 
 const normalizePath = (path: string) => path.replace(/^\.?\//, "");
 
@@ -33,7 +27,7 @@ export function editTool(document: AgentDocument, onEdit: (content: string) => P
       : failed(`You can only edit the current document (${document.path}).`);
 
   // Edits are applied one at a time, since each one is relative to the previous one.
-  const edit = (diff: string, mode: "create" | "update") => {
+  const edit = (diff: string, mode?: "create") => {
     const result = pendingEdit.then(async (): Promise<ApplyPatchResult> => {
       let edited: string;
       try {
@@ -59,7 +53,7 @@ export function editTool(document: AgentDocument, onEdit: (content: string) => P
     updateFile: async ({ path, diff, moveTo }) =>
       moveTo && normalizePath(moveTo) !== normalizePath(path)
         ? failed("The document can't be renamed.")
-        : (checkPath(path) ?? edit(diff, "update")),
+        : (checkPath(path) ?? edit(diff)),
     deleteFile: async () => failed("The document can't be deleted."),
   };
 

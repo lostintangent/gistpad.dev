@@ -209,6 +209,11 @@ export function useAgent() {
       onReview: (changes) => {
         if (response === "review" && isAttached()) updateAgentResult("review", changes);
       },
+      onReviewEnd: () => {
+        // The review is complete (while the agent finishes responding), so it's no longer in progress
+        surface = null;
+        setRunningMode(null);
+      },
       onResearch:
         mode === "auto"
           ? async (topic) => {

@@ -1,13 +1,13 @@
 import introUrl from "@/assets/intro.mp3";
 import {
   backgroundResult,
+  DEFAULT_OPENAI_REALTIME_MODEL,
   OpenAIRealtimeWebRTC,
   RealtimeAgent,
   RealtimeSession,
   tool,
 } from "@openai/agents/realtime";
 import { z } from "zod";
-import { apiKeyAtom } from "../settings/modelSettings";
 import type { VoiceTool, VoiceToolContext } from "../voice/tools";
 import { createOpenAIClient } from "./client";
 
@@ -23,6 +23,14 @@ interface VoiceSessionOptions {
 }
 
 export type VoiceSession = Awaited<ReturnType<typeof startVoiceSession>>;
+
+/** Creates a short-lived key for a session, which is how the SDK connects from a browser (and selects its model). */
+async function createSessionKey() {
+  const { value } = await createOpenAIClient().realtime.clientSecrets.create({
+    session: { type: "realtime", model: DEFAULT_OPENAI_REALTIME_MODEL },
+  });
+  return value;
+}
 
 /** Performs the tool call, and only asks the assistant to respond when the tool requests it (or fails). */
 const toRealtimeTool = (
@@ -72,7 +80,7 @@ export async function startVoiceSession({
     });
 
     const session = new RealtimeSession(agent, {
-      transport: new OpenAIRealtimeWebRTC({ mediaStream: microphone, useInsecureApiKey: true }),
+      transport: new OpenAIRealtimeWebRTC({ mediaStream: microphone }),
       // The conversation isn't displayed (or traced), so it doesn't need to be transcribed. And
       // the microphone is usually a laptop's (or a headset's), which is near the user.
       config: {
@@ -80,7 +88,7 @@ export async function startVoiceSession({
       },
       tracingDisabled: true,
     });
-    await session.connect({ apiKey: apiKeyAtom.get() });
+    await session.connect({ apiKey: createSessionKey });
 
     return {
       session,
