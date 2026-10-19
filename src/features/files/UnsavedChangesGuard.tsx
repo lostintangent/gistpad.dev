@@ -22,9 +22,9 @@ export default function UnsavedChangesGuard() {
 
   /** Saves the changes, if they can be saved without asking the user, and returns whether they were. */
   const saveChanges = async () => {
-    // (Other people's gists need to be forked, and AI edits aren't saved until the user accepts them)
+    // (Other people's gists need to be forked, and agent edits aren't saved until the user accepts them)
     const draft = readDraft(file);
-    const canSave = !file.isReadOnly && !!draft && !draft.hasPendingAiEdit;
+    const canSave = !file.isReadOnly && !!draft && !draft.hasPendingAgentEdit;
 
     if (canSave) await save();
     return canSave;

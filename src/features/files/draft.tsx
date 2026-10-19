@@ -11,8 +11,8 @@ interface Draft {
   content: string;
   /** Files embedded in the file (e.g. whiteboards), which are saved alongside it. */
   embeddedFiles: Record<string, () => string>;
-  /** Whether the draft includes AI edits, that the user hasn't accepted or rejected yet. */
-  hasPendingAiEdit: boolean;
+  /** Whether the draft includes agent edits, that the user hasn't accepted or rejected yet. */
+  hasPendingAgentEdit: boolean;
 }
 
 /** The active file's draft (if it has unsaved changes). */
@@ -40,7 +40,7 @@ export function updateDraft(file: DraftFile, changes: Partial<Omit<Draft, "fileK
     fileKey: file.key,
     content: file.savedContent,
     embeddedFiles: {},
-    hasPendingAiEdit: false,
+    hasPendingAgentEdit: false,
   };
 
   const next = { ...current, ...changes };

@@ -85,9 +85,9 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  /* The AI action bar's purple glow */
+  /* The composer's purple glow */
   --shadow-dark-xl: 0 0 10px 0 rgb(147 51 234 / 0.3);
-  --shadow-centered-action-bar: 0 0 30px 0 rgb(147 51 234 / 0.4);
+  --shadow-centered-composer: 0 0 30px 0 rgb(147 51 234 / 0.4);
 }
 
 /* A surface that's raised above the backdrop (e.g. the workspace), whose content is painted on it
@@ -150,8 +150,8 @@
   overflow: clip;
 }
 
-/* Gradient text, which pulses while AI is working on something (e.g. a gist's title, while it's edited) */
-@utility ai-gradient-text {
+/* Gradient text, which pulses while the agent is working on something (e.g. a gist's title, while it's edited) */
+@utility agent-gradient-text {
   @apply bg-linear-to-r from-green-400 to-purple-600 bg-clip-text text-transparent;
   background-size: 200% 200%;
   animation: gradient-pulse 2s ease-in-out infinite;

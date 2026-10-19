@@ -19,7 +19,7 @@ import {
 } from "@/features/gists/queries";
 import { loadSession, usePreferences, useSession } from "@/features/account/queries";
 import { openComments, resetComments } from "@/features/comments/store";
-import { resetAiForFile } from "@/features/ai/store";
+import { resetAgentForFile } from "@/features/agent/model/store";
 import { closeMobilePanels, mobilePanelAtom } from "@/features/editor/layout";
 import { EDITOR_MODES, type EditorMode } from "@/features/editor/mode";
 import { revisionAtom } from "@/features/editor/history/revision";
@@ -225,7 +225,7 @@ router.subscribe("onBeforeNavigate", ({ fromLocation, pathChanged }) => {
   if (!fromLocation || !pathChanged) return;
 
   resetComments();
-  resetAiForFile();
+  resetAgentForFile();
   revisionAtom.set(null);
   closeMobilePanels();
 });

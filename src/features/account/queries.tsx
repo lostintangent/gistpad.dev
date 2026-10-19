@@ -51,7 +51,7 @@ export interface Preferences {
   pinnedGists: string[];
   tags: Record<string, TagData>;
   gistTags: Record<string, string[]>;
-  /** A JSON-serialized object of global AI settings (e.g. custom commands), or empty for the defaults. */
+  /** A JSON-serialized object of global agent settings (e.g. custom commands), or empty for the defaults. */
   globalFrontMatter: string;
   researchTasks: ResearchTask[];
 }

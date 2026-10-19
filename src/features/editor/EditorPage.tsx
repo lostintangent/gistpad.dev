@@ -3,7 +3,7 @@ import { Dashboard } from "./Dashboard";
 import { MobilePanels } from "./SidePanel";
 import { Sidebar } from "./Sidebar";
 import Workspace from "./Workspace";
-import ResearchStatus from "@/features/ai/research/ResearchStatus";
+import ResearchStatus from "@/features/agent/research/ResearchStatus";
 import { SpotifyPlayer } from "@/features/spotify/SpotifyPlayer";
 import { Button } from "@/shared/ui/button";
 import { useActiveFile, type ActiveFile } from "@/features/files/file";

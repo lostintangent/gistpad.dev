@@ -1,4 +1,4 @@
-import { useAiReview, useIsAiInProgress } from "@/features/ai/store";
+import { useAgentReview, useIsAgentRunning } from "@/features/agent/model/store";
 import { closeComments, commentsPanelOpenAtom, openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { deletesGist, useAddAndOpenFile } from "@/features/gists/actions";
@@ -93,7 +93,7 @@ function useToolbar(file: ActiveFile) {
   const isViewingRevision = useIsViewingRevision();
   const hasChanges = !!useDraft(file);
   const { comments, isEnabled: isCommentsEnabled } = useCommentThreads(file);
-  const aiReview = useAiReview(file.key);
+  const agentReview = useAgentReview(file.key);
 
   return {
     mode,
@@ -103,7 +103,7 @@ function useToolbar(file: ActiveFile) {
     hasChanges,
     isDisabled: !file.gistId || file.isLoading,
     canViewHistory: !file.isReadOnly && !!file.gist && !isDailyNote(file.gist),
-    commentCount: comments.length + (aiReview?.comments.length ?? 0),
+    commentCount: comments.length + (agentReview?.comments.length ?? 0),
     isCommentsEnabled,
     requestDelete: () =>
       file.gist && deleteGistDialog.openWithPayload({ gist: file.gist, filename: file.filename }),
@@ -519,7 +519,7 @@ function MobileActions({
 
 export default function EditorToolbar({ file, onSave }: { file: ActiveFile; onSave: () => void }) {
   const isMobile = useIsMobile();
-  const isAiInProgress = useIsAiInProgress();
+  const isAgentRunning = useIsAgentRunning();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const { mutate: toggleStarred } = useToggleStarred();
 
@@ -536,9 +536,9 @@ export default function EditorToolbar({ file, onSave }: { file: ActiveFile; onSa
     <h2 className="text-lg font-semibold flex gap-2 items-center min-w-0">
       {!file.isReadme && gist && isDateBasedGist(gist) && <Calendar className="h-4 w-4 shrink-0" />}
       <ScrollableText>
-        <span className={isAiInProgress ? "ai-gradient-text" : ""}>
+        <span className={isAgentRunning ? "agent-gradient-text" : ""}>
           {name || (
-            <span className={`italic${isAiInProgress ? "" : " text-muted-foreground"}`}>
+            <span className={`italic${isAgentRunning ? "" : " text-muted-foreground"}`}>
               Untitled
             </span>
           )}

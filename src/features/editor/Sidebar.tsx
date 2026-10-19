@@ -1,6 +1,6 @@
 import CreateGistButton from "@/features/gists/CreateGistButton";
 import GistList from "@/features/gists/list/GistList";
-import ResearchStatus from "@/features/ai/research/ResearchStatus";
+import ResearchStatus from "@/features/agent/research/ResearchStatus";
 import { UserMenu } from "@/features/account/UserMenu";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";

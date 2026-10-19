@@ -17,8 +17,8 @@ import { splitFrontMatter, withFrontMatter } from "@/shared/frontMatter";
 import { uploadImage } from "@/shared/supabase";
 import { getMarkdownFiles, toMarkdownFilename } from "@/shared/github";
 import { usePreferences } from "@/features/account/queries";
-import { useIsAiEnabled } from "@/features/ai/settings";
-import { showPendingAiDiffsAtom } from "@/features/ai/store";
+import { useIsAgentEnabled } from "@/features/agent/settings/modelSettings";
+import { showPendingAgentDiffsAtom } from "@/features/agent/model/store";
 import { openComments } from "@/features/comments/store";
 import { readDraft, updateDraft, useDraft } from "@/features/files/draft";
 import { focusRequestAtom } from "@/features/files/file";
@@ -70,12 +70,12 @@ export function EditorPane({
   const file = useActiveFile();
   const preferences = usePreferences();
   const editorTheme = useEditorTheme();
-  const isAiEnabled = useIsAiEnabled();
+  const isAgentEnabled = useIsAgentEnabled();
   const draft = useDraft(file);
   const documentContent = useFileContent(file);
   const save = useSaveFile(file);
   const highlights = useCommentHighlights(file);
-  const showPendingAiDiffs = useSelector(showPendingAiDiffsAtom);
+  const showPendingAgentDiffs = useSelector(showPendingAgentDiffsAtom);
   const view = useSelector(editorViewAtom);
   const isSplitMode = useEditorMode()[0] === "split";
   const focusRequest = useSelector(focusRequestAtom);
@@ -84,7 +84,9 @@ export function EditorPane({
   const isViewingRevision = !!revision;
   const content = revision?.content ?? documentContent;
   const showDiff =
-    preferences.showDiffs || (!!draft?.hasPendingAiEdit && showPendingAiDiffs) || isViewingRevision;
+    preferences.showDiffs ||
+    (!!draft?.hasPendingAgentEdit && showPendingAgentDiffs) ||
+    isViewingRevision;
 
   // Frontmatter is hidden from the editor (unless the user opts to see it),
   // and restored whenever the visible content changes.
@@ -136,12 +138,12 @@ export function EditorPane({
       editorStatusAtom.set({ hasSelection: from !== to, canUndo: undo(noop), canRedo: redo(noop) });
     }
 
-    // Once the user has accepted each of the AI's changes, then save them.
-    const isAcceptingAiEdit =
-      readDraft(file)?.hasPendingAiEdit &&
+    // Once the user has accepted each of the agent's changes, then save them.
+    const isAcceptingAgentEdit =
+      readDraft(file)?.hasPendingAgentEdit &&
       update.transactions.some((tr) => tr.isUserEvent("accept"));
 
-    if (isAcceptingAiEdit && !getChunks(update.state)?.chunks.length) queueMicrotask(save);
+    if (isAcceptingAgentEdit && !getChunks(update.state)?.chunks.length) queueMicrotask(save);
   };
 
   const openWikilink = (link: string) => {
@@ -156,7 +158,7 @@ export function EditorPane({
     yamlFrontmatter({ content: markdown() }),
     markdown(),
     EditorView.lineWrapping,
-    createEditorCompletions(otherFiles, isAiEnabled),
+    createEditorCompletions(otherFiles, isAgentEnabled),
     assetUrlShortener,
     codeFenceMarker([
       { type: "tldraw", color: "purple" },
@@ -171,7 +173,7 @@ export function EditorPane({
       ? unifiedMergeView({
           original: getVisibleContent(revision?.previousContent ?? file.savedContent),
           mergeControls: !isViewingRevision,
-          collapseUnchanged: draft?.hasPendingAiEdit || isViewingRevision ? {} : undefined,
+          collapseUnchanged: draft?.hasPendingAgentEdit || isViewingRevision ? {} : undefined,
           allowInlineDiffs: true,
         })
       : [],

@@ -6,7 +6,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/u
 import { useActiveFile, useSaveFile } from "@/features/files/file";
 import { useEditorMode, type EditorMode } from "./mode";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { useIsAiEnabled } from "@/features/ai/settings";
+import { useIsAgentEnabled } from "@/features/agent/settings/modelSettings";
 import { editorPaneSizeAtom, zenModeAtom } from "./layout";
 import { draftAtom } from "@/features/files/draft";
 import { editorViewAtom } from "./store";
@@ -32,8 +32,8 @@ import LoadingSkeleton from "./LoadingSkeleton";
 import { PreviewPane } from "./PreviewPane";
 import EditorToolbar from "./toolbar/EditorToolbar";
 
-// AI features are only loaded for users who've configured AI
-const AiAssistant = lazy(() => import("@/features/ai/AiAssistant"));
+// The agent is only loaded for users who've configured it
+const AgentComposer = lazy(() => import("@/features/agent/composer/AgentComposer"));
 
 /** Keyboard shortcuts that work anywhere in the editor (not just while CodeMirror is focused). */
 function useWorkspaceShortcuts(onSave: () => void) {
@@ -44,7 +44,7 @@ function useWorkspaceShortcuts(onSave: () => void) {
       event.preventDefault();
       onSave();
     } else if (event.key === "z" && !event.shiftKey) {
-      // (Text inputs have their own undo history, e.g. the action bar or a comment)
+      // (Text inputs have their own undo history, e.g. the composer or a comment)
       if (event.target instanceof Element && event.target.closest("input, textarea")) return;
 
       const view = editorViewAtom.get();
@@ -127,7 +127,7 @@ export default function Workspace() {
   const file = useActiveFile();
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
-  const isAiEnabled = useIsAiEnabled();
+  const isAgentEnabled = useIsAgentEnabled();
   const isCommentsOpen = useSelector(commentsPanelOpenAtom);
   const revision = useRevision(file);
   const save = useSaveFile(file);
@@ -143,17 +143,17 @@ export default function Workspace() {
   // Comments are hidden while viewing a past revision
   const showComments = isCommentsEnabled && isCommentsOpen && !revision;
 
-  // The action bar doesn't fit alongside the comments on mobile
-  const showActionBar = isAiEnabled && !revision && !(isMobile && showComments);
+  // The composer doesn't fit alongside the comments on mobile
+  const showComposer = isAgentEnabled && !revision && !(isMobile && showComments);
 
-  const aiAssistant = isAiEnabled && (
+  const composer = isAgentEnabled && (
     <Suspense>
-      <AiAssistant file={file} showActionBar={showActionBar} />
+      <AgentComposer isVisible={showComposer} />
     </Suspense>
   );
 
   if (!file.gistId) {
-    return <div className={`${WORKSPACE_CLASS} relative`}>{aiAssistant}</div>;
+    return <div className={`${WORKSPACE_CLASS} relative`}>{composer}</div>;
   }
 
   const isLoading = file.isLoading || revision?.isLoading;
@@ -170,7 +170,7 @@ export default function Workspace() {
         isLoading ? (
           <LoadingSkeleton />
         ) : (
-          <PreviewPane ref={previewRef} revision={revision} showActionBar={showActionBar} />
+          <PreviewPane ref={previewRef} revision={revision} showComposer={showComposer} />
         )
       }
     />
@@ -185,7 +185,7 @@ export default function Workspace() {
 
   return (
     <div className={`${WORKSPACE_CLASS} relative flex flex-col`}>
-      {aiAssistant}
+      {composer}
       {!isZenMode && <EditorToolbar key={file.key} file={file} onSave={requestSave} />}
 
       <div className="flex-1 min-h-0">

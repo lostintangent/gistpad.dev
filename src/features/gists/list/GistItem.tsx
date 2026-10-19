@@ -16,7 +16,7 @@ import { openFile } from "@/features/files/file";
 import { getGistDisplayName, isArchived, type Gist } from "@/shared/github";
 import { useDuplicateGist, useIsStarred, useToggleArchived, useToggleStarred } from "../queries";
 import { usePreferences, useSession, useUpdatePreferences } from "@/features/account/queries";
-import { useIsAiInProgress } from "@/features/ai/store";
+import { useIsAgentRunning } from "@/features/agent/model/store";
 import { draftAtom } from "@/features/files/draft";
 import { useSelector } from "@tanstack/react-store";
 import { useNavigate } from "@tanstack/react-router";
@@ -54,7 +54,7 @@ export function GistItem({
   const { user } = useSession();
   const { tags, gistTags, pinnedGists, researchTasks } = usePreferences();
   const updatePreferences = useUpdatePreferences();
-  const isAiInProgress = useIsAiInProgress();
+  const isAgentRunning = useIsAgentRunning();
   const hasUnsavedChanges = useSelector(
     draftAtom,
     (draft) => !!draft?.fileKey.startsWith(`${gist.id}/`),
@@ -75,7 +75,7 @@ export function GistItem({
   const tagIds = gistTags[gist.id] ?? [];
   const gistResearchTasks = researchTasks.filter((task) => task.gistId === gist.id);
   const isProcessing =
-    gistResearchTasks.some((task) => !task.content) || (isAiInProgress && isOpen);
+    gistResearchTasks.some((task) => !task.content) || (isAgentRunning && isOpen);
   const hasUnseenResults = gistResearchTasks.some((task) => task.content && !task.hasBeenSeen);
 
   const togglePinned = () =>
@@ -172,7 +172,7 @@ export function GistItem({
           <span
             className={cn(
               isPlaceholder && "italic",
-              isProcessing ? "ai-gradient-text" : isPlaceholder && "text-muted-foreground",
+              isProcessing ? "agent-gradient-text" : isPlaceholder && "text-muted-foreground",
             )}
           >
             {name}

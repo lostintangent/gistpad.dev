@@ -1,12 +1,12 @@
 import { autocompletion } from "@codemirror/autocomplete";
 import { emojiCompletions } from "./emoji";
-import { frontmatterCompletions } from "@/features/ai/frontmatterCompletions";
+import { frontMatterCompletions } from "@/features/agent/settings/frontMatter/completions";
 import { wikilinkCompletions } from "./wikilink";
 
-export const createEditorCompletions = (files: string[], isAiEnabled: boolean) =>
+export const createEditorCompletions = (files: string[], isAgentEnabled: boolean) =>
   autocompletion({
     override: [
-      ...(isAiEnabled ? [frontmatterCompletions] : []),
+      ...(isAgentEnabled ? [frontMatterCompletions] : []),
       wikilinkCompletions.bind(null, files),
       emojiCompletions,
     ],

@@ -43,7 +43,7 @@ interface MarkdownOptions {
   /** The files in the current gist, which wikilinks can link to. */
   files?: string[];
   onOpenFile?: (filename: string) => void;
-  /** Gists that can be cited (e.g. by AI answers), using `[[gistId]]`. */
+  /** Gists that can be cited (e.g. by agent answers), using `[[gistId]]`. */
   gists?: Gist[];
   onOpenGist?: (gistId: string) => void;
   onSelectHeading?: (id: string) => void;
@@ -358,7 +358,7 @@ const toEmojiMap = (emojis: Emoji[]) => new Map(emojis.map((emoji) => [emoji.id,
 
 interface MarkdownPreviewProps extends Omit<MarkdownOptions, "onExpand"> {
   children: string;
-  /** Adds space at the end of the document, so the action bar doesn't cover it. */
+  /** Adds space at the end of the document, so the composer doesn't cover it. */
   scrollPastEnd?: boolean;
   /** Whether to invert the colors in dark mode (which isn't needed on an inverted background). */
   shouldInvert?: boolean;

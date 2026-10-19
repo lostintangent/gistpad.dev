@@ -29,13 +29,13 @@ function toggleTask(content: string, text: string) {
 
 export function PreviewPane({
   revision,
-  showActionBar,
+  showComposer,
   ref,
 }: {
   /** The past revision that's being viewed (if any), which is shown read-only. */
   revision: Revision | null;
-  /** Whether the action bar is shown (over the bottom of the preview). */
-  showActionBar: boolean;
+  /** Whether the composer is shown (over the bottom of the preview). */
+  showComposer: boolean;
   ref: RefObject<HTMLDivElement | null>;
 }) {
   const file = useActiveFile();
@@ -62,11 +62,11 @@ export function PreviewPane({
         commentHighlights={commentHighlights}
         whiteboard={getWhiteboard(file)}
         isReadOnly={file.isReadOnly || !!revision}
-        scrollPastEnd={showActionBar}
+        scrollPastEnd={showComposer}
       >
         {deferredContent}
       </MarkdownPreview>
-      <ScrollToTop isActionBarVisible={showActionBar} />
+      <ScrollToTop isComposerVisible={showComposer} />
     </div>
   );
 }

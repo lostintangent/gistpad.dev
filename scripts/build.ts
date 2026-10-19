@@ -3,7 +3,7 @@ import { cp, readdir, rm } from "node:fs/promises";
 import { basename } from "node:path";
 
 // Builds GistPad as a static site in `dist/`, whose code is split into (content-hashed) chunks.
-// That way, the app's heavy features (e.g. diagrams, whiteboards and AI) are only downloaded
+// That way, the app's heavy features (e.g. diagrams, whiteboards and the agent) are only downloaded
 // when they're used, rather than every time the app loads.
 
 const outdir = "dist";

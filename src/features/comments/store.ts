@@ -14,7 +14,7 @@ interface CommentsState {
   newCommentText: string;
   /** Requests that the new comment input be focused (e.g. after quoting text, or starting a reply). */
   shouldFocusInput: boolean;
-  tab: "user" | "ai";
+  tab: "user" | "agent";
 }
 
 const initialState: CommentsState = {
@@ -45,7 +45,7 @@ export function openComments({
   replyTo,
   quote,
   tab = "user",
-}: { commentId?: number; replyTo?: number; quote?: string; tab?: "user" | "ai" } = {}) {
+}: { commentId?: number; replyTo?: number; quote?: string; tab?: "user" | "agent" } = {}) {
   const selectedCommentId = replyTo ?? commentId;
   const isWriting = replyTo !== undefined || !!quote;
 
