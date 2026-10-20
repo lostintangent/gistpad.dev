@@ -173,13 +173,18 @@ const localToken = process.env.BUN_PUBLIC_GITHUB_TOKEN;
 const source = localToken ? localSource(localToken) : supabaseSource;
 
 /**
+ * Whether the user is returning from GitHub's sign-in page: Supabase returns the result as
+ * `#access_token=...` (or `#error=...`), which would otherwise be mistaken for an app route.
+ */
+export const isSignInRedirect = () => /^#(access_token|error)=/.test(location.hash);
+
+/**
  * Completes a GitHub sign-in redirect (if there is one), and returns the
  * app path that the user was on when they started signing in.
  */
 export async function completeSignIn() {
-  // Supabase returns the sign-in result as `#access_token=...` (or `#error=...`), which would
-  // otherwise be mistaken for an app route. So let Supabase process it before routing.
-  if (!/^#(access_token|error)=/.test(location.hash)) return;
+  // (Supabase processes the result before routing, see `isSignInRedirect`)
+  if (!isSignInRedirect()) return;
   await auth.getSession();
 
   // The cache may include a session from before the user signed in (i.e. a signed-out one)
