@@ -4,7 +4,6 @@ import {
   type ResearchTask,
 } from "@/features/account/queries";
 import { queryOptions, useQueries } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import type { ResearchRequest, ResearchResult } from "./research";
 
@@ -66,22 +65,6 @@ export function useResearchTasks() {
 export function useResearchResults() {
   const { researchTasks: tasks } = usePreferences();
   const updateTasks = useUpdateTasks();
-
-  // Results used to be saved in the tasks themselves (which made the access token too large), so
-  // any that still are get dropped: OpenAI still has them
-  useEffect(() => {
-    if (!tasks.some((task) => "content" in task)) return;
-    updateTasks((tasks) =>
-      tasks.map(({ id, gistId, topic, startedTime, completedTime, hasBeenSeen }) => ({
-        id,
-        gistId,
-        topic,
-        startedTime,
-        completedTime,
-        hasBeenSeen,
-      })),
-    );
-  }, [tasks, updateTasks]);
 
   return useQueries({
     queries: tasks.map((task) =>
