@@ -53,6 +53,8 @@ export const researchInput = ({ topic, context, userComments }: ResearchRequest)
     .join("\n\n");
 
 /** The research results, which are a markdown file (with a title). */
+export type ResearchResult = z.infer<typeof researchResult.schema>;
+
 export const researchResult = {
   name: "research_results",
   description:

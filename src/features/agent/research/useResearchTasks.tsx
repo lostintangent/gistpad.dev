@@ -4,11 +4,15 @@ import {
   type ResearchTask,
 } from "@/features/account/queries";
 import { queryOptions, useQueries } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { toast } from "sonner";
-import type { ResearchRequest } from "./research";
+import type { ResearchRequest, ResearchResult } from "./research";
 
-// Research tasks run in the background (as OpenAI responses), and are saved in the user's
-// preferences (so they survive reloads), until their results are saved or deleted.
+// Research tasks run in the background (as OpenAI responses). The tasks are saved in the user's
+// preferences (so they're seen on every device), until their results are saved or deleted. But
+// their results stay with OpenAI (which keeps them for 30 days), and are fetched when they're
+// viewed: the preferences are embedded in the user's access token, which a document makes too
+// large to send.
 
 const POLLING_INTERVAL = 3000;
 
@@ -55,36 +59,59 @@ export function useResearchTasks() {
   };
 }
 
-/** Polls the in-progress research tasks, until they complete (or fail). */
-export function usePollResearchTasks() {
+/**
+ * The tasks' results, by task (once they've been fetched). The tasks in progress are polled until
+ * they complete (or fail, which removes them), which the research status is always mounted for.
+ */
+export function useResearchResults() {
   const { researchTasks: tasks } = usePreferences();
   const updateTasks = useUpdateTasks();
 
-  useQueries({
-    queries: tasks
-      .filter((task) => !task.content)
-      .map((task) =>
-        queryOptions({
-          queryKey: ["research", task.id],
-          queryFn: async () => {
-            const { pollResearch } = await import("../openai");
-            const result = await pollResearch(task.id);
+  // Results used to be saved in the tasks themselves (which made the access token too large), so
+  // any that still are get dropped: OpenAI still has them
+  useEffect(() => {
+    if (!tasks.some((task) => "content" in task)) return;
+    updateTasks((tasks) =>
+      tasks.map(({ id, gistId, topic, startedTime, completedTime, hasBeenSeen }) => ({
+        id,
+        gistId,
+        topic,
+        startedTime,
+        completedTime,
+        hasBeenSeen,
+      })),
+    );
+  }, [tasks, updateTasks]);
 
-            if (result && "error" in result) {
-              updateTasks(removeTask(task.id));
-              toast.error(`Research about "${task.topic}" didn't complete.`, {
-                description: result.error,
-              });
-            } else if (result) {
-              const completedTime = new Date().toISOString();
-              updateTasks(updateTask(task.id, { ...result, completedTime, hasBeenSeen: false }));
-            }
+  return useQueries({
+    queries: tasks.map((task) =>
+      queryOptions({
+        queryKey: ["research", task.id],
+        queryFn: async (): Promise<ResearchResult | null> => {
+          const { pollResearch } = await import("../openai");
+          const result = await pollResearch(task.id);
+          if (!result) return null;
 
-            return result;
-          },
-          refetchInterval: ({ state }) => (state.data ? false : POLLING_INTERVAL),
-          meta: { persist: false },
-        }),
-      ),
+          if ("error" in result) {
+            updateTasks(removeTask(task.id));
+            toast.error(`Research about "${task.topic}" didn't complete.`, {
+              description: result.error,
+            });
+            return null;
+          }
+
+          if (!task.completedTime) {
+            const completedTime = new Date().toISOString();
+            updateTasks(updateTask(task.id, { completedTime, hasBeenSeen: false }));
+          }
+          return result;
+        },
+        staleTime: Infinity,
+        refetchInterval: ({ state }) => (state.data ? false : POLLING_INTERVAL),
+        meta: { persist: false },
+      }),
+    ),
+    combine: (results): Record<string, ResearchResult | undefined> =>
+      Object.fromEntries(tasks.map((task, index) => [task.id, results[index]?.data ?? undefined])),
   });
 }

@@ -57,8 +57,10 @@ export function GistItem({
   const tagIds = gistTags[gist.id] ?? [];
   const gistResearchTasks = researchTasks.filter((task) => task.gistId === gist.id);
   const isProcessing =
-    gistResearchTasks.some((task) => !task.content) || (isAgentRunning && isOpen);
-  const hasUnseenResults = gistResearchTasks.some((task) => task.content && !task.hasBeenSeen);
+    gistResearchTasks.some((task) => !task.completedTime) || (isAgentRunning && isOpen);
+  const hasUnseenResults = gistResearchTasks.some(
+    (task) => task.completedTime && !task.hasBeenSeen,
+  );
 
   const setTagIds = (tagIds: string[]) =>
     updatePreferences(({ gistTags }) => ({ gistTags: { ...gistTags, [gist.id]: tagIds } }));

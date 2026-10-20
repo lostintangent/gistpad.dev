@@ -5,14 +5,17 @@ import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/shared/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Save, Trash } from "lucide-react";
+import type { ResearchResult } from "./research";
 
-/** Displays the results of a research task, which can be saved to a gist (or deleted). */
+/** Displays the results of a research task (once they're fetched), which can be saved to a gist (or deleted). */
 export default function ResearchResultsDialog({
   task,
+  result,
   onClose,
   onDelete,
 }: {
   task: ResearchTask;
+  result: ResearchResult | undefined;
   onClose: () => void;
   /** Deletes the task, which is also how saved results are cleared. */
   onDelete: () => void;
@@ -22,10 +25,10 @@ export default function ResearchResultsDialog({
 
   // Results are saved to the gist that the research was started from (or a new gist)
   const { mutate: save, isPending: isSaving } = useMutation({
-    mutationFn: () =>
+    mutationFn: ({ title, filename, content }: ResearchResult) =>
       task.gistId
-        ? addFile(task.gistId, task.filename!, task.content)
-        : createGist({ description: task.title, content: task.content }),
+        ? addFile(task.gistId, filename, content)
+        : createGist({ description: title, content }),
     onSuccess: onDelete,
   });
 
@@ -36,10 +39,18 @@ export default function ResearchResultsDialog({
           <p className="text-muted-foreground italic text-left">{task.topic}</p>
         </DialogHeader>
         <div className="flex-1 overflow-auto py-4">
-          <MarkdownPreview isReadOnly>{task.content!}</MarkdownPreview>
+          {result ? (
+            <MarkdownPreview isReadOnly>{result.content}</MarkdownPreview>
+          ) : (
+            <Loader2 className="mx-auto mt-8 h-6 w-6 animate-spin text-muted-foreground" />
+          )}
         </div>
         <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-          <Button onClick={() => save()} className="gap-2" disabled={isSaving}>
+          <Button
+            onClick={() => result && save(result)}
+            className="gap-2"
+            disabled={!result || isSaving}
+          >
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

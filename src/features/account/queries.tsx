@@ -20,20 +20,19 @@ export interface TagData {
   color: string;
 }
 
+/** A research task (whose results stay with OpenAI, see the research feature). */
 export interface ResearchTask {
   id: string;
   gistId?: string;
   topic: string;
   startedTime: string;
   completedTime?: string;
-  title?: string;
-  filename?: string;
-  content?: string;
   hasBeenSeen?: boolean;
 }
 
-// Note: These are persisted as the user's Supabase metadata, so they
-// need to remain backwards compatible with previously saved values.
+// Note: These are persisted as the user's Supabase metadata, so they need to remain backwards
+// compatible with previously saved values. And since that metadata is embedded in the user's access
+// token, they need to stay small (a document's worth makes the token too large to send on iOS).
 export interface Preferences {
   /** The color of the app's primary actions (e.g. creating a gist). */
   accentColor: string;
