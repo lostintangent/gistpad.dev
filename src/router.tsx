@@ -20,9 +20,9 @@ import {
 import { loadSession, usePreferences, useSession } from "@/features/account/queries";
 import { openComments, resetComments } from "@/features/comments/store";
 import { resetAgentForFile } from "@/features/agent/model/store";
-import { closeMobilePanels, mobilePanelAtom } from "@/features/editor/layout";
-import { EDITOR_MODES, type EditorMode } from "@/features/editor/mode";
-import { revisionAtom } from "@/features/editor/history/revision";
+import { closeMobilePanels, mobilePanelAtom } from "@/features/workbench/layout/state";
+import { EDITOR_MODES, type EditorMode } from "@/features/workbench/layout/mode";
+import { revisionAtom } from "@/features/workbench/workspace/history/revision";
 import { useEffect } from "react";
 import {
   createHashHistory,
@@ -130,7 +130,7 @@ const editorRoute = createRoute({
       });
     }
   },
-  component: lazyRouteComponent(() => import("@/features/editor/EditorPage")),
+  component: lazyRouteComponent(() => import("@/features/workbench/WorkbenchPage")),
 });
 
 /** Opens (or creates) today's daily note. */

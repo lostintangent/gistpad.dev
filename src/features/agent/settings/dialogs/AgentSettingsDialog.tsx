@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Textarea } from "@/shared/ui/textarea";
 import { MessageCircleQuestion, Mic, NotebookPen, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { DEFAULT_VOICE, VOICES } from "../../voice/voices";
+import { DEFAULT_VOICE, VOICES } from "../../talk/voices";
 import {
   parseFrontMatter,
   parseGlobalSettings,

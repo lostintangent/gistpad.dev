@@ -1,4 +1,5 @@
 import { CountBadge } from "@/shared/ui/count-badge";
+import { CommandDropdownItem } from "@/features/commands/CommandDropdownItem";
 import { EmojiInput } from "@/shared/EmojiInput";
 import { TagMenuItems } from "./tags";
 import { Button } from "@/shared/ui/button";
@@ -11,21 +12,13 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupButton } from "@/shared/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { useCreateAndOpenGist, useOpenTodaysNote } from "./actions";
+import { useCreateAndOpenGist } from "./actions";
 import { useGists } from "./queries";
 import { usePreferences } from "@/features/account/queries";
 import { queryClient } from "@/shared/query-client";
 import { Toggle } from "@base-ui/react/toggle";
 import { cn } from "cn";
-import {
-  ArrowUp,
-  Calendar,
-  ChevronDown,
-  Globe,
-  Plus,
-  RefreshCw,
-  Tag as TagIcon,
-} from "lucide-react";
+import { ArrowUp, ChevronDown, Globe, Plus, RefreshCw, Tag as TagIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
 const LONG_PRESS_DURATION = 300;
@@ -113,7 +106,6 @@ function CreateGistForm({ onCreated }: { onCreated: () => void }) {
 export default function CreateGistButton({ isRail = false }: { isRail?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const createGist = useCreateAndOpenGist();
-  const openTodaysNote = useOpenTodaysNote();
   const { isFetching } = useGists();
   const groupRef = useRef<HTMLDivElement>(null);
 
@@ -184,9 +176,7 @@ export default function CreateGistButton({ isRail = false }: { isRail?: boolean 
             <ChevronDown className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={openTodaysNote}>
-              <Calendar /> Open today's note
-            </DropdownMenuItem>
+            <CommandDropdownItem command="notes.today" />
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isFetching}

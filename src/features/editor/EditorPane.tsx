@@ -1,75 +1,52 @@
-import { createEditorCompletions } from "./code-mirror/completions";
-import { assetUrlShortener } from "./code-mirror/decorations/asset-url-shortener";
-import { clickableLinks } from "./code-mirror/decorations/clickable-links";
-import { codeFenceMarker } from "./code-mirror/decorations/code-fence-marker";
-import { commentHighlights } from "./code-mirror/decorations/comment-highlights";
-import { mathEquationResult } from "./code-mirror/decorations/math-equations";
-import { imagePreview } from "./code-mirror/hoverTooltips/image-preview";
-import { emdash } from "./code-mirror/keybindings/emdash";
-import { selectionFormatting } from "./code-mirror/keybindings/selection-formatting";
-import { spellChecker } from "./code-mirror/linters/spell-checker";
-import { selectionComment } from "./code-mirror/widgets/selection-comment";
-import { useActiveFile, useFileContent, openFile, useSaveFile } from "@/features/files/file";
-import type { Revision } from "./history/revision";
-import { useEditorMode } from "./mode";
-import { useEditorTheme } from "./themes";
-import { splitFrontMatter, withFrontMatter } from "@/shared/frontMatter";
-import { uploadImage } from "@/shared/supabase";
-import { getMarkdownFiles, toMarkdownFilename } from "@/shared/github";
-import { usePreferences } from "@/features/account/queries";
-import { useIsAgentEnabled } from "@/features/agent/settings/modelSettings";
-import { showPendingAgentDiffsAtom } from "@/features/agent/model/store";
-import { openComments } from "@/features/comments/store";
-import { readDraft, updateDraft, useDraft } from "@/features/files/draft";
-import { focusRequestAtom } from "@/features/files/file";
+import { baseExtensions, diff, diffExtension, dynamic, dynamicExtensions } from "./extensions";
+import { findImage } from "./extensions/assets/image-upload";
+import { darkTheme, lightTheme } from "./extensions/theme";
+import { FormattingBubble, FormattingToolbar } from "./FormattingToolbar";
 import { editorStatusAtom, editorViewAtom } from "./store";
-import { redo, undo } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
-import { yamlFrontmatter } from "@codemirror/lang-yaml";
-import { getChunks, unifiedMergeView } from "@codemirror/merge";
-import { EditorView, scrollPastEnd, type ViewUpdate } from "@codemirror/view";
-import { useSelector } from "@tanstack/react-store";
-import CodeMirror from "@uiw/react-codemirror";
-import { ClipboardPaste, XCircle } from "lucide-react";
-import { useEffect, useEffectEvent, useState, type RefObject } from "react";
-import { toast } from "sonner";
-import { FormattingToolbar } from "./FormattingToolbar";
+import { usePreferences } from "@/features/account/queries";
+import { showPendingAgentDiffsAtom } from "@/features/agent/model/store";
+import { useIsAgentEnabled } from "@/features/agent/settings/modelSettings";
 import { useCommentHighlights } from "@/features/comments/useCommentThreads";
+import { readDraft, updateDraft, useDraft } from "@/features/files/draft";
+import {
+  focusRequestAtom,
+  openFile,
+  useActiveFile,
+  useFileContent,
+  useSaveFile,
+} from "@/features/files/file";
+import { getMarkdownFiles, toMarkdownFilename } from "@/shared/github";
+import { useIsDarkMode, useIsMobile } from "@/shared/useMediaQuery";
+import { redoDepth, undoDepth } from "@codemirror/commands";
+import { getChunks, getOriginalDoc, originalDocChangeEffect } from "@codemirror/merge";
+import { ChangeSet, EditorState, Transaction } from "@codemirror/state";
+import { EditorView, type ViewUpdate } from "@codemirror/view";
+import { useSelector } from "@tanstack/react-store";
+import { ClipboardPaste, XCircle } from "lucide-react";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { toast } from "sonner";
 
-const UPLOADING_PLACEHOLDER = "_Uploading image..._";
-
-/** Inserts an image into the editor, after uploading it. */
-async function insertImage(view: EditorView, gistId: string, image: File, asHtml: boolean) {
-  const { from } = view.state.selection.main;
-  const placeholder = { from, to: from + UPLOADING_PLACEHOLDER.length };
-  view.dispatch({ changes: { from, insert: UPLOADING_PLACEHOLDER } });
-
-  try {
-    const url = await uploadImage(gistId, image);
-    const markup = asHtml ? `<img src="${url}" />` : `![Image](${url})`;
-    view.dispatch({ changes: { ...placeholder, insert: markup } });
-  } catch {
-    view.dispatch({ changes: { ...placeholder, insert: "" } });
-    toast.error("Failed to upload image");
-  }
-}
-
-const getImageFile = (items: DataTransferItemList) =>
-  Array.from(items)
-    .find((item) => item.kind === "file" && item.type.startsWith("image/"))
-    ?.getAsFile();
-
+/** The editor for the active file, which hosts CodeMirror (see `extensions`), and keeps it configured. */
 export function EditorPane({
   revision,
   previewRef,
 }: {
   /** The past revision that's being viewed (if any), which is shown read-only, with its changes. */
-  revision: Revision | null;
-  previewRef: RefObject<HTMLDivElement | null>;
+  revision: { version: string; content: string; previousContent: string } | null;
+  /** The preview beside the editor (if it's shown), which scrolls along with it. */
+  previewRef: RefObject<HTMLDivElement | null> | null;
 }) {
   const file = useActiveFile();
   const preferences = usePreferences();
-  const editorTheme = useEditorTheme();
+  const theme = useIsDarkMode() ? darkTheme : lightTheme;
+  const isMobile = useIsMobile();
   const isAgentEnabled = useIsAgentEnabled();
   const draft = useDraft(file);
   const documentContent = useFileContent(file);
@@ -77,32 +54,122 @@ export function EditorPane({
   const highlights = useCommentHighlights(file);
   const showPendingAgentDiffs = useSelector(showPendingAgentDiffsAtom);
   const view = useSelector(editorViewAtom);
-  const isSplitMode = useEditorMode()[0] === "split";
   const focusRequest = useSelector(focusRequestAtom);
   const [dragOverlay, setDragOverlay] = useState<"image" | "unsupported" | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  const isViewingRevision = !!revision;
+  const isRevision = !!revision;
   const content = revision?.content ?? documentContent;
+  const original = revision?.previousContent ?? file.savedContent;
   const showDiff =
-    preferences.showDiffs ||
-    (!!draft?.hasPendingAgentEdit && showPendingAgentDiffs) ||
-    isViewingRevision;
+    preferences.showDiffs || (!!draft?.hasPendingAgentEdit && showPendingAgentDiffs) || isRevision;
+  const collapseUnchanged = !!draft?.hasPendingAgentEdit || isRevision;
 
-  // Frontmatter is hidden from the editor (unless the user opts to see it),
-  // and restored whenever the visible content changes.
-  const { content: body, frontMatterYaml } = splitFrontMatter(content);
-  const getVisibleContent = (content: string) =>
-    preferences.showFrontmatter ? content : splitFrontMatter(content).content;
-  const restoreFrontmatter = (visibleContent: string) =>
-    preferences.showFrontmatter ? visibleContent : withFrontMatter(visibleContent, frontMatterYaml);
+  const extensions = dynamicExtensions({
+    theme,
+    preferences,
+    gistId: file.gistId,
+    otherFiles: getMarkdownFiles(file.gist).filter((name) => name !== file.filename),
+    isAgentEnabled,
+    highlights,
+    isMobile,
+    openWikilink: (link) => {
+      const filename = toMarkdownFilename(link);
+      if (file.gist?.files[filename]) openFile(file.gistId, filename);
+      else toast.error(`No file named "${link}" exists in this gist`);
+    },
+  });
 
-  // Clear the published view, once this editor goes away.
-  useEffect(() => () => editorViewAtom.set(null), []);
+  const onUpdate = useEffectEvent((update: ViewUpdate) => {
+    // The editor's own changes are the file's draft (the file's changes from elsewhere, e.g. the
+    // agent's settings, are dispatched to the editor as remote; see below)
+    if (update.docChanged && !update.transactions.some((tr) => tr.annotation(Transaction.remote))) {
+      updateDraft(file, { content: update.state.doc.toString() });
+    }
 
-  // Keep the preview scrolled to the same relative position as the editor (in split mode).
+    if (update.selectionSet || update.docChanged) {
+      const { from, to } = update.state.selection.main;
+      editorStatusAtom.set({
+        hasSelection: from !== to,
+        canUndo: undoDepth(update.state) > 0,
+        canRedo: redoDepth(update.state) > 0,
+      });
+    }
+
+    // Once the user has accepted each of the agent's changes, then save them.
+    const isAcceptingAgentEdit =
+      readDraft(file)?.hasPendingAgentEdit &&
+      update.transactions.some((tr) => tr.isUserEvent("accept"));
+
+    if (isAcceptingAgentEdit && !getChunks(update.state)?.chunks.length) queueMicrotask(save);
+  });
+
+  // An editor is created for each file (or revision of it), from what's current at the time
+  const createEditor = useEffectEvent(() => {
+    editorStatusAtom.set({ hasSelection: false, canUndo: false, canRedo: false });
+
+    return new EditorView({
+      parent: parentRef.current!,
+      doc: content,
+      extensions: [
+        baseExtensions,
+        EditorState.readOnly.of(isRevision),
+        EditorView.updateListener.of(onUpdate),
+        dynamic.of(extensions),
+        diff.of([]),
+      ],
+    });
+  });
+
+  // (Before the pane is painted, so that switching files doesn't flash an empty pane)
+  useLayoutEffect(() => {
+    const view = createEditor();
+    editorViewAtom.set(view);
+
+    return () => {
+      view.destroy();
+      editorViewAtom.set(null);
+    };
+  }, [file.key, revision?.version]);
+
   useEffect(() => {
-    const preview = previewRef.current;
-    if (!view || !preview || !isSplitMode) return;
+    view?.dispatch({ effects: dynamic.reconfigure(extensions) });
+  }, [view, extensions]);
+
+  // The diff is its own compartment, since its state (which outlives reconfiguration) is only
+  // initialized when it's added. Before painting, so a revision opens with its changes.
+  useLayoutEffect(() => {
+    if (!view) return;
+
+    const extension = showDiff ? diffExtension({ original, isRevision, collapseUnchanged }) : [];
+    view.dispatch({ effects: diff.reconfigure(extension) });
+    if (!showDiff) return;
+
+    // The original it was added with is kept, so it's updated once the file is saved
+    const baseline = getOriginalDoc(view.state);
+    if (baseline.toString() === original) return;
+
+    const changes = ChangeSet.of(
+      { from: 0, to: baseline.length, insert: original },
+      baseline.length,
+    );
+    view.dispatch({ effects: originalDocChangeEffect(view.state, changes) });
+  }, [view, showDiff, original, isRevision, collapseUnchanged]);
+
+  // The editor follows the file's changes from elsewhere (its own are the draft; see `onUpdate`)
+  useEffect(() => {
+    if (!view || view.state.doc.toString() === content) return;
+
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: content },
+      annotations: Transaction.remote.of(true),
+    });
+  }, [view, content]);
+
+  // Keep the preview scrolled to the same relative position as the editor.
+  useEffect(() => {
+    const preview = previewRef?.current;
+    if (!view || !preview) return;
 
     const syncScroll = () => {
       const { scrollTop, clientHeight } = view.scrollDOM;
@@ -112,7 +179,7 @@ export function EditorPane({
 
     view.scrollDOM.addEventListener("scroll", syncScroll);
     return () => view.scrollDOM.removeEventListener("scroll", syncScroll);
-  }, [view, previewRef, isSplitMode]);
+  }, [view, previewRef]);
 
   // Focus the editor when it's requested (e.g. for a new file), once the file's editor exists.
   const focusIfRequested = useEffectEvent(() => {
@@ -125,91 +192,25 @@ export function EditorPane({
   });
   useEffect(() => focusIfRequested(), [view, focusRequest]);
 
-  const onCreateEditor = (view: EditorView) => {
-    editorViewAtom.set(view);
-    editorStatusAtom.set({ hasSelection: false, canUndo: false, canRedo: false });
-  };
-
-  const onUpdate = (update: ViewUpdate) => {
-    if (update.selectionSet || update.docChanged) {
-      const { from, to } = update.state.selection.main;
-      // (CodeMirror compacts its history, so query it rather than tracking it)
-      const noop = { state: update.state, dispatch: () => {} };
-      editorStatusAtom.set({ hasSelection: from !== to, canUndo: undo(noop), canRedo: redo(noop) });
-    }
-
-    // Once the user has accepted each of the agent's changes, then save them.
-    const isAcceptingAgentEdit =
-      readDraft(file)?.hasPendingAgentEdit &&
-      update.transactions.some((tr) => tr.isUserEvent("accept"));
-
-    if (isAcceptingAgentEdit && !getChunks(update.state)?.chunks.length) queueMicrotask(save);
-  };
-
-  const openWikilink = (link: string) => {
-    const filename = toMarkdownFilename(link);
-    if (file.gist?.files[filename]) openFile(file.gistId, filename);
-    else toast.error(`No file named "${link}" exists in this gist`);
-  };
-
-  const otherFiles = getMarkdownFiles(file.gist).filter((name) => name !== file.filename);
-
-  const extensions = [
-    yamlFrontmatter({ content: markdown() }),
-    markdown(),
-    EditorView.lineWrapping,
-    createEditorCompletions(otherFiles, isAgentEnabled),
-    assetUrlShortener,
-    codeFenceMarker([
-      { type: "tldraw", color: "purple" },
-      { type: "toc", color: "blue" },
-    ]),
-    clickableLinks(openWikilink),
-    imagePreview,
-    emdash,
-    selectionFormatting,
-    preferences.isSpellcheckEnabled ? spellChecker : [],
-    showDiff
-      ? unifiedMergeView({
-          original: getVisibleContent(revision?.previousContent ?? file.savedContent),
-          mergeControls: !isViewingRevision,
-          collapseUnchanged: draft?.hasPendingAgentEdit || isViewingRevision ? {} : undefined,
-          allowInlineDiffs: true,
-        })
-      : [],
-    highlights ? commentHighlights(highlights) : [],
-    selectionComment((text) => openComments({ quote: text })),
-    mathEquationResult,
-    scrollPastEnd(),
-  ];
-
   return (
-    <div className="grid grid-rows-[auto_1fr] h-full min-h-0">
-      {preferences.showFormattingToolbar && <FormattingToolbar disabled={isViewingRevision} />}
+    <div className="flex flex-col h-full min-h-0">
+      {preferences.showFormattingToolbar && <FormattingToolbar />}
+      {/* (Dragged files are previewed over the editor, which handles their drop; see `imageUpload`) */}
       <div
-        className="relative min-h-0 p-2"
+        className="relative flex-1 min-h-0 p-2"
         onDragOver={(e) => {
           e.preventDefault();
           const hasFile = Array.from(e.dataTransfer.items).some((item) => item.kind === "file");
           setDragOverlay(
-            !hasFile ? null : getImageFile(e.dataTransfer.items) ? "image" : "unsupported",
+            isRevision || !hasFile
+              ? null
+              : findImage(e.dataTransfer.items)
+                ? "image"
+                : "unsupported",
           );
         }}
         onDragLeave={() => setDragOverlay(null)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOverlay(null);
-          const image = getImageFile(e.dataTransfer.items);
-          if (image && view && file.gistId)
-            insertImage(view, file.gistId, image, preferences.pasteImagesAsHtml);
-        }}
-        onPaste={(e) => {
-          const image = getImageFile(e.clipboardData.items);
-          if (!image || !view || !file.gistId) return;
-
-          e.preventDefault();
-          insertImage(view, file.gistId, image, preferences.pasteImagesAsHtml);
-        }}
+        onDrop={() => setDragOverlay(null)}
       >
         {dragOverlay && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
@@ -226,23 +227,9 @@ export function EditorPane({
             </span>
           </div>
         )}
-        <CodeMirror
-          key={`${file.key}/${revision?.version}`}
-          value={preferences.showFrontmatter ? content : body}
-          height="100%"
-          className="h-full"
-          theme={editorTheme}
-          basicSetup={{
-            lineNumbers: preferences.showLineNumbers,
-            foldGutter: preferences.showLineNumbers,
-          }}
-          readOnly={isViewingRevision}
-          extensions={extensions}
-          onChange={(value) => updateDraft(file, { content: restoreFrontmatter(value) })}
-          onUpdate={onUpdate}
-          onCreateEditor={onCreateEditor}
-        />
+        <div ref={parentRef} className="h-full" />
       </div>
+      <FormattingBubble />
     </div>
   );
 }

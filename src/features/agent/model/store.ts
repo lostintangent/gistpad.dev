@@ -1,8 +1,10 @@
 import { closeComments } from "@/features/comments/store";
 import { persistedAtom } from "@/shared/persistedAtom";
 import { createStore, useSelector } from "@tanstack/react-store";
-import type { Answer, AgentProgress, Review } from "../openai";
+import type { Answer } from "../ask/answer";
+import type { Review } from "../review/review";
 import type { AgentMode } from "./modes";
+import type { AgentProgress } from "./request";
 
 /** The answer to a question, which is displayed above the composer (and is empty while it's thinking). */
 export interface AgentAnswer extends Answer, AgentProgress {}

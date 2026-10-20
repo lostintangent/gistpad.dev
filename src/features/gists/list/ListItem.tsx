@@ -1,5 +1,5 @@
 import { openFile } from "@/features/files/file";
-import { closeMobilePanels } from "@/features/editor/layout";
+import { closeMobilePanels } from "@/features/workbench/layout/state";
 import { cn } from "cn";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";

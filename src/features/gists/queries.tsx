@@ -106,9 +106,12 @@ export function useGist(gistId: string | undefined) {
   });
 }
 
+/** Reads a gist (including its file contents), fetching it if it isn't already cached. */
+export const readGist = (gistId: string) => queryClient.query(gistQueries.detail(gistId));
+
 /** Reads the content of a file, fetching the gist if it isn't already cached. */
 export async function readFile(gistId: string, filename?: string) {
-  const gist = await queryClient.query(gistQueries.detail(gistId));
+  const gist = await readGist(gistId);
   return gist.files[filename ?? github.getDefaultFile(gist)]?.content ?? "";
 }
 

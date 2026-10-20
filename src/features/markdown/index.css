@@ -118,6 +118,22 @@
   color: light-dark(hsl(0 0% 98%), hsl(0 0% 100%));
 }
 
+/* Wikilinks (in the preview, and in the editor) */
+
+.wikilink {
+  color: var(--primary);
+  cursor: pointer;
+  background: var(--muted);
+  padding: 0 4px;
+  border-radius: 4px;
+  margin: 0 -2px;
+}
+
+.wikilink:hover {
+  background: color-mix(in oklab, var(--accent) 50%, transparent);
+  text-decoration: underline;
+}
+
 /* Task lists */
 
 li.task-list-item {

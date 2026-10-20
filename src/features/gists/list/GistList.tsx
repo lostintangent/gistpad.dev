@@ -1,6 +1,6 @@
 import CreateGistButton from "../CreateGistButton";
 import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
+import { CommandButton } from "@/features/commands/CommandButton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import {
   InputGroup,
@@ -10,13 +10,12 @@ import {
 } from "@/shared/ui/input-group";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { useOpenTodaysNote } from "../actions";
 import type { Gist } from "@/shared/github";
 import { useGists, useStarredGists } from "../queries";
 import { usePreferences } from "@/features/account/queries";
 import { useActiveFile } from "@/features/files/file";
 import { createAtom, useAtom } from "@tanstack/react-store";
-import { Calendar, Tag, X } from "lucide-react";
+import { Tag, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { DailyNotes } from "./DailyNotes";
 import { GistItem } from "./GistItem";
@@ -41,7 +40,6 @@ export default function GistList({
   const starredGists = useStarredGists();
   const { tags, gistTags, pinnedGists, showArchivedGists, showStarredGists } = usePreferences();
   const { gistId: openGistId } = useActiveFile();
-  const openTodaysNote = useOpenTodaysNote();
 
   const [filter, setFilter] = useAtom(filterAtom);
   const updateFilter = (changes: Partial<typeof filter>) =>
@@ -137,14 +135,12 @@ export default function GistList({
             <div className="p-4">
               <p className="mb-6 text-center">You don't appear to have any gists...yet!</p>
               <div className="flex justify-center gap-2">
-                <Button
+                <CommandButton
+                  command="notes.today"
                   variant="outline"
-                  size="sm"
-                  onClick={openTodaysNote}
-                  title="Open today's note"
-                >
-                  <Calendar />
-                </Button>
+                  size="icon-sm"
+                  className="w-9"
+                />
                 <CreateGistButton />
               </div>
             </div>

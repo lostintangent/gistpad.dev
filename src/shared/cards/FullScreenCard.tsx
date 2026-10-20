@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
-import iconUrl from "@/assets/icon.png";
+import iconUrl from "@/assets/icon.svg";
 
 interface FullScreenCardProps {
   description?: string;

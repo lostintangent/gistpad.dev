@@ -1,4 +1,3 @@
-import type { GistComment } from "@/shared/github";
 import {
   Agent,
   isOpenAIResponsesRawModelStreamEvent,
@@ -8,63 +7,17 @@ import {
   type Tool,
 } from "@openai/agents";
 import { JSONParser, type ParsedElementInfo } from "@streamparser/json";
-import type { AgentMode } from "../model/modes";
+import { answerSchema, createAnswerParser } from "../ask/answer";
+import { gistTools } from "../model/gistTools";
+import { getAgentPrompt, type AgentRequest } from "../model/request";
+import { researchTool } from "../research/research";
+import { createReviewParser, REVIEW_TOOL, reviewTool } from "../review/review";
 import { agentModelAtom } from "../settings/modelSettings";
-import { answerSchema, createAnswerParser, type Answer } from "./answer";
 import { createOpenAIClient } from "./client";
-import { referencesAsContext, userCommentsAsContext, type AdditionalReference } from "./context";
-import { editTool } from "./edit";
-import { gistTools } from "./gistTools";
-import {
-  customInstructionsAsContext,
-  getAgentInstructions,
-  type Capabilities,
-  type CustomInstructions,
-} from "./instructions";
-import { researchTool } from "./research";
-import { createReviewParser, REVIEW_TOOL, reviewTool, type Review } from "./review";
+import { editTool, toSdkTool } from "./tools";
 
-/** The document (or selection) that the user is asking the agent about. */
-export interface AgentDocument {
-  path: string;
-  title?: string;
-  content: string;
-  isSelection: boolean;
-}
-
-/** What the agent is doing, while it's working on a response. */
-export interface AgentProgress {
-  reasoningSummary: string | null;
-  isWebSearching: boolean;
-}
-
-export interface AgentRequest {
-  /** The kind of response that the user asked for, where "auto" lets the agent decide. */
-  mode: Exclude<AgentMode, "research"> | "auto";
-  prompt: string;
-  document?: AgentDocument;
-  instructions: CustomInstructions;
-  references?: AdditionalReference[];
-  userComments?: GistComment[];
-  /** Continues a previous conversation (e.g. to refine an edit, or ask a follow-up question). */
-  previousResponseId?: string;
-  signal: AbortSignal;
-
-  onProgress: (progress: Partial<AgentProgress>) => void;
-  /** Called as an answer streams in (once it has some text). */
-  onAnswer: (answer: Answer) => void;
-  /** Called when the agent starts writing an edit (before it's applied). */
-  onEditStart: () => void;
-  /** Applies an edit to the document, by replacing its content (or selection). */
-  onEdit: (content: string) => Promise<void>;
-  /** Called when the agent starts writing a review (whose changes then stream in). */
-  onReviewStart: () => void;
-  onReview: (changes: Partial<Review>) => void;
-  /** Called once the review is complete (while the agent finishes responding). */
-  onReviewEnd: () => void;
-  /** Starts a research task (which is only available when this is provided). */
-  onResearch?: (topic: string) => Promise<void>;
-}
+// Runs the agent with the Agents SDK (and OpenAI's Responses API), and maps the response's stream of
+// events to the request's callbacks (e.g. the answer, or review, that's being written).
 
 /** Creates a parser for streaming JSON, which ignores any invalid JSON (e.g. a truncated response). */
 function createJsonParser(onValue: (info: ParsedElementInfo) => void) {
@@ -79,30 +32,25 @@ function createJsonParser(onValue: (info: ParsedElementInfo) => void) {
   };
 }
 
-const escapeAttribute = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-
 /**
  * Responds to a request, by answering it, editing or reviewing the current document, or starting
  * a research task (depending on the mode, and what the agent decides). Returns the response's
  * ID, which allows continuing the conversation.
  */
 export async function runAgent(request: AgentRequest) {
-  const { mode, document, signal } = request;
-  const capabilities: Capabilities = {
-    canEdit: !!document && (mode === "auto" || mode === "edit"),
-    canReview: !!document && (mode === "auto" || mode === "review"),
-    canResearch: mode === "auto" && !!request.onResearch,
-    mode: mode === "auto" ? undefined : mode,
-  };
+  const { document, signal } = request;
+  const { capabilities, instructions, input } = getAgentPrompt(request);
 
-  const tools: Tool[] = [webSearchTool(), ...gistTools];
+  const tools: Tool[] = [webSearchTool(), ...gistTools.map((gistTool) => toSdkTool(gistTool))];
   if (document && capabilities.canEdit) tools.push(editTool(document, request.onEdit));
-  if (capabilities.canReview) tools.push(reviewTool(request.onReviewEnd));
-  if (request.onResearch && capabilities.canResearch) tools.push(researchTool(request.onResearch));
+  if (capabilities.canReview) tools.push(toSdkTool(reviewTool(request.onReviewEnd)));
+  if (request.onResearch && capabilities.canResearch) {
+    tools.push(toSdkTool(researchTool(request.onResearch)));
+  }
 
   const agent = new Agent({
     name: "GistPad",
-    instructions: getAgentInstructions(capabilities),
+    instructions,
     model: new OpenAIResponsesModel(createOpenAIClient(), agentModelAtom.get()),
     modelSettings: {
       // Its reasoning is summarized as it streams in, which is displayed as its progress
@@ -112,22 +60,6 @@ export async function runAgent(request: AgentRequest) {
     outputType: answerSchema,
     tools,
   });
-
-  const documentContext =
-    document &&
-    `<current_document path="${escapeAttribute(document.path)}"${
-      document.title ? ` title="${escapeAttribute(document.title)}"` : ""
-    }${document.isSelection ? ' selection="true"' : ""}>\n${document.content}\n</current_document>`;
-
-  const input = [
-    `<request>${request.prompt}</request>`,
-    documentContext,
-    userCommentsAsContext(request.userComments),
-    referencesAsContext(request.references),
-    customInstructionsAsContext(request.instructions, capabilities),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
 
   const stream = await run(agent, input, {
     stream: true,

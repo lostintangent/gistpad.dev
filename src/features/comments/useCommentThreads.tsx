@@ -1,5 +1,5 @@
 import type { ActiveFile } from "@/features/files/file";
-import { useIsViewingRevision } from "@/features/editor/history/revision";
+import { useIsViewingRevision } from "@/features/workbench/workspace/history/revision";
 import { usePreferences } from "@/features/account/queries";
 import { buildCommentThreads, getQuotedCommentThreads, type CommentHighlights } from "./threads";
 import { commentsStore } from "./store";

@@ -1,12 +1,9 @@
 import { Badge } from "@/shared/ui/badge";
-import {
-  DropdownMenuCheckboxItem,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/shared/ui/dropdown-menu";
+import { DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/shared/ui/dropdown-menu";
 import { usePreferences, useTagCounts, type TagData } from "@/features/account/queries";
-import { Tag } from "lucide-react";
-import { editTagsDialog } from "./dialogs/EditTagsDialog";
+import { CommandDropdownItem } from "@/features/commands/CommandDropdownItem";
+import { executeCommand } from "@/features/commands/registry";
+import { manageTagsCommand, tagCommands } from "./tagCommands";
 
 function isLightColor(hex: string) {
   const rgb = parseInt(hex.replace("#", ""), 16);
@@ -51,24 +48,22 @@ export function TagMenuItems({
 
   return (
     <>
-      {Object.entries(tags).map(([id, tag]) => (
-        <DropdownMenuCheckboxItem
-          key={id}
-          checked={tagIds.includes(id)}
-          onCheckedChange={(checked) =>
-            onChange(checked ? [...tagIds, id] : tagIds.filter((tagId) => tagId !== id))
-          }
-        >
-          <TagBadge tag={tag} count={tagCounts[id]} />
-        </DropdownMenuCheckboxItem>
-      ))}
+      {tagCommands(tags, tagIds, onChange).map((command) => {
+        const id = command.tagId;
+        return (
+          <DropdownMenuCheckboxItem
+            key={id}
+            checked={command.checked}
+            onCheckedChange={() => void executeCommand(command)}
+          >
+            <TagBadge tag={tags[id]} count={tagCounts[id]} />
+          </DropdownMenuCheckboxItem>
+        );
+      })}
       {canManage && (
         <>
           {Object.keys(tags).length > 0 && <DropdownMenuSeparator />}
-          <DropdownMenuItem onClick={() => editTagsDialog.open(null)}>
-            <Tag />
-            Manage tags
-          </DropdownMenuItem>
+          <CommandDropdownItem command={manageTagsCommand} />
         </>
       )}
     </>

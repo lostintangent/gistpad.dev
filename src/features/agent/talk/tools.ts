@@ -1,0 +1,255 @@
+import { closeComments, openComments } from "@/features/comments/store";
+import { EDITOR_MODES, type EditorMode } from "@/features/workbench/layout/mode";
+import { openFile, type ActiveFile } from "@/features/files/file";
+import { deleteCommand } from "@/features/gists/commands";
+import { toMarkdownFilename } from "@/shared/github";
+import { uploadImage } from "@/shared/supabase";
+import { toast } from "sonner";
+import { z } from "zod";
+import { gistTools } from "../model/gistTools";
+import type { AgentMode } from "../model/modes";
+import type { AgentTool } from "../model/tools";
+import { playChime } from "../shared/chime";
+
+/** The (latest) state and actions of the editor, when a talk tool is called. */
+export interface TalkToolContext {
+  file: ActiveFile;
+  /**
+   * Runs an agent command, and describes its result for the assistant (e.g. the answer that's
+   * displayed), which only asks it to respond when the result isn't what it asked for (e.g. the
+   * agent asked for clarification). Throws if it doesn't complete (e.g. because it failed).
+   */
+  runCommand: (command: string, mode: AgentMode) => Promise<TalkToolResult>;
+  addFile: (filename: string, content?: string) => Promise<void>;
+  createGist: (description: string, content?: string) => Promise<void>;
+  save: () => Promise<void>;
+  setEditorMode: (mode: EditorMode) => void;
+  muteMicrophone: () => void;
+  endConversation: () => void;
+}
+
+/** A message for the assistant (about the tool call), and whether it should respond to it. */
+export type TalkToolResult = string | void | { successMessage?: string; requestResponse?: boolean };
+
+export interface TalkTool<Parameters extends z.ZodObject = z.ZodObject> {
+  name: string;
+  description: string;
+  parameters?: Parameters;
+  /**
+   * Whether the tool changes the user's gist (beyond drafting edits), so it can't be called for
+   * other people's gists (which can only be forked).
+   */
+  requiresOwnership?: boolean;
+  /** Performs the tool call, and throws if it fails (so the assistant can let the user know). */
+  handler(
+    args: z.infer<Parameters>,
+    context: TalkToolContext,
+  ): TalkToolResult | Promise<TalkToolResult>;
+}
+
+/** Defines a tool (whose handler's arguments are inferred from its parameters). */
+const talkTool = <Parameters extends z.ZodObject>(tool: TalkTool<Parameters>) => tool;
+
+/** Adapts one of the agent's tools, and asks the assistant to respond with its result. */
+const fromAgentTool = ({ execute, ...tool }: AgentTool) =>
+  talkTool({
+    ...tool,
+    handler: async (args) => ({ successMessage: await execute(args), requestResponse: true }),
+  });
+
+/** The tools that the voice assistant can call. */
+export const talkTools: TalkTool[] = [
+  ...gistTools.map(fromAgentTool),
+  talkTool({
+    name: "end_conversation",
+    description: "End the current voice conversation when explicitly requested by the user.",
+    handler: (_, { endConversation }) => endConversation(),
+  }),
+  talkTool({
+    name: "mute_microphone",
+    description: "Mute the user's microphone when they explicitly ask to mute.",
+    handler: (_, { muteMicrophone }) => muteMicrophone(),
+  }),
+  talkTool({
+    name: "open_gist_file",
+    description:
+      "Open a specific file in the current gist when explicitly requested by the user. It's important that you only open files that are specifically part of the current gist. Do not open any other files. If the user asks you to open a file that doesn't exist, then kindle tell them it doesn't exist.",
+    parameters: z.object({
+      filename: z.string().describe("The name of the file to open in the current gist."),
+    }),
+    handler: ({ filename }, { file }) => {
+      openFile(file.gistId, toMarkdownFilename(filename));
+    },
+  }),
+  talkTool({
+    name: "open_url",
+    description: "Open a URL in a new browser tab when explicitly requested by the user.",
+    parameters: z.object({
+      url: z.string().describe("The URL to open in a new browser tab."),
+    }),
+    handler: ({ url }) => {
+      window.open(url, "_blank");
+      return "URL successfully opened in a new tab.";
+    },
+  }),
+  talkTool({
+    name: "create_gist",
+    description: "Create a new gist with a specific description and content.",
+    parameters: z.object({
+      description: z
+        .string()
+        .describe("The short title of the gist, that briefly describes its purpose and content."),
+      content: z.string().describe("The initial content for the newly created gist."),
+    }),
+    handler: async ({ description, content }, { createGist }) => {
+      await createGist(description, content);
+      await playChime();
+    },
+  }),
+  talkTool({
+    name: "change_view_mode",
+    description:
+      "Switch between the various view modes for the current document: edit, preview, and split (edit + preview).",
+    parameters: z.object({
+      mode: z.enum(EDITOR_MODES).describe("The view mode to switch to."),
+    }),
+    handler: ({ mode }, { setEditorMode }) => {
+      // Split mode is displayed as preview mode on mobile
+      setEditorMode(mode);
+      return `Switched to ${mode} mode.`;
+    },
+  }),
+  talkTool({
+    name: "edit_gist",
+    description:
+      "Edit the contents of the currently viewed gist. And if you need to add a reference/link to another file in the gist, you can do so using wiki link syntax (e.g. [[foo]]).",
+    parameters: z.object({
+      request: z
+        .string()
+        .describe("A natural language description of the edits to make to the current document."),
+    }),
+    handler: ({ request }, { runCommand }) => runCommand(request, "edit"),
+  }),
+  talkTool({
+    name: "generate_image",
+    description:
+      "Generate an image based on a prompt, and get its URL (which can then be inserted into the document by calling edit_gist).",
+    parameters: z.object({
+      prompt: z.string().describe("The full prompt to use for generating the image."),
+      summary: z
+        .string()
+        .describe("A short description (3-5 words) that summarizes the image being generated."),
+    }),
+    handler: async ({ prompt, summary }, { file }) => {
+      const generate = async () => {
+        const { generateImage } = await import("../openai");
+        return uploadImage(file.gistId!, await generateImage(prompt));
+      };
+
+      const imageUrl = await toast
+        .promise(generate(), {
+          loading: `Generating image ("${summary}")...`,
+          error: "Failed to generate the image.",
+        })
+        .unwrap();
+
+      return { successMessage: `Image generated: ${imageUrl}.`, requestResponse: true };
+    },
+    requiresOwnership: true,
+  }),
+  talkTool({
+    name: "add_gist_file",
+    description: "Add a new file to the currently viewed gist.",
+    parameters: z.object({
+      filename: z
+        .string()
+        .describe(
+          "The name of the file to add to the current gist. This value must be a valid filename, and therefore, exclude things like emojis, slashes, etc.",
+        ),
+      content: z.string().describe("The content of the file to add to the current gist."),
+      userRequested: z
+        .boolean()
+        .describe(
+          "Indicates whether this edit is being made in response to a direct user request, or whether its an edit being made based on the instructions of the conversation.",
+        ),
+    }),
+    handler: async ({ filename, content, userRequested }, { addFile }) => {
+      await addFile(toMarkdownFilename(filename), content);
+
+      if (userRequested) await playChime();
+      return {
+        successMessage: `We are now viewing the "${filename}" file, which is included in the gist.`,
+        requestResponse: !userRequested,
+      };
+    },
+    requiresOwnership: true,
+  }),
+  talkTool({
+    name: "delete_gist",
+    description:
+      "Delete the currently viewed gist or gist file (when the gist has multiple files).",
+    // Deleting requires confirmation, so this only opens the delete dialog
+    handler: (_, { file }) => {
+      if (file.gist) deleteCommand(file.gist, file.filename).run();
+    },
+    requiresOwnership: true,
+  }),
+  talkTool({
+    name: "generate_review_comments",
+    description:
+      "Generate review feedback/thoughts/comments/suggestions about the current document. Only call this when the user explicitly asks for 'comments' or a 'review' about a specific topic.",
+    parameters: z.object({
+      topic: z
+        .string()
+        .describe(
+          "The topic that the user wants review comments/feedback about, including any context or details that are necessary to fulfill the request.",
+        ),
+    }),
+    handler: ({ topic }, { runCommand }) => runCommand(topic, "review"),
+  }),
+  talkTool({
+    name: "show_answer",
+    description:
+      "Show the user a written answer (e.g. a table, list, or summary), which is displayed alongside the document. Only call this when the user asks to see something, as opposed to just hearing it.",
+    parameters: z.object({
+      question: z
+        .string()
+        .describe(
+          "The question (or request) that the answer should address, including any context from the conversation that's necessary to answer it.",
+        ),
+    }),
+    handler: ({ question }, { runCommand }) => runCommand(question, "ask"),
+  }),
+  talkTool({
+    name: "perform_research",
+    description:
+      "Kick off an asynchronous research task about a specific topic. Only call this when the user explicitly asks for 'research' about a specific topic.",
+    parameters: z.object({
+      topic: z
+        .string()
+        .describe(
+          "The topic that should be researched asynchronously, along with any details about the content and/or format you'd like generated.",
+        ),
+    }),
+    handler: ({ topic }, { runCommand }) => runCommand(topic, "research"),
+  }),
+  talkTool({
+    name: "save_gist",
+    description:
+      "Save the currently edited gist or file. Only do this if the user explicitly asks. Otherwise, make edits using the edit_gist function.",
+    handler: (_, { save }) => save(),
+    requiresOwnership: true,
+  }),
+  talkTool({
+    name: "toggle_comment_sidebar",
+    description: "Show or hide the comment sidebar.",
+    parameters: z.object({
+      visible: z.boolean().describe("Whether the comment sidebar should be visible."),
+    }),
+    handler: ({ visible }) => {
+      if (visible) openComments();
+      else closeComments();
+      return `Comment sidebar ${visible ? "opened" : "closed"}.`;
+    },
+  }),
+];

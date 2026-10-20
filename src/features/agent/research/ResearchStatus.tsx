@@ -3,7 +3,7 @@ import { ScrollableText } from "@/shared/ScrollableText";
 import { useTransientState } from "@/shared/useTransientState";
 import { Button } from "@/shared/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Bell, Check, CircleStop, Clipboard, Loader2 } from "lucide-react";
+import { Bell, Check, Clipboard, Loader2, Square } from "lucide-react";
 import { useState } from "react";
 import { cn } from "cn";
 import ResearchResultsDialog from "./ResearchResultsDialog";
@@ -31,7 +31,7 @@ export default function ResearchStatus({ className }: { className?: string }) {
       <Popover>
         <PopoverTrigger
           className={cn(
-            "relative flex items-center justify-center size-8 rounded-full cursor-pointer text-purple-500 bg-purple-600/15",
+            "relative flex items-center justify-center size-8 rounded-full cursor-pointer text-accent bg-accent/15",
             className,
           )}
           aria-label="Research tasks"
@@ -45,7 +45,7 @@ export default function ResearchStatus({ className }: { className?: string }) {
             <>
               <Bell className="h-4 w-4" />
               {hasUnseenResults && (
-                <span className="absolute top-0 right-0 bg-blue-500 rounded-full w-2 h-2" />
+                <span className="absolute top-0 right-0 bg-blue-500 rounded-full size-2 ring-2 ring-backdrop" />
               )}
             </>
           )}
@@ -62,37 +62,31 @@ export default function ResearchStatus({ className }: { className?: string }) {
                   setActiveTaskId(task.id);
                 }}
               >
-                <div className="flex flex-col flex-1 gap-1">
-                  <div className="flex items-center">
-                    <ScrollableText className="text-sm flex-1 w-0">
-                      {task.title || task.topic}
-                    </ScrollableText>
-                    {task.content && !task.hasBeenSeen && (
-                      <span className="ml-2 bg-blue-500 rounded-full w-2 h-2" />
-                    )}
-                  </div>
+                <div className="flex min-w-0 flex-col flex-1 gap-1">
+                  <ScrollableText className="text-sm">{task.title || task.topic}</ScrollableText>
                   <p className="text-xs text-muted-foreground">
                     {task.content
                       ? `Completed ${timeAgo(task.completedTime ?? task.startedTime)}`
                       : `Started ${timeAgo(task.startedTime)}`}
                   </p>
                 </div>
-                {!task.content ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="ml-3"
-                    title="Cancel research"
-                    onClick={() => cancel(task.id)}
-                  >
-                    <CircleStop className="text-red-500" />
-                  </Button>
-                ) : (
-                  task.hasBeenSeen && (
+                <div className="ml-3 flex size-6 shrink-0 items-center justify-center">
+                  {!task.content ? (
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      className="ml-3 hover:text-green-500"
+                      title="Cancel research"
+                      onClick={() => cancel(task.id)}
+                    >
+                      <Square className="text-red-500" />
+                    </Button>
+                  ) : !task.hasBeenSeen ? (
+                    <span className="bg-blue-500 rounded-full size-2" />
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      className="hover:text-green-500"
                       title="Copy results"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -106,8 +100,8 @@ export default function ResearchStatus({ className }: { className?: string }) {
                         <Clipboard />
                       )}
                     </Button>
-                  )
-                )}
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -5,7 +5,7 @@ import {
 } from "@/features/account/queries";
 import { queryOptions, useQueries } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { ResearchRequest } from "../openai";
+import type { ResearchRequest } from "./research";
 
 // Research tasks run in the background (as OpenAI responses), and are saved in the user's
 // preferences (so they survive reloads), until their results are saved or deleted.

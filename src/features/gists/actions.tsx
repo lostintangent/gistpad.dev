@@ -9,7 +9,7 @@ import {
   useDeleteFile,
 } from "./queries";
 import { useUpdatePreferences } from "@/features/account/queries";
-import { closeMobilePanels, mobilePanelAtom } from "@/features/editor/layout";
+import { closeMobilePanels, mobilePanelAtom } from "@/features/workbench/layout/state";
 import { draftAtom } from "@/features/files/draft";
 import { useActiveFile, openFile } from "@/features/files/file";
 import { useMutation } from "@tanstack/react-query";

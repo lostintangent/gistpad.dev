@@ -13,7 +13,7 @@ function createWidget(type: string, id: string = crypto.randomUUID()): WidgetSta
 /** The widgets on the dashboard (skipping any whose type no longer exists, e.g. Reddit or AI). */
 export const widgetsAtom = persistedAtom<WidgetState[]>(
   "gistpad-widget-config",
-  ["weather", "hackernews"].map((type) => createWidget(type, type)),
+  ["weather", "hackernews", "nasaapod"].map((type) => createWidget(type, type)),
   {
     parse: (value) =>
       (JSON.parse(value) as WidgetState[]).filter(({ type }) => widgetRegistry[type]),

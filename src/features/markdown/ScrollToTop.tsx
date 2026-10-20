@@ -6,10 +6,10 @@ import { ArrowUp } from "lucide-react";
  * container, and is only revealed once it's been scrolled (via a scroll-driven animation).
  * And so, it must be the last child of the scrolled content.
  */
-export function ScrollToTop({ isComposerVisible = false }: { isComposerVisible?: boolean }) {
+export function ScrollToTop({ hasBottomBar = false }: { hasBottomBar?: boolean }) {
   return (
     <div
-      className={`sticky ${isComposerVisible ? "bottom-24" : "bottom-8"} h-0 flex justify-center pointer-events-none`}
+      className={`sticky ${hasBottomBar ? "bottom-24" : "bottom-8"} h-0 flex justify-center pointer-events-none`}
     >
       <Button
         variant="ghost"

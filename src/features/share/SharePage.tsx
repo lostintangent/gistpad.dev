@@ -20,7 +20,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { getWhiteboard, useActiveFile, type ActiveFile } from "@/features/files/file";
-import LoadingSkeleton from "@/features/editor/LoadingSkeleton";
+import LoadingSkeleton from "@/shared/LoadingSkeleton";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { useTransientState } from "@/shared/useTransientState";
 import {

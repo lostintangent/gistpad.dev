@@ -4,7 +4,6 @@ import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -12,31 +11,18 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
-import { openFile } from "@/features/files/file";
-import { getGistDisplayName, isArchived, type Gist } from "@/shared/github";
-import { useDuplicateGist, useIsStarred, useToggleArchived, useToggleStarred } from "../queries";
+import { getGistDisplayName, type Gist } from "@/shared/github";
+import { useGistCommands } from "../commands";
+import { CommandDropdownItem } from "@/features/commands/CommandDropdownItem";
 import { usePreferences, useSession, useUpdatePreferences } from "@/features/account/queries";
 import { useIsAgentRunning } from "@/features/agent/model/store";
 import { draftAtom } from "@/features/files/draft";
 import { useSelector } from "@tanstack/react-store";
-import { useNavigate } from "@tanstack/react-router";
 import { cn } from "cn";
-import {
-  Archive,
-  ArchiveRestore,
-  Copy,
-  Fullscreen,
-  Link,
-  MoreHorizontal,
-  Pin,
-  Star,
-  Tag as TagIcon,
-  Trash2,
-} from "lucide-react";
+import { MoreHorizontal, Pin, Tag as TagIcon } from "lucide-react";
 import { ListItem } from "./ListItem";
 import { GistMetadata } from "./GistMetadata";
 import { TagBadge, TagMenuItems } from "../tags";
-import { deleteGistDialog } from "../dialogs/DeleteGistDialog";
 
 /**
  * A gist in the gist list, whose menu offers what can be done with it (e.g. only the user's own
@@ -60,14 +46,10 @@ export function GistItem({
     (draft) => !!draft?.fileKey.startsWith(`${gist.id}/`),
   );
 
-  const navigate = useNavigate();
-  const { mutateAsync: duplicateGist } = useDuplicateGist();
-  const { mutate: toggleArchived } = useToggleArchived();
-  const { mutate: toggleStarred } = useToggleStarred();
+  const commands = useGistCommands(gist);
 
   const isOwn = gist.owner?.login === user?.login;
   const isPinned = pinnedGists.includes(gist.id);
-  const isStarred = useIsStarred(gist.id);
 
   const name = getGistDisplayName(gist);
   // Placeholder names (e.g. "Untitled") are de-emphasized
@@ -78,17 +60,10 @@ export function GistItem({
     gistResearchTasks.some((task) => !task.content) || (isAgentRunning && isOpen);
   const hasUnseenResults = gistResearchTasks.some((task) => task.content && !task.hasBeenSeen);
 
-  const togglePinned = () =>
-    updatePreferences(({ pinnedGists }) => ({
-      pinnedGists: isPinned
-        ? pinnedGists.filter((id) => id !== gist.id)
-        : [...pinnedGists, gist.id],
-    }));
-
   const setTagIds = (tagIds: string[]) =>
     updatePreferences(({ gistTags }) => ({ gistTags: { ...gistTags, [gist.id]: tagIds } }));
 
-  const menu = (
+  const menu = commands && (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={<Button variant="ghost" size="icon-xs" aria-label="Gist options" />}
@@ -96,14 +71,8 @@ export function GistItem({
         <MoreHorizontal />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={togglePinned}>
-          <Pin />
-          {isPinned ? "Unpin gist" : "Pin gist"}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => toggleStarred(gist)}>
-          <Star />
-          {isStarred ? "Unstar gist" : "Star gist"}
-        </DropdownMenuItem>
+        <CommandDropdownItem command={commands.pin} />
+        <CommandDropdownItem command={commands.star} />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <TagIcon />
@@ -114,39 +83,15 @@ export function GistItem({
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => navigator.clipboard.writeText(`${location.origin}/#/${gist.id}`)}
-        >
-          <Link />
-          Copy URL
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            navigate({ to: "/share/$gistId/{-$filePath}", params: { gistId: gist.id } })
-          }
-        >
-          <Fullscreen />
-          View Fullscreen
-        </DropdownMenuItem>
+        <CommandDropdownItem command={commands.copyUrl} />
+        <CommandDropdownItem command={commands.fullscreen} />
         {isOwn && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={async () => openFile((await duplicateGist(gist.id)).id)}>
-              <Copy />
-              Duplicate gist
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toggleArchived(gist)}>
-              {isArchived(gist) ? <ArchiveRestore /> : <Archive />}
-              {isArchived(gist) ? "Unarchive gist" : "Archive gist"}
-            </DropdownMenuItem>
+            <CommandDropdownItem command={commands.duplicate} />
+            <CommandDropdownItem command={commands.archive} />
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => deleteGistDialog.openWithPayload({ gist })}
-            >
-              <Trash2 />
-              Delete gist
-            </DropdownMenuItem>
+            <CommandDropdownItem command={commands.delete} variant="destructive" />
           </>
         )}
       </DropdownMenuContent>

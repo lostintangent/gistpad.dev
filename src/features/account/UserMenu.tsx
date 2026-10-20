@@ -1,5 +1,4 @@
 import { timeAgo } from "@/shared/dates";
-import { SpotifyConfigDialog } from "@/features/spotify/SpotifyConfigDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,39 +23,14 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { useActiveFile, openFile } from "@/features/files/file";
-import { closeMobilePanels } from "@/features/editor/layout";
-import { useIsMobile } from "@/shared/useMediaQuery";
-import {
-  signOut,
-  usePreferences,
-  useSession,
-  useUpdatePreferences,
-  type Preferences,
-} from "./queries";
-import { Clock, LogOut, Music, Settings, Trash2 } from "lucide-react";
+import { closeMobilePanels } from "@/features/workbench/layout/state";
+import type { Command } from "@/features/commands/command";
+import { CommandDropdownItem } from "@/features/commands/CommandDropdownItem";
+import { executeCommand } from "@/features/commands/registry";
+import { usePreferences, useSession, useUpdatePreferences } from "./queries";
+import { useAccountSettingsCommands } from "./settings";
+import { Clock, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
-
-type BooleanPreference = {
-  [Key in keyof Preferences]: Preferences[Key] extends boolean ? Key : never;
-}[keyof Preferences];
-
-const GENERAL_SETTINGS: [BooleanPreference, string][] = [
-  ["isAutoSaveEnabled", "Auto-save changes"],
-  ["isSpellcheckEnabled", "Enable spell checking"],
-  ["showLineNumbers", "Show line numbers"],
-];
-
-const ADVANCED_SETTINGS: ([BooleanPreference, string] | null)[] = [
-  ["showStarredGists", "Show starred gists"],
-  ["showArchivedGists", "Show archived gists"],
-  null,
-  ["showDiffs", "Enable diff tracking"],
-  ["showFrontmatter", "Show frontmatter"],
-  ["showInlineComments", "Show inline comments"],
-  ["showFormattingToolbar", "Show formatting toolbar"],
-  null,
-  ["pasteImagesAsHtml", "Paste images as HTML"],
-];
 
 /**
  * The user's avatar, which opens a menu with their settings and recently viewed files (either
@@ -67,18 +41,17 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
   const preferences = usePreferences();
   const updatePreferences = useUpdatePreferences();
   const file = useActiveFile();
-  const isMobile = useIsMobile();
+  const commands = useAccountSettingsCommands();
 
-  const [isSpotifyDialogOpen, setIsSpotifyDialogOpen] = useState(false);
   const [isClearRecentDialogOpen, setIsClearRecentDialogOpen] = useState(false);
 
-  const settingItem = ([key, label]: [BooleanPreference, string]) => (
+  const settingItem = (command: Command) => (
     <DropdownMenuCheckboxItem
-      key={key}
-      checked={preferences[key]}
-      onCheckedChange={(checked) => updatePreferences({ [key]: checked })}
+      key={command.id}
+      checked={command.checked}
+      onCheckedChange={() => void executeCommand(command)}
     >
-      {label}
+      {command.title}
     </DropdownMenuCheckboxItem>
   );
 
@@ -138,7 +111,7 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
             </>
           )}
 
-          {GENERAL_SETTINGS.map(settingItem)}
+          {commands.general.map(settingItem)}
           <DropdownMenuSeparator />
 
           {/* The item is covered by a color input, so that clicking it opens the color picker */}
@@ -174,30 +147,16 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
               Advanced settings
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              {ADVANCED_SETTINGS.map((setting, index) =>
+              {commands.advanced.map((setting, index) =>
                 setting ? settingItem(setting) : <DropdownMenuSeparator key={index} />,
-              )}
-              {!isMobile && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setIsSpotifyDialogOpen(true)}>
-                    <Music />
-                    Configure Spotify...
-                  </DropdownMenuItem>
-                </>
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={signOut}>
-            <LogOut />
-            Sign Out
-          </DropdownMenuItem>
+          <CommandDropdownItem command="account.signOut" />
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <SpotifyConfigDialog open={isSpotifyDialogOpen} onOpenChange={setIsSpotifyDialogOpen} />
 
       <AlertDialog open={isClearRecentDialogOpen} onOpenChange={setIsClearRecentDialogOpen}>
         <AlertDialogContent>

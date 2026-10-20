@@ -26,8 +26,10 @@ const result = await Bun.build({
   },
 });
 
-// The PWA manifest refers to the app's icon by its (unhashed) URL
-await cp("src/assets/icon.png", `${outdir}/icon.png`);
+// The PWA manifest refers to the app's icons by their (unhashed) URLs
+for (const icon of ["icon-192.png", "icon-512.png"]) {
+  await cp(`src/assets/${icon}`, `${outdir}/${icon}`);
+}
 
 // Pages are lazy-loaded, but which page is being opened (the editor, or a shared gist) is known as
 // soon as index.html loads, from the URL's hash. So index.html starts downloading the page's code
@@ -56,7 +58,7 @@ function getPageChunks(page: string, startupHtml: string) {
 }
 
 const html = await Bun.file(`${outdir}/index.html`).text();
-const editorChunks = getPageChunks("src/features/editor/EditorPage.tsx", html);
+const editorChunks = getPageChunks("src/features/workbench/WorkbenchPage.tsx", html);
 const shareChunks = getPageChunks("src/features/share/SharePage.tsx", html);
 const preloadPage = `for (const href of location.hash.startsWith("#/share/") ? ${JSON.stringify(shareChunks)} : ${JSON.stringify(editorChunks)}) document.head.append(Object.assign(document.createElement("link"), { rel: "modulepreload", href }));`;
 await Bun.write(

@@ -1,20 +1,13 @@
 import { usePreferences } from "@/features/account/queries";
 import { useFileContent, type ActiveFile } from "@/features/files/file";
-import { DEFAULT_VOICE } from "../voice/voices";
+import { DEFAULT_VOICE } from "../talk/voices";
+import type { AgentCommand } from "../model/input";
 import {
   parseFrontMatter,
   parseGlobalSettings,
   type CommandSettings,
   type TalkSettings,
 } from "./frontMatter/schema";
-
-/** A custom slash command, which is defined in a file's frontmatter (or the user's global settings). */
-export interface CustomCommand {
-  name: string;
-  prompt: string;
-  description: string;
-  isGlobal: boolean;
-}
 
 /**
  * The agent's settings for a file, which combine the file's frontmatter with the user's global
@@ -31,8 +24,8 @@ export function useAgentSettings(file: ActiveFile) {
     general: {
       instructions: joinInstructions(global.general?.instructions, local.general?.instructions),
     },
-    edit: resolveCommandSettings(local.edit, global.edit),
-    review: resolveCommandSettings(local.review, global.review),
+    edit: resolveCommandSettings(local.edit, global.edit, "edit"),
+    review: resolveCommandSettings(local.review, global.review, "ask"),
     talk: resolveTalkSettings(local.talk, global.talk),
   };
 }
@@ -41,13 +34,19 @@ export function useAgentSettings(file: ActiveFile) {
  * A kind of command's settings, which add to the global ones: its instructions follow the global
  * instructions, and its commands replace any global commands with the same name.
  */
-function resolveCommandSettings(local?: CommandSettings, global?: CommandSettings) {
+function resolveCommandSettings(
+  local: CommandSettings | undefined,
+  global: CommandSettings | undefined,
+  defaultMode: AgentCommand["defaultMode"],
+) {
   // A file can replace the global settings (rather than adding to them)
   if (local?.overridesGlobalSettings) global = undefined;
 
-  const localCommands = readCommands(local, false);
+  const localCommands = readCommands(local, false, defaultMode);
   const localNames = new Set(localCommands.map(({ name }) => name));
-  const globalCommands = readCommands(global, true).filter(({ name }) => !localNames.has(name));
+  const globalCommands = readCommands(global, true, defaultMode).filter(
+    ({ name }) => !localNames.has(name),
+  );
 
   return {
     instructions: joinInstructions(global?.instructions, local?.instructions),
@@ -62,13 +61,17 @@ function resolveTalkSettings(local?: TalkSettings, global?: TalkSettings) {
 }
 
 /** A section's custom commands, where a command is a prompt (or a prompt and a description). */
-function readCommands(settings: CommandSettings | undefined, isGlobal: boolean): CustomCommand[] {
+function readCommands(
+  settings: CommandSettings | undefined,
+  isGlobal: boolean,
+  defaultMode: AgentCommand["defaultMode"],
+): AgentCommand[] {
   return Object.entries(settings?.commands ?? {}).flatMap(([name, command]) => {
     const { prompt, description = "" } =
       typeof command === "string" ? { prompt: command, description: command } : command;
 
     // Invalid commands are empty, and ignored
-    return prompt ? [{ name, prompt, description, isGlobal }] : [];
+    return prompt ? [{ name, prompt, description, isGlobal, defaultMode }] : [];
   });
 }
 

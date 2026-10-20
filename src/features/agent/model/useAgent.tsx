@@ -1,4 +1,3 @@
-import { usePreferences } from "@/features/account/queries";
 import { openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { editorViewAtom } from "@/features/editor/store";
@@ -7,15 +6,26 @@ import { useActiveFile, useFileContent, useSaveFile } from "@/features/files/fil
 import { splitFrontMatter, withFrontMatter } from "@/shared/frontMatter";
 import { getGistDescription, isEmptyContent } from "@/shared/github";
 import { toast } from "sonner";
-import type { AgentProgress, AgentRequest } from "../openai";
+import type { Answer } from "../ask/answer";
+import { classifyMode } from "../auto/classify";
 import { useResearchTasks } from "../research/useResearchTasks";
+import type { Review } from "../review/review";
 import { useAgentSettings } from "../settings/useAgentSettings";
 import { playChime } from "../shared/chime";
-import { resolveReferences } from "./commands";
-import { classifyMode, type AgentMode } from "./modes";
+import { resolveReferences, toAgentDocument } from "./context";
+import { prepareAgentInput } from "./input";
+import type { AgentMode } from "./modes";
+import type { AgentProgress, AgentRequest } from "./request";
 import { agentStore, clearReview, updateAgentResult, updateAgentState } from "./store";
 
 const IDLE_PROGRESS: AgentProgress = { reasoningSummary: null, isWebSearching: false };
+
+/** The kind of response that an agent command completed with (and its answer or review). */
+export type AgentRunResult =
+  | { mode: "ask"; answer: Answer | null }
+  | { mode: "review"; review: Review }
+  | { mode: "edit" }
+  | { mode: "research" };
 
 /**
  * Runs agent commands (ask, edit, review, research, or auto) against the active file,
@@ -24,7 +34,6 @@ const IDLE_PROGRESS: AgentProgress = { reasoningSummary: null, isWebSearching: f
 export function useAgent() {
   const file = useActiveFile();
   const content = useFileContent(file);
-  const preferences = usePreferences();
   const settings = useAgentSettings(file);
   const save = useSaveFile(file);
   const researchTasks = useResearchTasks();
@@ -51,11 +60,8 @@ export function useAgent() {
       targetContent: hasSelection ? selectedText : body,
       userComments: !hasSelection && comments.length > 0 ? comments : undefined,
       replace: (updated: string) => {
-        // The editor hides frontmatter (unless the user has opted to show it), so
-        // when the entire file is replaced, only replace the visible content.
-        if (!hasSelection && preferences.showFrontmatter) {
-          updated = withFrontMatter(updated, frontMatterYaml);
-        }
+        // (The agent is given the content without its frontmatter, which is kept when it's all replaced)
+        if (!hasSelection) updated = withFrontMatter(updated, frontMatterYaml);
 
         if (view) {
           view.dispatch({ changes: { ...range, insert: updated }, userEvent: "agent" });
@@ -80,14 +86,14 @@ export function useAgent() {
   /**
    * Responds to a command with the agent, which answers it, edits or reviews the file, or
    * starts a research task (as the mode requires, or else as it decides). Returns the kind of
-   * response it gave.
+   * response it gave (and its answer or review).
    */
   async function respond(
-    command: string,
+    input: string,
     mode: AgentRequest["mode"],
     signal: AbortSignal,
     setRunningMode: (mode: AgentMode | null) => void,
-  ): Promise<AgentMode> {
+  ): Promise<AgentRunResult> {
     // Every command continues the file's conversation, which is reset when a different file is
     // opened (which detaches the command from its file, so that it can't edit or review it).
     const fileKey = file.key;
@@ -100,6 +106,8 @@ export function useAgent() {
     const target = getCommandTarget();
     const isEmpty = isEmptyContent(target.targetContent);
     let response = "ask" as AgentMode;
+    let answer: Answer | null = null;
+    let review: Review = { title: null, comments: [], followUp: null };
 
     // Where the agent's progress (e.g. its reasoning) is displayed, which is an empty answer
     // while it's thinking (unless it was asked to edit or review the file).
@@ -142,19 +150,12 @@ export function useAgent() {
     // (Except for other people's gists, since saving them forks the gist, which opens a different file.)
     let saveManualEdits: Promise<void> | undefined;
 
-    const { prompt, references } = await resolveReferences(command, file.gistId);
+    const { prompt, references } = await resolveReferences(input, file.gistId);
     const { runAgent } = await import("../openai");
     const responseId = await runAgent({
       mode,
       prompt,
-      document: file.gistId
-        ? {
-            path: file.filename,
-            title: description,
-            content: isEmpty ? "" : target.targetContent,
-            isSelection: target.hasSelection,
-          }
-        : undefined,
+      document: toAgentDocument(file, target.targetContent, target.hasSelection),
       instructions: {
         general: settings.general.instructions,
         edit: settings.edit.instructions,
@@ -165,12 +166,13 @@ export function useAgent() {
       previousResponseId,
       signal,
       onProgress: (changes) => surface && updateAgentResult(surface, changes),
-      onAnswer: (answer) => {
+      onAnswer: (latest) => {
         surface = "answer";
+        answer = latest;
         setRunningMode("ask");
         agentStore.setState((state) => ({
           ...state,
-          answer: { ...IDLE_PROGRESS, ...state.answer, ...answer },
+          answer: { ...IDLE_PROGRESS, ...state.answer, ...latest },
         }));
       },
       onEditStart: () => {
@@ -207,7 +209,10 @@ export function useAgent() {
         if (mode !== "review") startReview();
       },
       onReview: (changes) => {
-        if (response === "review" && isAttached()) updateAgentResult("review", changes);
+        if (response !== "review" || !isAttached()) return;
+
+        review = { ...review, ...changes };
+        updateAgentResult("review", changes);
       },
       onReviewEnd: () => {
         // The review is complete (while the agent finishes responding), so it's no longer in progress
@@ -226,7 +231,14 @@ export function useAgent() {
           : undefined,
     });
 
-    if (signal.aborted) return response;
+    const result = (): AgentRunResult =>
+      response === "ask"
+        ? { mode: "ask", answer }
+        : response === "review"
+          ? { mode: "review", review }
+          : { mode: response };
+
+    if (signal.aborted) return result();
     if (responseId && isAttached()) updateAgentState({ conversation: { fileKey, responseId } });
 
     removeEmptyAnswer();
@@ -235,7 +247,7 @@ export function useAgent() {
     else if (surface === "review") clearReview(); // It was asked to review, but answered instead
 
     if (response === "edit" || response === "review") playChime();
-    return response;
+    return result();
   }
 
   /**
@@ -243,8 +255,11 @@ export function useAgent() {
    * (or null if it failed, or was cancelled). In "auto" mode, the command's mode is detected from
    * what it asks for, and when that's ambiguous, the agent decides how to respond.
    */
-  async function run(command: string, mode: AgentMode | "auto"): Promise<AgentMode | null> {
+  async function run(input: string, mode: AgentMode | "auto"): Promise<AgentRunResult | null> {
     if (agentStore.state.running) return null;
+    const prepared = prepareAgentInput(input, mode, settings, !!file.gistId);
+    const prompt = prepared.prompt;
+    mode = prepared.mode;
 
     const abortController = new AbortController();
     const { signal } = abortController;
@@ -263,19 +278,19 @@ export function useAgent() {
           ? "ask"
           : undefined;
 
-      mode = classifyMode(command, { hasFile: !!file.gistId, suspectedMode }) ?? "auto";
+      mode = classifyMode(prompt, { hasFile: !!file.gistId, suspectedMode }) ?? "auto";
     }
 
     updateAgentState({ running: { mode: mode === "auto" ? null : mode, cancel } });
 
     try {
       if (mode === "research") {
-        await research(command);
-        return "research";
+        await research(prompt);
+        return { mode: "research" };
       }
 
-      const response = await respond(command, mode, signal, setRunningMode);
-      return signal.aborted ? null : response;
+      const result = await respond(prompt, mode, signal, setRunningMode);
+      return signal.aborted ? null : result;
     } catch (error) {
       if (!signal.aborted) {
         console.error(`Failed to run agent command (${mode}):`, error);

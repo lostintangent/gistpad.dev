@@ -2,7 +2,12 @@ import * as React from "react";
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 import { cn } from "cn";
 
-function ScrollArea({ className, children, ...props }: ScrollAreaPrimitive.Root.Props) {
+function ScrollArea({
+  className,
+  children,
+  viewportRef,
+  ...props
+}: ScrollAreaPrimitive.Root.Props & { viewportRef?: React.Ref<HTMLDivElement> }) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -10,6 +15,7 @@ function ScrollArea({ className, children, ...props }: ScrollAreaPrimitive.Root.
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
+        ref={viewportRef}
         data-slot="scroll-area-viewport"
         // Fades out the edges that can be scrolled to (see shadcn's scroll-fade utilities)
         className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 scroll-fade-y scroll-fade-8 [--scroll-fade-reveal:2rem] [animation-timing-function:linear]"

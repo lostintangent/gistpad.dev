@@ -1,5 +1,6 @@
+import { frontMatterEnd } from "@/features/editor/extensions/markdown/frontmatter";
 import type { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
-import { VOICES } from "../../voice/voices";
+import { VOICES } from "../../talk/voices";
 import type { FrontMatterSettings } from "./schema";
 
 // The agent settings that a file can configure, and the properties that each of them contains
@@ -51,8 +52,10 @@ export async function frontMatterCompletions(
   context: CompletionContext,
 ): Promise<CompletionResult | null> {
   const { doc } = context.state;
+  const end = frontMatterEnd(doc);
+  if (end === null || context.pos > end) return null;
+
   const line = doc.lineAt(context.pos);
-  if (line.number > 50 || !doc.sliceString(0, 100).startsWith("---")) return null;
 
   // Check if we're after a "voice:" property within talk section
   const beforeCursor = line.text.slice(0, context.pos - line.from);

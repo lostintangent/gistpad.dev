@@ -27,7 +27,7 @@ import {
   useRunningMode,
   type AgentReview,
 } from "../model/store";
-import type { ReviewComment } from "../openai";
+import type { ReviewComment } from "./review";
 import { FollowUpButton } from "../shared/FollowUpButton";
 import { LoadingMessage } from "../shared/LoadingMessage";
 import InstructionsDialog from "./InstructionsDialog";

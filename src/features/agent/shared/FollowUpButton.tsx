@@ -2,7 +2,7 @@ import { Button } from "@/shared/ui/button";
 import { cn } from "cn";
 import { ArrowRight } from "lucide-react";
 import { useIsAgentRunning } from "../model/store";
-import type { AgentFollowUp } from "../openai";
+import type { AgentFollowUp } from "../model/response";
 
 /** Runs a follow-up that the agent suggested (which is disabled while another command is running). */
 export function FollowUpButton({

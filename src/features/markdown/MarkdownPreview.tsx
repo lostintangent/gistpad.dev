@@ -107,7 +107,7 @@ function Anchor({ href, children, node: _, ...props }: ElementProps<"a">) {
 
     const filename = toMarkdownFilename(wikilink);
     return files.includes(filename) && onOpenFile ? (
-      <button onClick={() => onOpenFile(filename)} className="cm-wikilink-content">
+      <button onClick={() => onOpenFile(filename)} className="wikilink">
         {wikilink}
       </button>
     ) : (

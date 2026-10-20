@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "./features/editor/code-mirror/index.css";
 @import "./features/markdown/index.css";
 
 @plugin "@tailwindcss/typography";
@@ -85,9 +84,7 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  /* The composer's purple glow */
-  --shadow-dark-xl: 0 0 10px 0 rgb(147 51 234 / 0.3);
-  --shadow-centered-composer: 0 0 30px 0 rgb(147 51 234 / 0.4);
+  --shadow-accent-glow: 0 0 10px 0 --alpha(var(--accent) / 30%);
 }
 
 /* A surface that's raised above the backdrop (e.g. the workspace), whose content is painted on it

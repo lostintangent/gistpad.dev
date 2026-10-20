@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import type { ActiveFile } from "@/features/files/file";
 import { useAgentReview, useRunningMode } from "@/features/agent/model/store";
 import { commentsStore, updateComments } from "./store";
-import { zenModeAtom } from "@/features/editor/layout";
+import { zenModeAtom } from "@/features/workbench/layout/state";
 import { useSelector } from "@tanstack/react-store";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense } from "react";
