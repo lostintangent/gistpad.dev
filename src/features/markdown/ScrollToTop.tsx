@@ -14,7 +14,7 @@ export function ScrollToTop({ hasBottomBar = false }: { hasBottomBar?: boolean }
       <Button
         variant="ghost"
         size="sm"
-        className="scroll-reveal pointer-events-auto -translate-y-full rounded-full p-2 h-8 bg-background shadow-lg"
+        className="scroll-reveal pointer-events-auto -translate-y-full rounded-full border p-2 h-8 bg-background shadow-lg"
         onClick={(e) => {
           // Scroll the nearest scrolled ancestor (or the page)
           let container = e.currentTarget.parentElement;

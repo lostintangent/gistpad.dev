@@ -39,7 +39,8 @@ function CreateGistForm({ onCreated }: { onCreated: () => void }) {
         onCreated();
       }}
     >
-      <InputGroup className="bg-popover shadow-md dark:bg-popover">
+      {/* (The composer is a card like the workbench's action bar, which is lifted by its shadow rather than outlined) */}
+      <InputGroup className="rounded-xl border-border bg-popover shadow-2xl dark:bg-popover dark:shadow-accent-glow has-[[data-slot=input-group-control]:focus-visible]:border-border has-[[data-slot=input-group-control]:focus-visible]:ring-0">
         <EmojiInput
           placeholder="New gist title..."
           value={description}
