@@ -18,6 +18,11 @@ interface EditorSearch {
 
 export const WorkbenchPage = lazyRouteComponent(() => import("../WorkbenchPage"));
 
+// Overlap page loading with cache restoration and OAuth when the shell expects the workbench.
+if (!import.meta.env.SSR && document.documentElement.dataset.startupPage === "workbench") {
+  void WorkbenchPage.preload?.();
+}
+
 export const Route = createFileRoute("/_authenticated/{-$gistId}/{-$filePath}")({
   params: { stringify: omitReadmeFilePath },
   validateSearch: (search: Record<string, unknown>): EditorSearch => ({
