@@ -7,5 +7,5 @@ export { analyzeStyle } from "./analyze";
 export { runAgent } from "./agent";
 export { listModels } from "./client";
 export { generateImage } from "./images";
-export { startTalkSession } from "./realtime";
+export { openTalkConnection } from "./realtime";
 export { cancelResearch, pollResearch, startResearch } from "./research";

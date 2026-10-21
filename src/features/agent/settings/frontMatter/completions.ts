@@ -1,6 +1,6 @@
 import { frontMatterEnd } from "@/features/editor/extensions/markdown/frontmatter";
 import type { Completion, CompletionContext, CompletionResult } from "@codemirror/autocomplete";
-import { VOICES } from "../../talk/voices";
+import { VOICES } from "../../talk/talk";
 import type { FrontMatterSettings } from "./schema";
 
 // The agent settings that a file can configure, and the properties that each of them contains

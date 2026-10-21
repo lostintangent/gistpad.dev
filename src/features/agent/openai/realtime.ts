@@ -9,19 +9,64 @@ import {
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { z } from "zod";
-import type { TalkSession, TalkSessionOptions } from "../talk/session";
+import type { TalkConnection, TalkConnectionOptions } from "../talk/talk";
 import type { TalkTool, TalkToolContext } from "../talk/tools";
 import { createOpenAIClient } from "./client";
 
-// Talk sessions use OpenAI's realtime API, over a WebRTC connection (where audio is streamed via
-// media tracks, and events are exchanged over a data channel).
+// Connects to the OpenAI realtime API, with the user's microphone, and plays the assistant's audio.
+export async function openTalkConnection({
+  instructions,
+  voice,
+  tools,
+  getToolContext,
+  onResponseStart,
+  onSpeakingChange,
+}: TalkConnectionOptions): Promise<TalkConnection> {
+  const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const stopMicrophone = () => {
+    for (const track of microphone.getTracks()) track.stop();
+  };
 
-/** Creates a short-lived key for a session, which is how the SDK connects from a browser (and selects its model). */
-async function createSessionKey() {
-  const { value } = await createOpenAIClient().realtime.clientSecrets.create({
-    session: { type: "realtime", model: DEFAULT_OPENAI_REALTIME_MODEL },
-  });
-  return value;
+  try {
+    await new Audio(introUrl).play();
+
+    const agent = new RealtimeAgent({
+      name: "GistPad",
+      instructions,
+      voice,
+      tools: tools.map((tool) => toRealtimeTool(tool, getToolContext)),
+    });
+
+    const session = new RealtimeSession(agent, {
+      transport: new OpenAIRealtimeWebRTC({ mediaStream: microphone }),
+      // The conversation isn't displayed (or traced), so it doesn't need to be transcribed. And
+      // the microphone is usually a laptop's (or a headset's), which is near the user.
+      config: {
+        audio: { input: { transcription: null, noiseReduction: { type: "near_field" } } },
+      },
+      tracingDisabled: true,
+    });
+
+    session.on("transport_event", (event: TransportEvent) => {
+      switch (event.type) {
+        case "response.created":
+          onResponseStart();
+          break;
+        case "output_audio_buffer.started":
+          onSpeakingChange(true);
+          break;
+        case "output_audio_buffer.stopped":
+          onSpeakingChange(false);
+          break;
+      }
+    });
+
+    await session.connect({ apiKey: createSessionKey });
+    return toTalkConnection(session, stopMicrophone);
+  } catch (error) {
+    stopMicrophone();
+    throw error;
+  }
 }
 
 /**
@@ -58,40 +103,15 @@ const toRealtimeTool = (
     },
   });
 
-/** Adapts a realtime session (and the microphone that it uses) to a talk session. */
-function toTalkSession(session: RealtimeSession, stopMicrophone: () => void): TalkSession {
+// Adapts a realtime session (and the microphone that it uses) to a talk connection.
+function toTalkConnection(session: RealtimeSession, stopMicrophone: () => void): TalkConnection {
   return {
+    sendMessage: (text) => session.sendMessage(text),
     shareContext: (text) => session.transport.sendMessage(text, {}, { triggerResponse: false }),
     respond: () => session.transport.sendEvent({ type: "response.create" }),
-    sendMessage: (text) => session.sendMessage(text),
+
     interrupt: () => session.interrupt(),
     mute: (isMuted) => session.mute(isMuted),
-    subscribe: ({ onAssistantSpeaking, onUserSpeaking, onToolStart }) => {
-      const onTransportEvent = (event: TransportEvent) => {
-        switch (event.type) {
-          case "output_audio_buffer.started":
-            onAssistantSpeaking(true);
-            break;
-          case "output_audio_buffer.stopped":
-            onAssistantSpeaking(false);
-            break;
-          case "input_audio_buffer.speech_started":
-            onUserSpeaking(true);
-            break;
-          case "input_audio_buffer.speech_stopped":
-            onUserSpeaking(false);
-            break;
-        }
-      };
-      const onAgentToolStart = () => onToolStart();
-
-      session.on("transport_event", onTransportEvent);
-      session.on("agent_tool_start", onAgentToolStart);
-      return () => {
-        session.off("transport_event", onTransportEvent);
-        session.off("agent_tool_start", onAgentToolStart);
-      };
-    },
     close: () => {
       session.close();
       stopMicrophone();
@@ -99,42 +119,12 @@ function toTalkSession(session: RealtimeSession, stopMicrophone: () => void): Ta
   };
 }
 
-/** Connects to the realtime API, with the user's microphone, and plays the assistant's audio. */
-export async function startTalkSession({
-  instructions,
-  voice,
-  tools,
-  getToolContext,
-}: TalkSessionOptions): Promise<TalkSession> {
-  const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const stopMicrophone = () => {
-    for (const track of microphone.getTracks()) track.stop();
-  };
+// Creates a short-lived key for a session, which is how the SDK
+// connects from a browser (and selects its model).
+async function createSessionKey() {
+  const { value } = await createOpenAIClient().realtime.clientSecrets.create({
+    session: { type: "realtime", model: DEFAULT_OPENAI_REALTIME_MODEL },
+  });
 
-  try {
-    await new Audio(introUrl).play();
-
-    const agent = new RealtimeAgent({
-      name: "GistPad",
-      instructions,
-      voice,
-      tools: tools.map((tool) => toRealtimeTool(tool, getToolContext)),
-    });
-
-    const session = new RealtimeSession(agent, {
-      transport: new OpenAIRealtimeWebRTC({ mediaStream: microphone }),
-      // The conversation isn't displayed (or traced), so it doesn't need to be transcribed. And
-      // the microphone is usually a laptop's (or a headset's), which is near the user.
-      config: {
-        audio: { input: { transcription: null, noiseReduction: { type: "near_field" } } },
-      },
-      tracingDisabled: true,
-    });
-    await session.connect({ apiKey: createSessionKey });
-
-    return toTalkSession(session, stopMicrophone);
-  } catch (error) {
-    stopMicrophone();
-    throw error;
-  }
+  return value;
 }

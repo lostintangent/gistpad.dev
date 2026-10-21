@@ -1,15 +1,16 @@
-import { closeComments, openComments } from "@/features/comments/store";
-import { EDITOR_MODES, type EditorMode } from "@/features/workbench/layout/mode";
-import { openFile, type ActiveFile } from "@/features/files/file";
-import { deleteCommand } from "@/features/gists/commands";
+import type { ActiveFile } from "@/features/files/file";
 import { toMarkdownFilename } from "@/shared/github";
 import { uploadImage } from "@/shared/supabase";
 import { toast } from "sonner";
 import { z } from "zod";
+import { runCommandTool } from "../model/commandCatalog";
 import { gistTools } from "../model/gistTools";
 import type { AgentMode } from "../model/modes";
 import type { AgentTool } from "../model/tools";
 import { playChime } from "../shared/chime";
+
+// The voice assistant's tools are the agent's (reading gists, and running the app's commands), plus
+// the ones that carry content (e.g. a new file's) or need the agent's results (e.g. an edit's).
 
 /** The (latest) state and actions of the editor, when a talk tool is called. */
 export interface TalkToolContext {
@@ -22,10 +23,6 @@ export interface TalkToolContext {
   runCommand: (command: string, mode: AgentMode) => Promise<TalkToolResult>;
   addFile: (filename: string, content?: string) => Promise<void>;
   createGist: (description: string, content?: string) => Promise<void>;
-  save: () => Promise<void>;
-  setEditorMode: (mode: EditorMode) => void;
-  muteMicrophone: () => void;
-  endConversation: () => void;
 }
 
 /** A message for the assistant (about the tool call), and whether it should respond to it. */
@@ -60,27 +57,8 @@ const fromAgentTool = ({ execute, ...tool }: AgentTool) =>
 /** The tools that the voice assistant can call. */
 export const talkTools: TalkTool[] = [
   ...gistTools.map(fromAgentTool),
-  talkTool({
-    name: "end_conversation",
-    description: "End the current voice conversation when explicitly requested by the user.",
-    handler: (_, { endConversation }) => endConversation(),
-  }),
-  talkTool({
-    name: "mute_microphone",
-    description: "Mute the user's microphone when they explicitly ask to mute.",
-    handler: (_, { muteMicrophone }) => muteMicrophone(),
-  }),
-  talkTool({
-    name: "open_gist_file",
-    description:
-      "Open a specific file in the current gist when explicitly requested by the user. It's important that you only open files that are specifically part of the current gist. Do not open any other files. If the user asks you to open a file that doesn't exist, then kindle tell them it doesn't exist.",
-    parameters: z.object({
-      filename: z.string().describe("The name of the file to open in the current gist."),
-    }),
-    handler: ({ filename }, { file }) => {
-      openFile(file.gistId, toMarkdownFilename(filename));
-    },
-  }),
+  // (Running a command speaks for itself, so the assistant isn't asked to respond to it)
+  talkTool({ ...runCommandTool, handler: (args) => runCommandTool.execute(args) }),
   talkTool({
     name: "open_url",
     description: "Open a URL in a new browser tab when explicitly requested by the user.",
@@ -104,19 +82,6 @@ export const talkTools: TalkTool[] = [
     handler: async ({ description, content }, { createGist }) => {
       await createGist(description, content);
       await playChime();
-    },
-  }),
-  talkTool({
-    name: "change_view_mode",
-    description:
-      "Switch between the various view modes for the current document: edit, preview, and split (edit + preview).",
-    parameters: z.object({
-      mode: z.enum(EDITOR_MODES).describe("The view mode to switch to."),
-    }),
-    handler: ({ mode }, { setEditorMode }) => {
-      // Split mode is displayed as preview mode on mobile
-      setEditorMode(mode);
-      return `Switched to ${mode} mode.`;
     },
   }),
   talkTool({
@@ -185,16 +150,6 @@ export const talkTools: TalkTool[] = [
     requiresOwnership: true,
   }),
   talkTool({
-    name: "delete_gist",
-    description:
-      "Delete the currently viewed gist or gist file (when the gist has multiple files).",
-    // Deleting requires confirmation, so this only opens the delete dialog
-    handler: (_, { file }) => {
-      if (file.gist) deleteCommand(file.gist, file.filename).run();
-    },
-    requiresOwnership: true,
-  }),
-  talkTool({
     name: "generate_review_comments",
     description:
       "Generate review feedback/thoughts/comments/suggestions about the current document. Only call this when the user explicitly asks for 'comments' or a 'review' about a specific topic.",
@@ -232,24 +187,5 @@ export const talkTools: TalkTool[] = [
         ),
     }),
     handler: ({ topic }, { runCommand }) => runCommand(topic, "research"),
-  }),
-  talkTool({
-    name: "save_gist",
-    description:
-      "Save the currently edited gist or file. Only do this if the user explicitly asks. Otherwise, make edits using the edit_gist function.",
-    handler: (_, { save }) => save(),
-    requiresOwnership: true,
-  }),
-  talkTool({
-    name: "toggle_comment_sidebar",
-    description: "Show or hide the comment sidebar.",
-    parameters: z.object({
-      visible: z.boolean().describe("Whether the comment sidebar should be visible."),
-    }),
-    handler: ({ visible }) => {
-      if (visible) openComments();
-      else closeComments();
-      return `Comment sidebar ${visible ? "opened" : "closed"}.`;
-    },
   }),
 ];

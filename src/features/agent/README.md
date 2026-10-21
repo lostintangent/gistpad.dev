@@ -32,9 +32,10 @@ alongside its UI:
 - `review/`: reviews, whose comments stream in as the review tool's arguments.
 - `research/`: research tasks, which run in the background and create a new document.
 - `talk/`: voice conversations, where the assistant runs commands on the agent (and shares its context and
-  tools), as a `TalkSession`.
+  tools). `talk.ts` defines the session (as the UI sees it) and the connection it runs over (which a
+  runtime opens, with one of the voices), and `useTalkSession` drives the one with the other.
 
-**`openai/`**: the runtime, which fulfils requests (and talk sessions) with OpenAI's SDKs, by adapting the
+**`openai/`**: the runtime, which fulfils requests (and opens talk connections) with OpenAI's SDKs, by adapting the
 definitions above to them (e.g. tools and schemas), and mapping their events back to the request's callbacks.
 
 **`composer/`**, **`settings/`**, and **`shared/`**: the agent's UI (where commands are written), the user's
@@ -64,8 +65,14 @@ toggle. Its actions and statistics use muted red/green colors. Reject uses the s
 button variant as the editor toolbar; accept uses its green equivalent.
 
 Slash expansion happens once in `useAgent.run`, so composer submissions, palette invocations,
-follow-ups, and explicit voice adapters share the same preparation. Voice tools remain explicit
-adapters rather than exposing the application registry wholesale.
+follow-ups, and explicit voice adapters share the same preparation.
+
+The app's commands are also the agent's catalog of actions (`model/commandCatalog.ts`): a command
+that declares what it does for the agent (`Command.agent`) is described to the voice assistant (in
+a `<commands>` tag that's re-shared when it changes), which runs it with one `run_command` tool, by
+id, through the same `executeCommand` that buttons and the palette use. So a feature exposes an
+action to the agent by registering a command with that one sentence, and the voice tools that
+remain are the ones that carry content (e.g. a new file's) or need the agent's results.
 
 ## Conventions
 

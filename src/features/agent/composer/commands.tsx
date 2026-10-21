@@ -4,7 +4,7 @@ import { useCommands } from "@/features/commands/registry";
 import type { AgentCommandSettings } from "../model/input";
 import type { AgentMode, ComposerMode } from "../model/modes";
 import { talkCommands } from "../talk/commands";
-import type { TalkConversation } from "../talk/useTalkConversation";
+import type { TalkSession } from "../talk/talk";
 import { composerModes, MODES } from "./modes";
 import { BookOpen, FileText, Globe, Settings2 } from "lucide-react";
 
@@ -34,7 +34,7 @@ export function useAgentCommands({
   settings: AgentCommandSettings;
   mode: ComposerMode;
   onSelectMode: (mode: ComposerMode) => void;
-  talk: TalkConversation;
+  talk: TalkSession;
   run: (prompt: string, mode: AgentMode | "auto") => unknown;
 }) {
   const [settingsView, setSettingsView] = useState<AgentSettingsView | null>(null);

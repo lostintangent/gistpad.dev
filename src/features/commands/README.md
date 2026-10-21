@@ -20,6 +20,10 @@ metadata, which describe the same operation to every consumer.
   the first registration of an id wins.
 - `CommandShortcuts` binds the registered shortcuts, and `CommandPalette` discovers the same
   commands, so nothing is bound twice.
+- A command with an `agent` description is also offered to the agent (see the agent feature's
+  `commandCatalog`), which runs it by id with the same `executeCommand`. The sentence is
+  model-facing: say what the command does, and when not to run it where that matters. A toggle's
+  `checked` state is reported with it, so one sentence describes both directions.
 
 ## The palette
 

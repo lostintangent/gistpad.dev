@@ -44,6 +44,8 @@ export function deleteCommand(gist: Gist | undefined, filename?: string): Comman
     group: "This gist",
     icon: Trash2,
     disabled: !gist,
+    agent:
+      "Delete the gist (or just this file, when the gist has others), which asks the user to confirm.",
     run: () => gist && deleteGistDialog.openWithPayload({ gist, filename }),
   };
 }
@@ -69,6 +71,7 @@ export function useGistCommands(gist: Gist | undefined) {
       title: isPinned ? "Unpin gist" : "Pin gist",
       icon: Pin,
       checked: isPinned,
+      agent: "Pin or unpin the gist (pinned gists are at the top of the gist list).",
       run: () =>
         updatePreferences(({ pinnedGists }) => ({
           pinnedGists: pinnedGists.includes(gist.id)
@@ -82,6 +85,7 @@ export function useGistCommands(gist: Gist | undefined) {
       title: isStarred ? "Unstar gist" : "Star gist",
       icon: Star,
       checked: isStarred,
+      agent: "Star or unstar the gist on GitHub.",
       run: () => star(gist),
     } satisfies Command,
     duplicate: {
@@ -90,6 +94,7 @@ export function useGistCommands(gist: Gist | undefined) {
       title: "Duplicate gist",
       icon: Copy,
       disabled: !isOwn,
+      agent: "Duplicate the gist (and open the copy).",
       run: async () => openFile((await duplicate(gist.id)).id),
     } satisfies Command,
     archive: {
@@ -97,7 +102,9 @@ export function useGistCommands(gist: Gist | undefined) {
       group: "This gist",
       title: isArchived(gist) ? "Unarchive gist" : "Archive gist",
       icon: isArchived(gist) ? ArchiveRestore : Archive,
+      checked: isArchived(gist),
       disabled: !isOwn,
+      agent: "Archive or unarchive the gist (archived gists are hidden from the main gist list).",
       run: () => archive(gist),
     } satisfies Command,
     delete: { ...deleteCommand(gist), disabled: !isOwn },
@@ -131,6 +138,7 @@ export function useOpenTodaysNoteCommand(): Command {
     group: "Gists",
     title: "Open today's note",
     icon: Calendar,
+    agent: "Open today's daily note (creating it if it doesn't exist yet).",
     run: openTodaysNote,
   };
 }

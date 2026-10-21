@@ -25,6 +25,7 @@ export function useSidebarCommand(): Command {
     icon: isCollapsed ? PanelLeftOpen : PanelLeftClose,
     checked: !isCollapsed,
     disabled: isMobile || isZenMode,
+    agent: "Show or hide the sidebar (the gist list).",
     run: () => sidebarCollapsedAtom.set(!sidebarCollapsedAtom.get()),
   };
 }
@@ -39,6 +40,7 @@ export function useDashboardCommand(): Command {
     icon: Newspaper,
     checked: isOpen,
     disabled: isZenMode,
+    agent: "Show or hide the dashboard (widgets such as the weather and news).",
     run: () => setIsOpen(!isOpen),
   };
 }

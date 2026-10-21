@@ -9,7 +9,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Settings } from "lucide-react";
 import { useRef, type RefObject } from "react";
-import type { TalkConversation } from "../talk/useTalkConversation";
+import type { TalkSession } from "../talk/talk";
 import type { AgentComposerCommands } from "./commands";
 
 /**
@@ -25,7 +25,7 @@ export function ModeMenu({
   searchCommand,
 }: {
   commands: AgentComposerCommands;
-  talk: TalkConversation;
+  talk: TalkSession;
   hasFile: boolean;
   /** The prompt, which takes the focus after a mode is selected. */
   inputRef: RefObject<HTMLTextAreaElement | null>;

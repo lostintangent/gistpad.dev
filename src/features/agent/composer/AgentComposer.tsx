@@ -20,7 +20,7 @@ import AgentSettingsDialog from "../settings/dialogs/AgentSettingsDialog";
 import AnalyzeStyleDialog from "../settings/dialogs/AnalyzeStyleDialog";
 import ModelSettingsDialog from "../settings/dialogs/ModelSettingsDialog";
 import { useAgentSettings } from "../settings/useAgentSettings";
-import { useTalkConversation } from "../talk/useTalkConversation";
+import { useTalkSession } from "../talk/useTalkSession";
 import { useAgentCommands } from "./commands";
 import { ModeMenu } from "./ModeMenu";
 import { MODES } from "./modes";
@@ -45,7 +45,7 @@ export default function AgentComposer({
 }) {
   const file = useActiveFile();
   const { run } = useAgent();
-  const talk = useTalkConversation(file, run);
+  const talk = useTalkSession(file, run);
   const settings = useAgentSettings(file);
   const { gists } = useGists();
   const hasSelection = useSelector(editorStatusAtom, (status) => status.hasSelection);
@@ -133,7 +133,7 @@ export default function AgentComposer({
         <ModeIcon
           className={cn(
             talk.isActive && (talk.isMicMuted ? "text-red-500" : "text-green-500"),
-            talk.isActive && talk.whoIsSpeaking === "assistant" && "animate-pulse",
+            talk.isActive && talk.isAssistantSpeaking && "animate-pulse",
           )}
         />
       ),

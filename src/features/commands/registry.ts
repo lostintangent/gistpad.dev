@@ -42,7 +42,10 @@ export function useCommands(commands: readonly Command[]) {
   useLayoutEffect(() => () => setRegistration(owner), [owner]);
 }
 
-export const useRegisteredCommands = () => useSelector(commandsAtom);
+/** The registered commands, or a selection of them (which only re-renders when the selection changes). */
+export const useRegisteredCommands = <T = readonly Command[]>(
+  select?: (commands: readonly Command[]) => T,
+) => useSelector(commandsAtom, select);
 export const getRegisteredCommands = () => commandsAtom.get();
 export const findCommand = (id: string) => commandsAtom.get().find((command) => command.id === id);
 

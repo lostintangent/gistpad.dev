@@ -67,20 +67,31 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
     enabled: canViewHistory && historyRequested === file.key,
   });
   const revisions = history.data ?? [];
-  const viewCommand = (value: EditorMode, title: string, icon: Command["icon"]): Command => ({
+  const viewCommand = (
+    value: EditorMode,
+    title: string,
+    icon: Command["icon"],
+    agent: string,
+  ): Command => ({
     id: `view.${value}`,
     title,
     group: "View",
     icon,
     checked: mode === value,
     disabled: isDisabled || (isMobile && value === "split"),
+    agent,
     run: () => setMode(value),
   });
 
   const view = {
-    edit: viewCommand("edit", "Edit mode", Pencil),
-    split: viewCommand("split", "Split mode", Columns2),
-    preview: viewCommand("preview", "Preview mode", Eye),
+    edit: viewCommand("edit", "Edit mode", Pencil, "Show the document's editor only."),
+    split: viewCommand(
+      "split",
+      "Split mode",
+      Columns2,
+      "Show the editor and the rendered document side by side.",
+    ),
+    preview: viewCommand("preview", "Preview mode", Eye, "Show the rendered document only."),
   };
   const zen: Command = {
     id: "view.zen",
@@ -89,6 +100,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
     icon: isZenMode ? EyeOff : Eye,
     checked: isZenMode,
     disabled: isDisabled || isMobile,
+    agent: "Enter or leave zen mode (which hides everything but the document).",
     run: () => {
       zenModeAtom.set(!isZenMode);
       if (!isZenMode) setMode("split");
@@ -101,6 +113,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       title: "Copy URL",
       icon: Link,
       disabled: isDisabled || isViewingRevision,
+      agent: "Copy the document's URL to the clipboard.",
       run: async () => {
         await navigator.clipboard.writeText(location.href);
         toast.success("URL copied to clipboard!");
@@ -112,6 +125,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       title: "Copy as HTML",
       icon: FileText,
       disabled: isDisabled || isViewingRevision,
+      agent: "Copy the document to the clipboard as HTML.",
       run: async () => {
         const { copyAsHtml } = await import("@/features/markdown/toHtml");
         await copyAsHtml(readFileContent(file));
@@ -125,6 +139,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       title: "View fullscreen",
       icon: Fullscreen,
       disabled: isDisabled || isViewingRevision,
+      agent: "Show the rendered document fullscreen (its share page).",
       run: () =>
         router.navigate({
           to: "/share/$gistId/{-$filePath}",
@@ -137,6 +152,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       title: "Open in GitHub",
       icon: ExternalLink,
       disabled: isDisabled || isViewingRevision,
+      agent: "Open the gist on GitHub, in a new tab.",
       run: () => {
         const anchor = file.isReadme ? "" : `#file-${file.filename.replace(/\./g, "-")}`;
         window.open(`https://gist.github.com/${file.gistId}${anchor}`, "_blank");
@@ -167,6 +183,8 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       icon: Save,
       shortcut: "Mod+S",
       disabled: isDisabled || isViewingRevision || !hasChanges || isSaving,
+      agent:
+        "Save the document's pending changes to the gist. Only when the user asks to save: edits are shown without saving. Someone else's gist is forked first, which asks the user.",
       run: save,
     } satisfies Command,
     addFile: {
@@ -192,6 +210,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       icon: MessageSquare,
       checked: isCommentsOpen,
       disabled: isDisabled || isViewingRevision || !isCommentsEnabled,
+      agent: "Show or hide the comments sidebar.",
       run: isCommentsOpen ? closeComments : () => openComments(),
     } satisfies Command,
     delete:
@@ -257,6 +276,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
               title: getFileDisplayName(filename),
               group: "Files",
               icon: FileText,
+              agent: `Open the gist's "${getFileDisplayName(filename)}" file.`,
               run: () => openFile(file.gistId, filename),
             })),
           ...Object.values(view).filter((command) => !command.disabled),

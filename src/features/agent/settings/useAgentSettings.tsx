@@ -1,6 +1,6 @@
 import { usePreferences } from "@/features/account/queries";
 import { useFileContent, type ActiveFile } from "@/features/files/file";
-import { DEFAULT_VOICE } from "../talk/voices";
+import { DEFAULT_VOICE } from "../talk/talk";
 import type { AgentCommand } from "../model/input";
 import {
   parseFrontMatter,

@@ -15,5 +15,12 @@ export interface Command {
   acceptsInput?: boolean;
   /** Discoverable by search, but omitted from the palette's initial suggestions. */
   searchOnly?: boolean;
+  /**
+   * What the command does, for the agent, which can then run it for the user (as the palette would).
+   * Describe both directions of a toggle ("Show or hide…"), since its state (`checked`) is reported
+   * with it. Say when not to run it, where that matters. Omit it to keep the command out of the
+   * agent's reach.
+   */
+  agent?: string;
   run: (input?: string) => unknown;
 }
