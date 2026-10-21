@@ -1,0 +1,95 @@
+/* Browser-local geometry for the prerendered workbench. */
+[data-initial-shell] .workbench-layout {
+  --initial-panel-offset: var(--startup-mobile-panel-offset);
+}
+
+@media (min-width: 768px) {
+  [data-initial-shell] .workbench-sidebar {
+    --initial-panel-width: var(--startup-sidebar-width);
+  }
+  [data-initial-shell] .workbench-dashboard {
+    --initial-panel-width: var(--startup-dashboard-width);
+  }
+  [data-startup-dashboard-open="false"] [data-initial-shell] .workbench-dashboard {
+    display: none;
+  }
+  [data-startup-sidebar-collapsed="true"] [data-initial-shell] .sidebar-expanded {
+    display: none;
+  }
+  [data-startup-sidebar-collapsed="true"] [data-initial-shell] .sidebar-rail {
+    opacity: 1;
+  }
+}
+
+[data-startup-sidebar-collapsed="true"] [data-initial-shell] .sidebar-collapse .sidebar-close-icon {
+  display: none;
+}
+[data-startup-sidebar-collapsed="true"] [data-initial-shell] .sidebar-collapse .sidebar-open-icon {
+  display: block;
+}
+
+.sidebar-collapse [aria-pressed="true"] .sidebar-open-icon,
+.sidebar-collapse [aria-pressed="false"] .sidebar-close-icon {
+  display: none;
+}
+
+/* The same track contains both the first-paint shell and the live workbench. */
+.workbench-sidebar,
+.workbench-dashboard {
+  display: contents;
+}
+
+.workbench-panel {
+  width: var(--initial-panel-width, var(--panel-size));
+}
+
+.workbench-panel-content {
+  width: var(--initial-panel-width, var(--panel-width));
+}
+
+@media (max-width: 767px) {
+  .workbench-layout {
+    --mobile-panel-width: 85vw;
+    --mobile-panel-gutter: 8px;
+    gap: var(--mobile-panel-gutter);
+    transform: translateX(
+      calc(
+        -1 * var(--initial-panel-offset, var(--mobile-panel-offset)) *
+          (var(--mobile-panel-width) + var(--mobile-panel-gutter))
+      )
+    );
+    transition: transform 300ms ease-in-out;
+  }
+
+  .workbench-sidebar,
+  .workbench-dashboard {
+    display: block;
+    width: var(--mobile-panel-width);
+    flex-shrink: 0;
+  }
+
+  .workbench-workspace {
+    flex: none;
+    width: 100%;
+  }
+
+  .workbench-panel {
+    width: 100%;
+    height: 100%;
+  }
+
+  .workbench-panel-content {
+    position: static;
+    width: 100%;
+    height: 100%;
+  }
+
+  .sidebar-collapse,
+  .sidebar-rail {
+    display: none;
+  }
+
+  .sidebar-expanded {
+    opacity: 1;
+  }
+}

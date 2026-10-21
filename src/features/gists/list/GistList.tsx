@@ -102,7 +102,13 @@ export default function GistList({
           />
           <InputGroupAddon align="inline-end">
             <Badge variant="count">
-              {isFiltered ? `${filteredGists.length} of ${gists.length}` : gists.length}
+              {isPending ? (
+                <Skeleton className="h-3 w-3" />
+              ) : isFiltered ? (
+                `${filteredGists.length} of ${gists.length}`
+              ) : (
+                gists.length
+              )}
             </Badge>
             {filter.text && (
               <InputGroupButton

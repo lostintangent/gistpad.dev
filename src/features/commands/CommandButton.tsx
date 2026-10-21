@@ -6,12 +6,13 @@ import { executeCommand, useCommand } from "./registry";
 export function CommandButton({
   command: reference,
   size = "default",
+  children,
   ...props
 }: {
   command: Command | string;
 } & Omit<
   ComponentProps<typeof Button>,
-  "children" | "onClick" | "disabled" | "title" | "aria-label" | "aria-pressed"
+  "onClick" | "disabled" | "title" | "aria-label" | "aria-pressed"
 >) {
   const command = useCommand(reference);
   if (!command) return null;
@@ -27,7 +28,7 @@ export function CommandButton({
       disabled={command.disabled}
       onClick={() => void executeCommand(reference)}
     >
-      {Icon && <Icon />}
+      {children ?? (Icon && <Icon />)}
       {!size?.startsWith("icon") && command.title}
     </Button>
   );

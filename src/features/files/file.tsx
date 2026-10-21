@@ -4,8 +4,8 @@ import { useSession } from "@/features/account/queries";
 import { draftAtom, readDraft, setEmbeddedFile, useDraft } from "./draft";
 import { createAtom } from "@tanstack/react-store";
 import type { Whiteboard } from "@/features/markdown/TLDraw";
-import { router } from "@/router";
-import { useParams } from "@tanstack/react-router";
+import { getRouterInstance } from "@tanstack/react-start";
+import { useParams, useRouter, useRouterState } from "@tanstack/react-router";
 import { useIsMutating } from "@tanstack/react-query";
 
 function resolveFilename(gist: Gist | undefined, filePath: string | undefined) {
@@ -15,7 +15,10 @@ function resolveFilename(gist: Gist | undefined, filePath: string | undefined) {
 
 /** The active file, which is determined by the current URL. */
 export function useActiveFile() {
-  const { gistId, filePath } = useParams({ strict: false });
+  const isShell = useRouter().isShell();
+  const isRouting = useRouterState({ select: (state) => state.status === "pending" });
+  const params = useParams({ strict: false, shouldThrow: false });
+  const { gistId, filePath } = params ?? {};
   const { user } = useSession();
   const { data: gist, isPlaceholderData, error } = useGist(gistId);
 
@@ -31,7 +34,7 @@ export function useActiveFile() {
     key: gistId ? `${gistId}/${filename}` : "",
     /** The file's content, as it was last saved. */
     savedContent: (isLoaded && gist.files[filename]?.content) || "",
-    isLoading: !!gistId && !isLoaded && !error,
+    isLoading: isShell || !params || ((!!gistId || isRouting) && !isLoaded && !error),
     error,
     /** Whether the file belongs to someone else (and therefore, needs to be forked to save). */
     isReadOnly: !user || gist?.owner?.login !== user.login,
@@ -69,9 +72,10 @@ export const focusRequestAtom = createAtom<{ gistId: string; filename?: string }
  * Opens a gist (or one of its files), while preserving the current mode. And when
  * `focus` is set (e.g. for a new file), the editor is focused, so the user can start typing.
  */
-export function openFile(gistId?: string, filename?: string, { focus = false } = {}) {
+export async function openFile(gistId?: string, filename?: string, { focus = false } = {}) {
   if (gistId && focus) focusRequestAtom.set({ gistId, filename });
 
+  const router = await getRouterInstance();
   return router.navigate({
     to: "/{-$gistId}/{-$filePath}",
     params: { gistId, filePath: filename },

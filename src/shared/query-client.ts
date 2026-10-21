@@ -24,7 +24,8 @@ const CACHE_LIFETIME = 1000 * 60 * 60 * 24 * 5; // 5 days
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: CACHE_LIFETIME,
+      // Static prerendering has no long-lived browser cache or garbage-collection timers.
+      gcTime: typeof window === "undefined" ? Infinity : CACHE_LIFETIME,
       // Client errors (e.g. a deleted gist, or an expired token) won't succeed on a retry
       retry: (failureCount, error) =>
         failureCount < 3 && !(error instanceof GitHubError && error.status < 500),

@@ -10,9 +10,9 @@ let dictionary: Promise<{ spell: ReturnType<typeof nspell>; words: Set<string> }
  */
 function loadDictionary() {
   dictionary ??= Promise.all([
-    import("@/assets/dictionaries/en.aff", { with: { type: "text" } }),
-    import("@/assets/dictionaries/en.dic", { with: { type: "text" } }),
-    import("@/assets/dictionaries/personal.dic", { with: { type: "text" } }),
+    import("./dictionaries/en.aff?raw"),
+    import("./dictionaries/en.dic?raw"),
+    import("./dictionaries/personal.dic?raw"),
   ])
     .then(([aff, dic, personal]) => ({
       spell: nspell(aff.default, dic.default).personal(personal.default),

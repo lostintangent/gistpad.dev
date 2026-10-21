@@ -2,7 +2,7 @@ import { Button } from "@/shared/ui/button";
 import { useActiveFile } from "@/features/files/file";
 import { useOpenDailyTemplate } from "../actions";
 import { getFileDisplayName, TEMPLATE_FILENAME, type Gist } from "@/shared/github";
-import { parseDateFilename } from "@/shared/dates";
+import { parseDateFilename } from "@/shared/date-filenames";
 import { startOfToday } from "date-fns";
 import { useGist } from "../queries";
 import { cn } from "cn";

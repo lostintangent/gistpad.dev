@@ -28,7 +28,7 @@ function toggleTask(content: string, text: string) {
   );
 }
 
-export function PreviewPane({
+export default function PreviewPane({
   revision,
   ref,
 }: {

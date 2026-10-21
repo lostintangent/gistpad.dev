@@ -1,3 +1,6 @@
+import { useSidebarCommand } from "../layout/commands";
+import { RAIL_WIDTH } from "../layout/preferences";
+import { useOpenTodaysNoteCommand } from "@/features/gists/commands";
 import CreateGistButton from "@/features/gists/CreateGistButton";
 import GistList from "@/features/gists/list/GistList";
 import ResearchStatus from "@/features/agent/research/ResearchStatus";
@@ -9,6 +12,7 @@ import { useIsMobile } from "@/shared/useMediaQuery";
 import { useSelector } from "@tanstack/react-store";
 import { cn } from "cn";
 import { useEffect, useState, type ReactNode } from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { DashboardButton } from "./DashboardPanel";
 import { SidePanel } from "../layout/SidePanel";
 import {
@@ -20,9 +24,6 @@ import {
 
 /** The size of the sidebar's actions, which the rail is one of across. */
 const ACTION_SIZE = "size-6";
-
-/** The width of the collapsed rail (one action between two insets). */
-const RAIL_WIDTH = 40;
 
 /** An action-sized space, which an action that's pinned over both of the sidebar's layouts fills. */
 const ActionSpacer = ({ className }: { className?: string }) => (
@@ -44,6 +45,7 @@ const layerClass = (isVisible: boolean) =>
   );
 
 function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
+  const today = useOpenTodaysNoteCommand();
   return (
     // (Its actions line up with the gist list's "..." buttons, and its sections' counts)
     <div className="pl-2 pr-4 py-3 flex items-center justify-between">
@@ -57,7 +59,7 @@ function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
       </div>
       <div className="flex items-center gap-3">
         <ResearchStatus className={ACTION_SIZE} />
-        <CommandButton command="notes.today" variant="ghost" size="icon" className={ACTION_SIZE} />
+        <CommandButton command={today} variant="ghost" size="icon" className={ACTION_SIZE} />
         <DashboardButton className={ACTION_SIZE} />
       </div>
     </div>
@@ -70,12 +72,13 @@ function SidebarFooter({ leadingSlot }: { leadingSlot: ReactNode }) {
  * both layouts, so this stack leaves a space for each of them.
  */
 function SidebarRail({ isVisible }: { isVisible: boolean }) {
+  const today = useOpenTodaysNoteCommand();
   return (
     <div
       inert={!isVisible}
       style={{ width: RAIL_WIDTH }}
       className={cn(
-        "absolute inset-y-0 left-0 flex flex-col items-center gap-3 py-3",
+        "sidebar-rail absolute inset-y-0 left-0 flex flex-col items-center gap-3 py-3",
         layerClass(isVisible),
       )}
     >
@@ -85,7 +88,7 @@ function SidebarRail({ isVisible }: { isVisible: boolean }) {
       <CreateGistButton isRail />
       <div className="flex-1" />
       <ResearchStatus className={ACTION_SIZE} />
-      <CommandButton command="notes.today" variant="ghost" size="icon" className={ACTION_SIZE} />
+      <CommandButton command={today} variant="ghost" size="icon" className={ACTION_SIZE} />
       <DashboardButton className={ACTION_SIZE} />
       <Separator className={RAIL_SEPARATOR} />
       <ActionSpacer />
@@ -109,18 +112,22 @@ function ExpandedLayout() {
  * so that they don't move when it collapses or expands.
  */
 function CollapsibleLayout({ isCollapsed }: { isCollapsed: boolean }) {
+  const sidebar = useSidebarCommand();
   return (
     <div className="relative h-full">
       {/* (Centered in the header's row, which is as tall as its filter input) */}
-      <div className="absolute top-3 left-2 z-10 flex h-8 items-center">
-        <CommandButton command="view.sidebar" variant="ghost" size="icon" className={ACTION_SIZE} />
+      <div className="sidebar-collapse absolute top-3 left-2 z-10 flex h-8 items-center">
+        <CommandButton command={sidebar} variant="ghost" size="icon" className={ACTION_SIZE}>
+          <PanelLeftClose className="sidebar-close-icon" />
+          <PanelLeftOpen className="sidebar-open-icon" />
+        </CommandButton>
       </div>
 
       <div
         inert={isCollapsed}
-        className={cn("absolute inset-0 flex flex-col", layerClass(!isCollapsed))}
+        className={cn("sidebar-expanded absolute inset-0 flex flex-col", layerClass(!isCollapsed))}
       >
-        <GistList leadingSlot={<ActionSpacer />} />
+        <GistList leadingSlot={<ActionSpacer className="hidden md:block" />} />
         <SidebarFooter leadingSlot={<ActionSpacer />} />
       </div>
 
@@ -172,7 +179,7 @@ export function Sidebar() {
   const isCollapsed = useSelector(sidebarCollapsedAtom);
   const width = useSelector(sidebarWidthAtom);
 
-  // (On mobile, `MobilePanels` slides it in)
+  // (On mobile, the workbench slides it in)
   if (isMobile) return <ExpandedLayout />;
 
   return (

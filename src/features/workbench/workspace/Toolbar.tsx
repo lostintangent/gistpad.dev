@@ -1,3 +1,4 @@
+import { Skeleton } from "@/shared/ui/skeleton";
 import { useIsAgentRunning } from "@/features/agent/model/store";
 import { useAddAndOpenFile } from "@/features/gists/actions";
 import { CommandButton } from "@/features/commands/CommandButton";
@@ -9,7 +10,7 @@ import {
   generateDateFilename,
   groupFilesByDate,
   parseDateFilename,
-} from "@/shared/dates";
+} from "@/shared/date-filenames";
 import { EmojiInput } from "@/shared/EmojiInput";
 import {
   InputGroup,
@@ -93,8 +94,6 @@ function FileMenu({
   title: ReactNode;
   commands: WorkspaceCommands;
 }) {
-  const isMobile = useIsMobile();
-
   const filenames = getMarkdownFiles(file.gist);
   const dateGroups = groupFilesByDate(filenames);
   const dateFormat = detectDateFormat(filenames);
@@ -130,7 +129,7 @@ function FileMenu({
         {title}
         {/* The chevron trails the title, like a menu's (rather than leading it, like a section's).
             On mobile, there's no room for it beside the "Show gists" button. */}
-        {!isMobile && <ChevronDown className="text-muted-foreground" />}
+        <ChevronDown className="hidden text-muted-foreground md:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {Object.entries(dateGroups?.groups ?? {})
@@ -248,7 +247,7 @@ function DesktopActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspac
         variant="outline"
         size="sm"
         spacing={0}
-        value={[mode]}
+        value={isDisabled ? [] : [mode]}
         onValueChange={([value]) => {
           if (isEditorMode(value)) void executeCommand(toolbar.view[value]);
         }}
@@ -265,7 +264,7 @@ function DesktopActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspac
         </ToggleGroupItem>
       </ToggleGroup>
 
-      {toolbar.isCommentsEnabled && (
+      {(file.isLoading || toolbar.isCommentsEnabled) && (
         <Toggle
           size="sm"
           pressed={toolbar.isCommentsOpen}
@@ -282,7 +281,7 @@ function DesktopActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspac
         </Toggle>
       )}
 
-      {toolbar.canViewHistory && (
+      {(file.isLoading || toolbar.canViewHistory) && (
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={isDisabled}
@@ -333,7 +332,7 @@ function MobileActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspace
         size="sm"
         spacing={0}
         className="mr-1"
-        value={[isCommentsOpen ? "comments" : mode]}
+        value={isDisabled ? [] : [isCommentsOpen ? "comments" : mode]}
         onValueChange={([value]) => {
           if (!value) return;
           if (value === "comments") return void executeCommand(toolbar.comments);
@@ -348,7 +347,7 @@ function MobileActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspace
         <ToggleGroupItem value="preview" aria-label="Show preview">
           <Eye className="h-3.5 w-3.5" />
         </ToggleGroupItem>
-        {toolbar.isCommentsEnabled && (
+        {(file.isLoading || toolbar.isCommentsEnabled) && (
           <ToggleGroupItem
             value="comments"
             aria-label="Show comments"
@@ -456,17 +455,19 @@ export default function Toolbar({
     >
       <div className="flex items-center gap-1 flex-1 min-w-0">
         {/* On mobile, the gist list is slid away (until it's shown, beside the editor) */}
-        {isMobile && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => mobilePanelAtom.set("sidebar")}
-            title="Show gists"
-          >
-            <PanelLeftOpen />
-          </Button>
-        )}
-        {gist &&
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="md:hidden"
+          onClick={() => mobilePanelAtom.set("sidebar")}
+          title="Show gists"
+        >
+          <PanelLeftOpen />
+        </Button>
+        {file.isLoading && !gist ? (
+          <Skeleton className="h-5 w-36 max-w-full mx-2" />
+        ) : (
+          gist &&
           (isEditingTitle ? (
             <TitleEditor file={file} initialValue={name} onDone={toolbar.stopEditing} />
           ) : (
@@ -490,15 +491,17 @@ export default function Toolbar({
                 </Button>
               )}
             </>
-          ))}
+          ))
+        )}
       </div>
 
       <div className="flex gap-2 items-center shrink-0">
-        {isMobile ? (
-          !isEditingTitle && <MobileActions file={file} toolbar={toolbar} />
-        ) : (
+        <div className="flex gap-2 items-center md:hidden">
+          {!isEditingTitle && <MobileActions file={file} toolbar={toolbar} />}
+        </div>
+        <div className="hidden gap-2 items-center md:flex">
           <DesktopActions file={file} toolbar={toolbar} />
-        )}
+        </div>
       </div>
 
       {isAddingFile && (

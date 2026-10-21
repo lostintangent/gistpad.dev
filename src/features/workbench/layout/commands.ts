@@ -14,7 +14,7 @@ export function useIsDashboardOpen() {
   return [isMobile ? mobile : desktop, setIsOpen] as const;
 }
 
-function useSidebarCommand(): Command {
+export function useSidebarCommand(): Command {
   const isMobile = useIsMobile();
   const isZenMode = useSelector(zenModeAtom);
   const isCollapsed = useSelector(sidebarCollapsedAtom);
@@ -29,7 +29,7 @@ function useSidebarCommand(): Command {
   };
 }
 
-function useDashboardCommand(): Command {
+export function useDashboardCommand(): Command {
   const [isOpen, setIsOpen] = useIsDashboardOpen();
   const isZenMode = useSelector(zenModeAtom);
   return {

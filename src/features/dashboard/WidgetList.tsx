@@ -1,29 +1,26 @@
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Separator } from "@/shared/ui/separator";
 import { useSelector } from "@tanstack/react-store";
 import { cn } from "cn";
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Edit,
-  Newspaper,
-  PanelRightClose,
-  Plus,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import { getRequiredOptions, widgetRegistry } from "./registry";
 import { addWidget, moveWidget, removeUnconfiguredWidgets, widgetsAtom } from "./store";
 import { Widget } from "./Widget";
 
 /** The dashboard's widgets (which are loaded on demand, when it's first opened). */
-export default function WidgetList({ onClose }: { onClose: () => void }) {
+export default function WidgetList({
+  ref: widgetListRef,
+  isEditMode,
+  onEditModeChange: setEditMode,
+}: {
+  ref: RefObject<HTMLDivElement | null>;
+  isEditMode: boolean;
+  onEditModeChange: (isEditMode: boolean) => void;
+}) {
   const widgets = useSelector(widgetsAtom);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [availableCollapsed, setAvailableCollapsed] = useState(false);
-  const widgetListRef = useRef<HTMLDivElement>(null);
 
   // While dragging a widget, where it would be dropped (as an index into the list of widgets)
   const [drag, setDrag] = useState<{ id: string; dropIndex: number | null } | null>(null);
@@ -40,10 +37,11 @@ export default function WidgetList({ onClose }: { onClose: () => void }) {
       ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
-  const setEditMode = (isEditMode: boolean) => {
-    setIsEditMode(isEditMode);
-    if (!isEditMode) removeUnconfiguredWidgets();
-  };
+  const wasEditing = useRef(isEditMode);
+  useEffect(() => {
+    if (wasEditing.current && !isEditMode) removeUnconfiguredWidgets();
+    wasEditing.current = isEditMode;
+  }, [isEditMode]);
 
   // Closing the dashboard also leaves edit mode (since its state is reset when it's closed)
   useEffect(() => removeUnconfiguredWidgets, []);
@@ -59,40 +57,6 @@ export default function WidgetList({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="px-2 pt-3 pb-2 flex-none">
-        <div className="flex items-center justify-between">
-          <h2
-            // (Its icon lines up with the widgets' chevrons, and its title with theirs)
-            className="font-semibold cursor-pointer flex items-center gap-2"
-            onClick={() =>
-              widgetListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })
-            }
-          >
-            <Newspaper className="size-4" />
-            Dashboard
-          </h2>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setEditMode(!isEditMode)}
-              className={cn(
-                isEditMode && "hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20",
-              )}
-              title={isEditMode ? "Save and exit edit mode" : "Edit widgets"}
-            >
-              {isEditMode ? <Check /> : <Edit />}
-            </Button>
-            <Separator
-              orientation="vertical"
-              className="h-4 data-vertical:self-center bg-separator"
-            />
-            <Button variant="ghost" size="icon-sm" title="Close dashboard" onClick={onClose}>
-              <PanelRightClose />
-            </Button>
-          </div>
-        </div>
-      </div>
       {/* The widgets scroll together (like the gist list), beneath the dashboard's header */}
       <ScrollArea className="flex-1 min-h-0">
         <div

@@ -12,21 +12,29 @@ export const RAW_STRING: Serializer<string> = { parse: String, stringify: String
 export function persistedAtom<T>(
   key: string,
   initialValue: T,
-  { parse, stringify }: Serializer<T> = { parse: JSON.parse, stringify: JSON.stringify },
+  { parse = JSON.parse, stringify = JSON.stringify }: Partial<Serializer<T>> = {},
 ): Atom<T> {
-  const read = (value: string | null) => {
+  const read = () => {
     try {
+      const value = localStorage.getItem(key);
       return value === null ? initialValue : parse(value);
     } catch {
       return initialValue;
     }
   };
 
-  const atom = createAtom(read(localStorage.getItem(key)));
-  atom.subscribe((value) => localStorage.setItem(key, stringify(value)));
+  const atom = createAtom(typeof window === "undefined" ? initialValue : read());
+  if (typeof window === "undefined") return atom;
+  atom.subscribe((value) => {
+    try {
+      localStorage.setItem(key, stringify(value));
+    } catch {
+      // Keep the in-memory setting usable when storage is unavailable or full.
+    }
+  });
 
   window.addEventListener("storage", (event) => {
-    if (event.key === key) atom.set(read(event.newValue));
+    if (event.key === key || event.key === null) atom.set(read());
   });
 
   return atom;

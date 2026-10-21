@@ -1,9 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "./features/markdown/index.css";
+@import "../features/markdown/index.css";
+@import "../features/workbench/layout/workbench.css";
 
 @plugin "@tailwindcss/typography";
+
+/* These rules only select browser-local state; the real components own their layout. */
+[data-initial-shell] [data-shell-page] {
+  display: none;
+}
+[data-startup-page="signin"] [data-initial-shell] [data-shell-page="signin"],
+[data-startup-page="workbench"] [data-initial-shell] [data-shell-page="workbench"],
+[data-startup-page="share"] [data-initial-shell] [data-shell-page="share"] {
+  display: block;
+}
 
 /* The app's theme follows the OS (light or dark), via `light-dark()`, and matches Toy Box's. Its
    variables are named like shadcn's (since its components refer to them), and are mapped to

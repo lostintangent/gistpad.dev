@@ -1,5 +1,5 @@
 import { timeAgo } from "@/shared/dates";
-import { CommentTooltips } from "@/features/comments/CommentTooltips";
+import CommentTooltips from "@/features/comments/CommentTooltips";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { readHeadings, useLinkedHeading, type Heading } from "@/features/markdown/headings";
 import { MarkdownPreview } from "@/features/markdown/MarkdownPreview";
@@ -8,6 +8,7 @@ import { ScrollableText } from "@/shared/ScrollableText";
 import { UserAvatar } from "@/shared/UserAvatar";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { Skeleton } from "@/shared/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +22,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { getWhiteboard, useActiveFile, type ActiveFile } from "@/features/files/file";
 import LoadingSkeleton from "@/shared/LoadingSkeleton";
-import { useIsMobile } from "@/shared/useMediaQuery";
 import { useTransientState } from "@/shared/useTransientState";
 import {
   getFileDisplayName,
@@ -96,10 +96,9 @@ function GistDates({ gist }: { gist: Gist }) {
 }
 
 /** A read-only view of a gist, which can be shared with other people. */
-export default function Share() {
+export default function SharePage() {
   const file = useActiveFile();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const { quotedThreads } = useCommentThreads(file);
   const [isCopied, setIsCopied] = useTransientState(false);
   const [headings, setHeadings] = useState<Heading[]>([]);
@@ -153,127 +152,144 @@ export default function Share() {
       <header className="mb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="min-w-0 mr-6">
-            {file.isLoading ? (
-              <h1 className="text-2xl font-bold flex-1 min-w-0">{title}</h1>
-            ) : (
-              <DropdownMenu
-                modal={false}
-                // The table of contents reflects the rendered document
-                onOpenChange={(open) => open && setHeadings(readHeadings(previewRef.current))}
+            <DropdownMenu
+              modal={false}
+              // The table of contents reflects the rendered document
+              onOpenChange={(open) => open && setHeadings(readHeadings(previewRef.current))}
+            >
+              <DropdownMenuTrigger
+                disabled={file.isLoading}
+                render={
+                  <Button
+                    variant="ghost"
+                    className="h-10 gap-2 w-full items-center p-1! disabled:opacity-100"
+                  />
+                }
               >
-                <DropdownMenuTrigger
-                  render={
-                    <Button variant="ghost" className="h-10 gap-2 w-full items-center p-1!" />
-                  }
-                >
-                  <h1 className="text-2xl font-bold flex-1 min-w-0 text-left">
+                <h1 className="text-2xl font-bold flex-1 min-w-0 text-left">
+                  {file.isLoading && !file.gist ? (
+                    <>
+                      <span className="sr-only">Loading document</span>
+                      <Skeleton className="h-6 w-44 max-w-full bg-muted-foreground/15" />
+                    </>
+                  ) : (
                     <ScrollableText>{title}</ScrollableText>
-                  </h1>
-                  <ChevronDown className="h-4 w-4 mt-1" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {headings.length > 0 && (
-                    <>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <BookOpen /> Table of contents
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                          {headings.map(({ id, text, level }) => (
-                            <DropdownMenuItem
-                              key={id}
-                              onClick={() => selectHeading(id)}
-                              style={{ paddingLeft: `${(level - 1) * 0.5}rem` }}
-                            >
-                              {text}
-                              {id === heading && <Check className="ml-auto" />}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                      <DropdownMenuSeparator />
-                    </>
                   )}
-                  <DropdownMenuItem onClick={copyUrl}>
-                    <LinkIcon /> Copy URL
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={copyHtml}>
-                    <FileText /> Copy as HTML
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem render={<Link {...editorLink} />}>
-                    <Pencil /> Open in editor
-                  </DropdownMenuItem>
-                  {files.length > 1 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <FileText /> Files in this gist...
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                          {files.map((filename) => (
-                            <DropdownMenuItem
-                              key={filename}
-                              onClick={() => openFile(filename)}
-                              className={
-                                filename === file.filename
-                                  ? "bg-primary text-primary-foreground"
-                                  : ""
-                              }
-                            >
-                              <FileText /> {getFileDisplayName(filename)}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    // Keep the menu open, so the refresh's progress is visible
-                    closeOnClick={false}
-                    onClick={() => refresh.mutate()}
-                    disabled={refresh.isPending}
-                  >
-                    <RefreshCw className={refresh.isPending ? "animate-spin" : ""} /> Refresh
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                </h1>
+                <ChevronDown className="h-4 w-4 mt-1" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {headings.length > 0 && (
+                  <>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <BookOpen /> Table of contents
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {headings.map(({ id, text, level }) => (
+                          <DropdownMenuItem
+                            key={id}
+                            onClick={() => selectHeading(id)}
+                            style={{ paddingLeft: `${(level - 1) * 0.5}rem` }}
+                          >
+                            {text}
+                            {id === heading && <Check className="ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={copyUrl}>
+                  <LinkIcon /> Copy URL
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={copyHtml}>
+                  <FileText /> Copy as HTML
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link {...editorLink} />}>
+                  <Pencil /> Open in editor
+                </DropdownMenuItem>
+                {files.length > 1 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <FileText /> Files in this gist...
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {files.map((filename) => (
+                          <DropdownMenuItem
+                            key={filename}
+                            onClick={() => openFile(filename)}
+                            className={
+                              filename === file.filename ? "bg-primary text-primary-foreground" : ""
+                            }
+                          >
+                            <FileText /> {getFileDisplayName(filename)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  // Keep the menu open, so the refresh's progress is visible
+                  closeOnClick={false}
+                  onClick={() => refresh.mutate()}
+                  disabled={refresh.isPending}
+                >
+                  <RefreshCw className={refresh.isPending ? "animate-spin" : ""} /> Refresh
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          {!isMobile && (
-            <div className="flex gap-2">
-              <Button title="Copy URL" variant="outline" onClick={copyUrl}>
-                {isCopied ? <Check className="text-green-500" /> : <LinkIcon />}
-              </Button>
-              <Button variant="outline" nativeButton={false} render={<Link {...editorLink} />}>
-                <Pencil /> Open in editor
-              </Button>
-            </div>
-          )}
+          <div className="hidden md:flex gap-2">
+            <Button title="Copy URL" variant="outline" onClick={copyUrl}>
+              {isCopied ? <Check className="text-green-500" /> : <LinkIcon />}
+            </Button>
+            <Button variant="outline" nativeButton={false} render={<Link {...editorLink} />}>
+              <Pencil /> Open in editor
+            </Button>
+          </div>
         </div>
 
-        {file.gist?.owner && (
+        {(file.isLoading || file.gist?.owner) && (
           <div className="flex items-center text-sm text-muted-foreground ml-1">
-            <a
-              href={`https://github.com/${file.gist.owner.login}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:text-foreground"
-            >
-              <UserAvatar user={file.gist.owner} size="sm" />
-              <span className="font-medium">{file.gist.owner.login}</span>
-            </a>
+            {file.gist?.owner ? (
+              <a
+                href={`https://github.com/${file.gist.owner.login}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-foreground"
+              >
+                <UserAvatar user={file.gist.owner} size="sm" />
+                <span className="font-medium">{file.gist.owner.login}</span>
+              </a>
+            ) : (
+              <span className="flex items-center gap-2" aria-hidden="true">
+                <Skeleton className="size-6 rounded-full bg-muted-foreground/15" />
+                <Skeleton className="h-4 w-24 bg-muted-foreground/15" />
+              </span>
+            )}
             <span className="mx-2">•</span>
-            <GistDates gist={file.gist} />
+            {file.gist ? (
+              <GistDates gist={file.gist} />
+            ) : (
+              <span className="flex items-center gap-1" aria-hidden="true">
+                <Calendar className="h-4 w-4" />
+                <Skeleton className="h-4 w-28 bg-muted-foreground/15" />
+              </span>
+            )}
           </div>
         )}
       </header>
 
       <Card className="shadow-lg">
         {file.isLoading ? (
-          <div className="p-6">
+          <div className="p-5">
             <LoadingSkeleton />
           </div>
         ) : (

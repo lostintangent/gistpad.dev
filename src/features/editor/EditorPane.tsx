@@ -34,7 +34,7 @@ import {
 import { toast } from "sonner";
 
 /** The editor for the active file, which hosts CodeMirror (see `extensions`), and keeps it configured. */
-export function EditorPane({
+export default function EditorPane({
   revision,
   previewRef,
 }: {
@@ -168,10 +168,11 @@ export function EditorPane({
 
   // Keep the preview scrolled to the same relative position as the editor.
   useEffect(() => {
-    const preview = previewRef?.current;
-    if (!view || !preview) return;
+    if (!view || !previewRef) return;
 
     const syncScroll = () => {
+      const preview = previewRef.current;
+      if (!preview) return;
       const { scrollTop, clientHeight } = view.scrollDOM;
       const ratio = scrollTop / (view.contentHeight - clientHeight);
       preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);

@@ -11,10 +11,10 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["bun"],
+    "types": ["bun", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "vite.config.ts"]
 }

@@ -1,4 +1,9 @@
-import { detectDateFormat, generateDateFilename, getMostRecentDatedFilename } from "@/shared/dates";
+import {
+  detectDateFormat,
+  generateDateFilename,
+  getMostRecentDatedFilename,
+} from "@/shared/date-filenames";
+import { githubToken } from "./github-token";
 
 // Types
 
@@ -46,16 +51,6 @@ export interface GistRevision {
   };
   url: string;
 }
-
-// Auth token
-
-const TOKEN_KEY = "gistpad-github-token";
-
-export const githubToken = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
-};
 
 // Requests
 
@@ -343,10 +338,4 @@ export function listGistRevisions(gistId: string) {
 
 export function getGistRevision(gistId: string, revisionId: string) {
   return request<Gist>(`/gists/${gistId}/${revisionId}`);
-}
-
-// Users
-
-export function getAuthenticatedUser() {
-  return request<GitHubUser & { name: string | null }>("/user");
 }

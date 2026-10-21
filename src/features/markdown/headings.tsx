@@ -41,7 +41,7 @@ export function useLinkedHeading(
   container: RefObject<HTMLElement | null>,
   file: { key: string; isLoading: boolean },
 ) {
-  const { heading } = useSearch({ strict: false });
+  const { heading } = useSearch({ strict: false, shouldThrow: false }) ?? {};
   const navigate = useNavigate();
 
   const scrollToLinkedHeading = useEffectEvent(() => {

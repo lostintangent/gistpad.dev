@@ -11,6 +11,7 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
+import { Skeleton } from "@/shared/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -66,7 +67,9 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
         >
           <Avatar className="size-5">
             <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback className="text-xs">{user?.initial}</AvatarFallback>
+            <AvatarFallback className="text-xs">
+              {user?.initial ?? <Skeleton className="size-full rounded-full" />}
+            </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent side={side} align={side === "top" ? "start" : "end"}>

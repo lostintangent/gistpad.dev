@@ -1,8 +1,9 @@
-import { getAuthenticatedUser, githubToken } from "@/shared/github";
+import { githubToken } from "@/shared/github-token";
 import { queryClient } from "@/shared/query-client";
 import { auth } from "@/shared/supabase";
 import { isAuthRetryableFetchError } from "@supabase/auth-js";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import { AUTH_REDIRECT_KEY, getSignInCallback, readSignInRedirect } from "./sign-in-redirect";
 
 // Types
 
@@ -80,96 +81,58 @@ const DEFAULT_PREFERENCES: Preferences = {
   researchTasks: [],
 };
 
-// Session sources
+// Authentication
 
-interface SessionSource {
-  load(): Promise<Session | null>;
-  savePreferences(changes: Partial<Preferences>): Promise<void>;
-  signIn(): Promise<void>;
-  signOut(): Promise<void>;
+/** GitHub sign-in and account preferences, provided by Supabase. */
+async function fetchSession(): Promise<Session | null> {
+  const { data } = await auth.getSession();
+  if (!data.session) {
+    githubToken.clear();
+    return null;
+  }
+
+  // The session includes a cached copy of the user's metadata,
+  // so explicitly fetch the user in order to get their latest preferences.
+  const {
+    data: { user },
+    error,
+  } = await auth.getUser();
+  // (A network error doesn't mean the user is signed out, so let the query retry)
+  if (isAuthRetryableFetchError(error)) throw error;
+  if (!user) return null;
+
+  const { user_name, avatar_url, name, ...preferences } = user.user_metadata;
+  return {
+    user: {
+      login: user_name,
+      avatarUrl: avatar_url,
+      initial: (name || user.email || "A")[0].toUpperCase(),
+    },
+    preferences: { ...DEFAULT_PREFERENCES, ...preferences },
+  };
 }
 
-const AUTH_REDIRECT_KEY = "gistpad-auth-redirect";
+async function savePreferences(changes: Partial<Preferences>) {
+  const { error } = await auth.updateUser({ data: changes });
+  if (error) throw error;
+}
 
-/** The default source, which signs users in with GitHub (via Supabase). */
-const supabaseSource: SessionSource = {
-  async load() {
-    const { data } = await auth.getSession();
-    if (!data.session) {
-      githubToken.clear();
-      return null;
-    }
+export async function signIn() {
+  // Remember where the user was, so they can return there after signing in.
+  sessionStorage.setItem(
+    AUTH_REDIRECT_KEY,
+    JSON.stringify({ url: location.hash, timestamp: Date.now() }),
+  );
 
-    // The session includes a cached copy of the user's metadata,
-    // so explicitly fetch the user in order to get their latest preferences.
-    const {
-      data: { user },
-      error,
-    } = await auth.getUser();
-    // (A network error doesn't mean the user is signed out, so let the query retry)
-    if (isAuthRetryableFetchError(error)) throw error;
-    if (!user) return null;
+  await auth.signInWithOAuth({
+    provider: "github",
+    options: { scopes: "gist", redirectTo: location.origin },
+  });
+}
 
-    const { user_name, avatar_url, name, ...preferences } = user.user_metadata;
-    return {
-      user: {
-        login: user_name,
-        avatarUrl: avatar_url,
-        initial: (name || user.email || "A")[0].toUpperCase(),
-      },
-      preferences: { ...DEFAULT_PREFERENCES, ...preferences },
-    };
-  },
-
-  async savePreferences(changes) {
-    const { error } = await auth.updateUser({ data: changes });
-    if (error) throw error;
-  },
-
-  async signIn() {
-    // Remember where the user was, so they can return there after signing in.
-    sessionStorage.setItem(
-      AUTH_REDIRECT_KEY,
-      JSON.stringify({ url: location.hash, timestamp: Date.now() }),
-    );
-
-    await auth.signInWithOAuth({
-      provider: "github",
-      options: { scopes: "gist", redirectTo: location.origin },
-    });
-  },
-
-  async signOut() {
-    await auth.signOut();
-  },
-};
-
-const LOCAL_PREFERENCES_KEY = "gistpad-local-preferences";
-
-/** A dev server source, which signs in using a GitHub token from `.env.local`. */
-const localSource = (token: string): SessionSource => ({
-  async load() {
-    githubToken.set(token);
-    const { login, avatar_url, name } = await getAuthenticatedUser();
-    const preferences = JSON.parse(localStorage.getItem(LOCAL_PREFERENCES_KEY) ?? "{}");
-
-    return {
-      user: { login, avatarUrl: avatar_url, initial: (name || login)[0].toUpperCase() },
-      preferences: { ...DEFAULT_PREFERENCES, ...preferences },
-    };
-  },
-
-  async savePreferences(changes) {
-    const preferences = JSON.parse(localStorage.getItem(LOCAL_PREFERENCES_KEY) ?? "{}");
-    localStorage.setItem(LOCAL_PREFERENCES_KEY, JSON.stringify({ ...preferences, ...changes }));
-  },
-
-  async signIn() {},
-  async signOut() {},
-});
-
-const localToken = process.env.BUN_PUBLIC_GITHUB_TOKEN;
-const source = localToken ? localSource(localToken) : supabaseSource;
+export async function signOut() {
+  await auth.signOut();
+}
 
 /**
  * Completes a GitHub sign-in redirect (if there is one), and returns the
@@ -178,25 +141,26 @@ const source = localToken ? localSource(localToken) : supabaseSource;
 export async function completeSignIn() {
   // Supabase returns the sign-in result as `#access_token=...` (or `#error=...`), which would
   // otherwise be mistaken for an app route. So let Supabase process it before routing.
-  if (!/^#(access_token|error)=/.test(location.hash)) return;
+  if (!getSignInCallback(location.hash)) return;
   await auth.getSession();
 
   // The cache may include a session from before the user signed in (i.e. a signed-out one)
   queryClient.removeQueries({ queryKey: sessionQuery.queryKey });
 
-  const redirect = sessionStorage.getItem(AUTH_REDIRECT_KEY);
-  sessionStorage.removeItem(AUTH_REDIRECT_KEY);
-
-  const { url = "", timestamp = 0 } = JSON.parse(redirect ?? "{}");
-  const isRecent = Date.now() - timestamp < 1000 * 60 * 5;
-  return (isRecent && url.replace(/^#/, "")) || "/";
+  const redirect = readSignInRedirect();
+  try {
+    sessionStorage.removeItem(AUTH_REDIRECT_KEY);
+  } catch {
+    // Storage may be blocked; the redirect reader already falls back to home.
+  }
+  return redirect;
 }
 
 // Queries
 
 export const sessionQuery = queryOptions({
   queryKey: ["session"],
-  queryFn: () => source.load(),
+  queryFn: fetchSession,
   staleTime: 1000 * 60 * 5,
 });
 
@@ -225,9 +189,6 @@ export function useSession() {
   return { session, user: session?.user };
 }
 
-export const signIn = () => source.signIn();
-export const signOut = () => source.signOut();
-
 // Preferences
 
 export function usePreferences() {
@@ -246,7 +207,7 @@ export function useTagCounts() {
 /** Updates the user's preferences, optimistically applying them to the session cache. */
 export function useUpdatePreferences() {
   const { mutate } = useMutation({
-    mutationFn: (changes: Partial<Preferences>) => source.savePreferences(changes),
+    mutationFn: savePreferences,
     onError: () => queryClient.invalidateQueries(sessionQuery),
     meta: { errorMessage: "Failed to save your settings" },
   });

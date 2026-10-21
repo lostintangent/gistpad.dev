@@ -22,7 +22,7 @@ const HIDE_DELAY = 150;
  * selects the comment when its highlight is clicked. Highlights are found by their class, since
  * the editor's highlights are rendered by CodeMirror (rather than React).
  */
-export function CommentTooltips({
+export default function CommentTooltips({
   threads,
   onSelect,
 }: {

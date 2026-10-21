@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot index.html --hostname=${GISTPAD_DEV_HOST:-0.0.0.0} --port=8080",
-    "build": "bun scripts/build.ts",
+    "dev": "bun --bun vite --host ${GISTPAD_DEV_HOST:-0.0.0.0} --port 8080",
+    "build": "NODE_ENV=production bun --bun vite build",
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "@tanstack/react-query": "^5.104.4",
     "@tanstack/react-query-persist-client": "^5.104.4",
     "@tanstack/react-router": "^1.170.45",
+    "@tanstack/react-start": "1.169.3",
     "@tanstack/react-store": "^0.11.2",
     "@uiw/codemirror-theme-github": "^4.25.12",
     "class-variance-authority": "^0.7.1",
@@ -63,16 +64,22 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/virtual-file-routes": "^1.162.0",
     "@types/bun": "^1.4.3",
     "@types/hast": "^3.0.5",
     "@types/nspell": "^2.1.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "bun-plugin-tailwind": "^0.1.2",
+    "@vitejs/plugin-react": "6.1.2",
+    "oxc-transform-react": "^0.152.0",
     "shadcn": "^4.22.1",
-    "tailwindcss": "^4.3.3"
-  },
-  "patchedDependencies": {
-    "@tanstack/router-core@1.171.38": "patches/@tanstack%2Frouter-core@1.171.38.patch"
+    "tailwindcss": "^4.3.3",
+    "vite": "8.3.4",
+    "workbox-core": "^7.4.1",
+    "workbox-expiration": "^7.4.1",
+    "workbox-navigation-preload": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1"
   }
 }

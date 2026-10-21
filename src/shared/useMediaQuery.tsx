@@ -8,6 +8,7 @@ function useMediaQuery(query: string) {
       return () => mediaQuery.removeEventListener("change", onChange);
     },
     () => window.matchMedia(query).matches,
+    () => false,
   );
 }
 

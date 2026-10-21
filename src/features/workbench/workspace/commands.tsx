@@ -10,7 +10,7 @@ import { openFile, readFileContent, useIsSaving, type ActiveFile } from "@/featu
 import { deleteCommand, useGistCommands } from "@/features/gists/commands";
 import { manageTagsCommand, tagCommands } from "@/features/gists/tagCommands";
 import { gistQueries } from "@/features/gists/queries";
-import { router } from "@/router";
+import { useRouter } from "@tanstack/react-router";
 import { getFileDisplayName, getMarkdownFiles, isDailyNote } from "@/shared/github";
 import { timeAgo } from "@/shared/dates";
 import { useIsMobile } from "@/shared/useMediaQuery";
@@ -39,6 +39,7 @@ import { revisionAtom, toContentRevisions, useIsViewingRevision } from "./histor
 
 /** The active workspace's controller. Commands and toolbar state outlive the toolbar's chrome. */
 export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
+  const router = useRouter();
   const isMobile = useIsMobile();
   const [mode, setMode] = useEditorMode();
   const isZenMode = useSelector(zenModeAtom);
@@ -162,7 +163,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
     save: {
       id: "file.save",
       group: "This gist",
-      title: file.isReadOnly ? "Fork and save" : "Save",
+      title: file.gist && file.isReadOnly ? "Fork and save" : "Save",
       icon: Save,
       shortcut: "Mod+S",
       disabled: isDisabled || isViewingRevision || !hasChanges || isSaving,
@@ -194,7 +195,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       run: isCommentsOpen ? closeComments : () => openComments(),
     } satisfies Command,
     delete:
-      file.gist && !file.isReadOnly
+      file.isLoading || (file.gist && !file.isReadOnly)
         ? { ...deleteCommand(file.gist, file.filename), disabled: isDisabled || isViewingRevision }
         : null,
     tags: [

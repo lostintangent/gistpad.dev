@@ -1,10 +1,6 @@
-# Dev server (`bun dev`): compile Tailwind and inline the public env vars from `.env`/`.env.local`.
-[serve.static]
-plugins = ["bun-plugin-tailwind"]
-env = "BUN_PUBLIC_*"
-
 [fmt]
 printWidth = 100
+ignorePatterns = ["src/shell/router/routeTree.gen.ts"]
 
 [lint]
 ignorePatterns = ["dist/"]

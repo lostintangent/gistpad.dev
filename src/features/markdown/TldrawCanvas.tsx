@@ -13,7 +13,7 @@ import {
   TldrawUiMenuItem,
   type Editor,
 } from "tldraw";
-import tldrawStylesheet from "tldraw/tldraw.css" with { type: "file" };
+import tldrawStylesheet from "tldraw/tldraw.css?url";
 
 // The whiteboard itself, which is loaded on demand (since tldraw is large). Its stylesheet is loaded
 // along with it (rather than being bundled into the app's), so it doesn't delay the app's first paint.

@@ -1,10 +1,11 @@
 import UnsavedChangesGuard from "@/features/files/UnsavedChangesGuard";
 import { DashboardPanel } from "./panels/DashboardPanel";
-import { MobilePanels } from "./layout/SidePanel";
+import { useIsMobile } from "@/shared/useMediaQuery";
 import { Sidebar } from "./panels/Sidebar";
 import Workspace from "./workspace/Workspace";
 import ResearchStatus from "@/features/agent/research/ResearchStatus";
 import { Button } from "@/shared/ui/button";
+import { TooltipProvider } from "@/shared/ui/tooltip";
 import { useActiveFile, type ActiveFile } from "@/features/files/file";
 import { getFileDisplayName, getGistDisplayName } from "@/shared/github";
 import { useIsStarred } from "@/features/gists/queries";
@@ -13,10 +14,9 @@ import DeleteGistDialog from "@/features/gists/dialogs/DeleteGistDialog";
 import EditTagsDialog from "@/features/gists/dialogs/EditTagsDialog";
 import { mobilePanelAtom, zenModeAtom } from "./layout/state";
 import { draftAtom } from "@/features/files/draft";
-import { useIsMobile } from "@/shared/useMediaQuery";
 import { useSelector } from "@tanstack/react-store";
 import { EyeOff } from "lucide-react";
-import { useEffect, useEffectEvent } from "react";
+import { useEffect, useEffectEvent, type CSSProperties } from "react";
 import { useAccountCommands } from "@/features/account/commands";
 import { useGistListCommands } from "@/features/gists/commands";
 import { useLayoutCommands } from "./layout/commands";
@@ -83,43 +83,41 @@ export default function WorkbenchPage() {
 
   // (While there's no gist to show, e.g. for a new user, the gist list stays open)
   const mobilePanel = useSelector(mobilePanelAtom) ?? (file.gistId ? null : "sidebar");
+  const panelOffset = mobilePanel === "sidebar" ? 0 : mobilePanel === "dashboard" ? 2 : 1;
 
   useRecordRecentlyViewed(file);
 
-  const workspace = (
-    <div className="relative min-w-0 flex-1 h-full">
-      <Workspace commandPages={commandPages} />
-      {isZenMode && <ZenModeControls />}
-    </div>
-  );
-
   return (
-    <div className="fit-screen mx-auto max-w-500 p-2">
+    <TooltipProvider>
       <title>{file.gist ? `GistPad - ${getGistDisplayName(file.gist)}` : "GistPad"}</title>
-
-      {/* The workspace is between two panels (which slide in, on mobile) */}
-      {isMobile ? (
-        <MobilePanels
-          openPanel={
-            mobilePanel === "sidebar" ? "left" : mobilePanel === "dashboard" ? "right" : null
-          }
-          onClose={() => mobilePanelAtom.set(null)}
-          left={<Sidebar />}
-          right={<DashboardPanel />}
+      <div className="fit-screen mx-auto max-w-500 p-2">
+        <div
+          className="workbench-layout h-full flex"
+          style={{ "--mobile-panel-offset": panelOffset } as CSSProperties}
         >
-          {workspace}
-        </MobilePanels>
-      ) : (
-        <div className="h-full flex">
-          <Sidebar />
-          {workspace}
-          <DashboardPanel />
+          <div className="workbench-sidebar" inert={isMobile && mobilePanel !== "sidebar"}>
+            <Sidebar />
+          </div>
+          <div className="workbench-workspace relative min-w-0 flex-1 h-full">
+            <Workspace commandPages={commandPages} />
+            {isZenMode && <ZenModeControls />}
+            {mobilePanel && (
+              <button
+                className="absolute inset-0 z-20 md:hidden"
+                aria-label="Close panel"
+                onClick={() => mobilePanelAtom.set(null)}
+              />
+            )}
+          </div>
+          <div className="workbench-dashboard" inert={isMobile && mobilePanel !== "dashboard"}>
+            <DashboardPanel />
+          </div>
         </div>
-      )}
+      </div>
 
       <UnsavedChangesGuard />
       <DeleteGistDialog />
       <EditTagsDialog />
-    </div>
+    </TooltipProvider>
   );
 }

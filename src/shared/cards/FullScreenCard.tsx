@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
-import iconUrl from "@/assets/icon.svg";
 
 interface FullScreenCardProps {
   description?: string;
@@ -13,7 +12,7 @@ export default function FullScreenCard({ children, description, className }: Ful
       <Card className="w-84 bg-muted/30">
         <CardHeader>
           <CardTitle className="flex gap-2 items-center justify-center">
-            <img src={iconUrl} className="w-8" />
+            <img src="/icon.svg" className="w-8" alt="" />
             <span>GistPad</span>
           </CardTitle>
           {description && <CardDescription className="text-center">{description}</CardDescription>}

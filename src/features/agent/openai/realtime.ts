@@ -1,4 +1,4 @@
-import introUrl from "@/assets/intro.mp3";
+import introUrl from "./intro.mp3";
 import {
   backgroundResult,
   DEFAULT_OPENAI_REALTIME_MODEL,

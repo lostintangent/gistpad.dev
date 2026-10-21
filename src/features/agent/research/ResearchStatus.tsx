@@ -4,10 +4,11 @@ import { useTransientState } from "@/shared/useTransientState";
 import { Button } from "@/shared/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Bell, Check, Clipboard, Loader2, Square } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { cn } from "cn";
-import ResearchResultsDialog from "./ResearchResultsDialog";
 import { useResearchResults, useResearchTasks } from "./useResearchTasks";
+
+const ResearchResultsDialog = lazy(() => import("./ResearchResultsDialog"));
 
 /** The user's research tasks, whose results can be viewed once they're done. */
 export default function ResearchStatus({ className }: { className?: string }) {
@@ -115,12 +116,14 @@ export default function ResearchStatus({ className }: { className?: string }) {
         </PopoverContent>
       </Popover>
       {activeTask?.completedTime && (
-        <ResearchResultsDialog
-          task={activeTask}
-          result={results[activeTask.id]}
-          onClose={() => setActiveTaskId(null)}
-          onDelete={() => remove(activeTask.id)}
-        />
+        <Suspense>
+          <ResearchResultsDialog
+            task={activeTask}
+            result={results[activeTask.id]}
+            onClose={() => setActiveTaskId(null)}
+            onDelete={() => remove(activeTask.id)}
+          />
+        </Suspense>
       )}
     </div>
   );

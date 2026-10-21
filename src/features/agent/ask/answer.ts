@@ -1,4 +1,4 @@
-import diagramPlaceholderUrl from "@/assets/diagram-placeholder.svg";
+import diagramPlaceholderUrl from "./diagram-placeholder.svg";
 import type { ParsedElementInfo } from "@streamparser/json";
 import { z } from "zod";
 import { followUpSchema, removeCitationMarkers, type AgentFollowUp } from "../model/response";

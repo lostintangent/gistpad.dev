@@ -33,22 +33,24 @@ import {
   useToggleArchived,
   useToggleStarred,
 } from "./queries";
-import { router } from "@/router";
+import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { deleteGistDialog } from "./dialogs/DeleteGistDialog";
 
-export function deleteCommand(gist: Gist, filename?: string): Command {
+export function deleteCommand(gist: Gist | undefined, filename?: string): Command {
   return {
-    id: `gist.delete:${gist.id}/${filename ?? ""}`,
-    title: deletesGist(gist, filename) ? "Delete gist" : "Delete file",
+    id: `gist.delete:${gist?.id ?? ""}/${filename ?? ""}`,
+    title: !gist || deletesGist(gist, filename) ? "Delete gist" : "Delete file",
     group: "This gist",
     icon: Trash2,
-    run: () => deleteGistDialog.openWithPayload({ gist, filename }),
+    disabled: !gist,
+    run: () => gist && deleteGistDialog.openWithPayload({ gist, filename }),
   };
 }
 
 /** Commands are bound to a gist here, not reconstructed by menus and the palette. */
 export function useGistCommands(gist: Gist | undefined) {
+  const router = useRouter();
   const { user } = useSession();
   const { pinnedGists } = usePreferences();
   const updatePreferences = useUpdatePreferences();
@@ -122,7 +124,7 @@ export function useGistCommands(gist: Gist | undefined) {
 
 const RECENT_COUNT = 6;
 
-function useOpenTodaysNoteCommand(): Command {
+export function useOpenTodaysNoteCommand(): Command {
   const openTodaysNote = useOpenTodaysNote();
   return {
     id: "notes.today",

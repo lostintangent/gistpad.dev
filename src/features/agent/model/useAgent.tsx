@@ -69,7 +69,7 @@ export function useAgent() {
           // The agent can replace the content more than once, so track its new range
           range = { from: range.from, to: range.from + updated.length };
         } else {
-          updateDraft(file, { content: withFrontMatter(updated, frontMatterYaml) });
+          updateDraft(file, { content: updated });
         }
       },
     };
