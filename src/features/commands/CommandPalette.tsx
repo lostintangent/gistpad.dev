@@ -1,6 +1,7 @@
 import { useCompletions } from "@/shared/CompletionList";
 import { ScrollableText } from "@/shared/ScrollableText";
 import { Kbd } from "@/shared/ui/kbd";
+import { useIsMobile } from "@/shared/useMediaQuery";
 import type { ActionBarSurface } from "@/features/workbench/action-bar/ActionBarView";
 import { cn } from "cn";
 import { Check, ChevronLeft, CornerDownLeft, Loader2, Search } from "lucide-react";
@@ -34,6 +35,7 @@ export function CommandPalette({
   children: (surface: ActionBarSurface) => ReactNode;
 }) {
   const commands = useRegisteredCommands();
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState("");
   const [pageId, setPageId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -158,23 +160,26 @@ export function CommandPalette({
             </section>
           ))}
         </div>
-        <div className="flex items-center gap-3 border-t px-3 py-1.5 text-2xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd> navigate
-          </span>
-          <span className="flex items-center gap-1">
-            <Kbd>
-              <CornerDownLeft className="size-3" />
-            </Kbd>{" "}
-            select
-          </span>
-          {!query && (
+        {/* (The key hints are for keyboards) */}
+        {!isMobile && (
+          <div className="flex items-center gap-3 border-t px-3 py-1.5 text-2xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Kbd>⌫</Kbd> {page ? "back" : "close"}
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd> navigate
             </span>
-          )}
-        </div>
+            <span className="flex items-center gap-1">
+              <Kbd>
+                <CornerDownLeft className="size-3" />
+              </Kbd>{" "}
+              select
+            </span>
+            {!query && (
+              <span className="flex items-center gap-1">
+                <Kbd>⌫</Kbd> {page ? "back" : "close"}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     ),
     leading: page
@@ -201,6 +206,6 @@ export function CommandPalette({
         className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
       />
     ),
-    hint: <Kbd>esc</Kbd>,
+    hint: isMobile ? undefined : <Kbd>esc</Kbd>,
   });
 }
