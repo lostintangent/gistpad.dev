@@ -49,7 +49,8 @@
 
 @media (max-width: 767px) {
   .workbench-layout {
-    --mobile-panel-width: 85vw;
+    /* Keep the usual drawer width, but never exceed the safe-area-constrained track. */
+    --mobile-panel-width: min(85vw, 100%);
     --mobile-panel-gutter: 8px;
     gap: var(--mobile-panel-gutter);
     transform: translateX(
