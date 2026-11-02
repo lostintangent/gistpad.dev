@@ -85,11 +85,16 @@ const DEFAULT_PREFERENCES: Preferences = {
 
 /** GitHub sign-in and account preferences, provided by Supabase. */
 async function fetchSession(): Promise<Session | null> {
-  const { data } = await auth.getSession();
+  const { data, error: sessionError } = await auth.getSession();
+  // (A network error doesn't mean the user is signed out, so let the query retry)
+  if (isAuthRetryableFetchError(sessionError)) throw sessionError;
   if (!data.session) {
     githubToken.clear();
     return null;
   }
+
+  // GitHub's token only comes with a sign-in, so without it the user needs to sign in again
+  if (!data.session.provider_token && !githubToken.get()) return null;
 
   // The session includes a cached copy of the user's metadata,
   // so explicitly fetch the user in order to get their latest preferences.

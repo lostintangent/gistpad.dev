@@ -1,8 +1,14 @@
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { defaultShouldDehydrateQuery, MutationCache, QueryClient } from "@tanstack/react-query";
+import {
+  defaultShouldDehydrateQuery,
+  MutationCache,
+  QueryCache,
+  QueryClient,
+} from "@tanstack/react-query";
 import { persistQueryClient, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { toast } from "sonner";
 import { GitHubError } from "./github";
+import { githubToken } from "./github-token";
 
 declare module "@tanstack/react-query" {
   interface Register {
@@ -21,6 +27,14 @@ declare module "@tanstack/react-query" {
 
 const CACHE_LIFETIME = 1000 * 60 * 60 * 24 * 5; // 5 days
 
+/** GitHub rejected the token (e.g. it was revoked), so the user needs to sign in again. */
+function onGitHubError(error: Error) {
+  if (error instanceof GitHubError && error.status === 401) {
+    githubToken.clear();
+    queryClient.invalidateQueries({ queryKey: ["session"] });
+  }
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -31,12 +45,14 @@ export const queryClient = new QueryClient({
         failureCount < 3 && !(error instanceof GitHubError && error.status < 500),
     },
   },
+  queryCache: new QueryCache({ onError: onGitHubError }),
   mutationCache: new MutationCache({
     onMutate: (_variables, mutation) => {
       const { pendingMessage } = mutation.meta ?? {};
       if (pendingMessage) toast.loading(pendingMessage, { id: mutation.mutationId });
     },
-    onError: (_error, _variables, _result, mutation) => {
+    onError: (error, _variables, _result, mutation) => {
+      onGitHubError(error);
       const { errorMessage } = mutation.meta ?? {};
       if (errorMessage) toast.error(errorMessage);
     },
