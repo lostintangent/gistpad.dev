@@ -4,6 +4,7 @@ import { useIsMobile } from "@/shared/useMediaQuery";
 import { Sidebar } from "./panels/Sidebar";
 import Workspace from "./workspace/Workspace";
 import ResearchStatus from "@/features/agent/research/ResearchStatus";
+import { useResearchResults } from "@/features/agent/research/useResearchTasks";
 import { Button } from "@/shared/ui/button";
 import { TooltipProvider } from "@/shared/ui/tooltip";
 import { useActiveFile, type ActiveFile } from "@/features/files/file";
@@ -80,6 +81,8 @@ export default function WorkbenchPage() {
   const commandPages = useGistListCommands();
   useAccountCommands();
   useLayoutCommands();
+  // (The research status, which the sidebar and zen mode show, only reads what this polls)
+  useResearchResults(true);
 
   // (While there's no gist to show, e.g. for a new user, the gist list stays open)
   const mobilePanel = useSelector(mobilePanelAtom) ?? (file.gistId ? null : "sidebar");

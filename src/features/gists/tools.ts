@@ -1,7 +1,7 @@
-import { readGist, readGists } from "@/features/gists/queries";
+import { readGist, readGists } from "./queries";
 import { getDefaultFile, getGistDisplayName, toMarkdownFilename, type Gist } from "@/shared/github";
 import { z } from "zod";
-import { defineTool, type AgentTool } from "./tools";
+import { defineTool, type AgentTool } from "@/features/agent/model/tools";
 
 // The tools that let the agent read the user's other gists (when they're relevant to a request), which
 // are available in every mode (and to the voice assistant).

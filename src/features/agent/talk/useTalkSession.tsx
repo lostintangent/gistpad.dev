@@ -31,7 +31,7 @@ export function useTalkSession(file: ActiveFile, run: RunAgentCommand): TalkSess
   const connect = useMutation({
     mutationFn: async () => {
       const [{ openTalkConnection }, { talkTools }, { getTalkInstructions }] = await Promise.all([
-        import("../openai"),
+        import("../openai/realtime"),
         import("./tools"),
         import("./instructions"),
       ]);

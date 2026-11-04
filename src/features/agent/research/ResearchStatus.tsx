@@ -13,8 +13,6 @@ const ResearchResultsDialog = lazy(() => import("./ResearchResultsDialog"));
 /** The user's research tasks, whose results can be viewed once they're done. */
 export default function ResearchStatus({ className }: { className?: string }) {
   const { tasks, markSeen, cancel, remove } = useResearchTasks();
-
-  // The status is always mounted, so it polls the tasks (until they're done)
   const results = useResearchResults();
 
   // The task whose results are being viewed (which closes once it's saved or deleted)

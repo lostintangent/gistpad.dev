@@ -30,9 +30,12 @@ the user's accent color.
 
 ## Controllers and consumers
 
-`WorkbenchPage` registers the account, gist-list and layout commands, and `Workspace` registers
-the open file's (through `workspace/commands`, which also owns the toolbar's editing state and
-the palette's history page). Toolbars, panels, menus and shortcuts consume those same commands,
+`WorkbenchPage` registers the account, gist-list and layout commands, and mounts the research
+poller (which the sidebar's footer and rail, and zen mode, read their status from). `Workspace`
+registers the open file's commands (through `workspace/commands`, which also owns the toolbar's
+editing state and the palette's history page). File-sharing commands belong to the files feature, while gist actions
+and agent lookup tools belong to the gists feature. The workbench composes those definitions.
+Toolbars, panels, menus and shortcuts consume those same commands,
 by reference or by id (e.g. the sidebar's footer, rail and menus all use the one `notes.today`
 registration), so hiding a feature's chrome doesn't unregister its commands.
 

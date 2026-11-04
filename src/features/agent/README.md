@@ -17,8 +17,8 @@ voice assistant that runs commands on the agent.
   and shared input preparation before an agent request is classified or executed.
 - `instructions.ts`: the agent's instructions, which are composed from how it decides to respond (see `auto/`),
   and the modes that it can respond with.
-- `tools.ts`: how tools are defined, and `gistTools.ts`: the tools that are always available (reading the user's
-  other gists).
+- `tools.ts`: the SDK-independent tool contract. The gists feature owns its lookup tools in
+  `gists/tools.ts`, which are shared by the writing agent and voice.
 - `response.ts`: what answers and reviews share (follow-ups and citations).
 - `useAgent.tsx` and `store.ts`: run commands, and track their state for the UI.
 
@@ -30,7 +30,8 @@ alongside its UI:
 - `ask/`: answers, which are a structured output that streams in.
 - `edit/`: edits, which are patches to the document (that the user can accept or undo).
 - `review/`: reviews, whose comments stream in as the review tool's arguments.
-- `research/`: research tasks, which run in the background and create a new document.
+- `research/`: research tasks, which run in the background and create a new document. The workbench mounts
+  polling once (`useResearchResults(true)`), and each status view only reads cached results.
 - `talk/`: voice conversations, where the assistant runs commands on the agent (and shares its context and
   tools). `talk.ts` defines the session (as the UI sees it) and the connection it runs over (which a
   runtime opens, with one of the voices), and `useTalkSession` drives the one with the other.
@@ -78,8 +79,10 @@ remain are the ones that carry content (e.g. a new file's) or need the agent's r
 
 - Mode definitions only build on the model's primitives (`context`, `tools`, and `response`), and the model then
   composes them (in `instructions` and `request`). So they never import the request, the store, or an SDK.
-- The SDKs (and prompts) are large, and only needed once a command runs, so `openai/` (and the definitions that
-  it uses) are loaded on demand: `await import("../openai")`. The UI only imports their types.
+- The SDKs (and prompts) are large, and only needed once a command runs, so `openai/`'s modules (and the
+  definitions that they use) are loaded on demand, each by what needs it: e.g.
+  `await import("../openai/agent")`. That keeps the Agents SDK out of what model settings, style analysis and
+  research load (which only need OpenAI's client). The UI only imports their types.
 - Editing is the exception to the agent's tools being SDK-agnostic: it uses OpenAI's native `apply_patch` tool
   (which its models are trained to call), so `edit/` only defines its name and instructions, and
   `openai/tools.ts` binds it to the document.

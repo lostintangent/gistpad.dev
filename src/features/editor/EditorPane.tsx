@@ -1,7 +1,7 @@
 import { baseExtensions, diff, diffExtension, dynamic, dynamicExtensions } from "./extensions";
 import { findImage } from "./extensions/assets/image-upload";
 import { darkTheme, lightTheme } from "./extensions/theme";
-import { FormattingBubble, FormattingToolbar } from "./FormattingToolbar";
+import { FormattingBubble, FormattingToolbar, useFormattingActions } from "./FormattingToolbar";
 import { editorStatusAtom, editorViewAtom } from "./store";
 import { usePreferences } from "@/features/account/queries";
 import { showPendingAgentDiffsAtom } from "@/features/agent/model/store";
@@ -54,6 +54,7 @@ export default function EditorPane({
   const highlights = useCommentHighlights(file);
   const showPendingAgentDiffs = useSelector(showPendingAgentDiffsAtom);
   const view = useSelector(editorViewAtom);
+  const formatting = useFormattingActions();
   const focusRequest = useSelector(focusRequestAtom);
   const [dragOverlay, setDragOverlay] = useState<"image" | "unsupported" | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -195,7 +196,7 @@ export default function EditorPane({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {preferences.showFormattingToolbar && <FormattingToolbar />}
+      {preferences.showFormattingToolbar && <FormattingToolbar actions={formatting?.actions} />}
       {/* (Dragged files are previewed over the editor, which handles their drop; see `imageUpload`) */}
       <div
         className="relative flex-1 min-h-0 p-2"
@@ -230,7 +231,8 @@ export default function EditorPane({
         )}
         <div ref={parentRef} className="h-full" />
       </div>
-      <FormattingBubble />
+      <FormattingBubble actions={formatting?.actions} />
+      {formatting?.dialog}
     </div>
   );
 }

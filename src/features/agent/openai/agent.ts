@@ -8,7 +8,7 @@ import {
 } from "@openai/agents";
 import { JSONParser, type ParsedElementInfo } from "@streamparser/json";
 import { answerSchema, createAnswerParser } from "../ask/answer";
-import { gistTools } from "../model/gistTools";
+import { gistTools } from "@/features/gists/tools";
 import { getAgentPrompt, type AgentRequest } from "../model/request";
 import { researchTool } from "../research/research";
 import { createReviewParser, REVIEW_TOOL, reviewTool } from "../review/review";

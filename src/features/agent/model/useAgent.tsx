@@ -151,7 +151,7 @@ export function useAgent() {
     let saveManualEdits: Promise<void> | undefined;
 
     const { prompt, references } = await resolveReferences(input, file.gistId);
-    const { runAgent } = await import("../openai");
+    const { runAgent } = await import("../openai/agent");
     const responseId = await runAgent({
       mode,
       prompt,

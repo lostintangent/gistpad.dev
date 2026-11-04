@@ -47,7 +47,7 @@ interface FormattingAction {
  * The editor's formatting actions (which the toolbar and the bubble share), and the link dialog
  * that one of them opens. Or null, while there's no editor.
  */
-function useFormattingActions() {
+export function useFormattingActions() {
   const view = useSelector(editorViewAtom);
   const { hasSelection, canUndo, canRedo } = useSelector(editorStatusAtom);
   const [linkDialog, setLinkDialog] = useState<{ text: string; url: string } | null>(null);
@@ -109,6 +109,8 @@ function useFormattingActions() {
   };
 }
 
+type FormattingActions = NonNullable<ReturnType<typeof useFormattingActions>>["actions"];
+
 const button = ({ Icon, title, run, disabled }: FormattingAction) => (
   <Button
     key={title}
@@ -144,11 +146,8 @@ function ActionGroups({ groups }: { groups: FormattingAction[][] }) {
 }
 
 /** The optional toolbar above the editor, with the less common formatting actions in a menu. */
-export function FormattingToolbar() {
-  const formatting = useFormattingActions();
-  if (!formatting) return null;
-
-  const { actions } = formatting;
+export function FormattingToolbar({ actions }: { actions?: FormattingActions }) {
+  if (!actions) return null;
 
   return (
     <div className="shrink-0 border-b bg-muted/30 px-2 py-1 flex gap-1 items-center">
@@ -172,7 +171,6 @@ export function FormattingToolbar() {
           {menuItem(actions.search)}
         </DropdownMenuContent>
       </DropdownMenu>
-      {formatting.dialog}
     </div>
   );
 }
@@ -191,33 +189,24 @@ export const formattingBubble = selectionTooltip({
  * The formatting actions that apply to a selection, as a bubble above it (on desktop), which
  * `formattingBubble` positions.
  */
-export function FormattingBubble() {
+export function FormattingBubble({ actions }: { actions?: FormattingActions }) {
   const tooltip = useSelector(tooltipAtom);
-  const formatting = useFormattingActions();
-  if (!formatting) return null;
+  if (!actions || !tooltip) return null;
 
-  const { actions } = formatting;
-
-  return (
-    <>
-      {tooltip &&
-        createPortal(
-          <div
-            className="flex items-center gap-0.5 p-0.5 rounded-lg border bg-popover text-popover-foreground shadow-md"
-            // (So its buttons don't take the focus, and with it the selection, from the editor)
-            onMouseDown={(event) => event.preventDefault()}
-          >
-            <ActionGroups
-              groups={[
-                [actions.bold, actions.italic, actions.underline, actions.strikethrough],
-                [actions.code, actions.quote, actions.link],
-                [actions.comment],
-              ]}
-            />
-          </div>,
-          tooltip,
-        )}
-      {formatting.dialog}
-    </>
+  return createPortal(
+    <div
+      className="flex items-center gap-0.5 p-0.5 rounded-lg border bg-popover text-popover-foreground shadow-md"
+      // (So its buttons don't take the focus, and with it the selection, from the editor)
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      <ActionGroups
+        groups={[
+          [actions.bold, actions.italic, actions.underline, actions.strikethrough],
+          [actions.code, actions.quote, actions.link],
+          [actions.comment],
+        ]}
+      />
+    </div>,
+    tooltip,
   );
 }

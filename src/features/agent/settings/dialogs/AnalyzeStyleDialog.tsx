@@ -35,7 +35,7 @@ export default function AnalyzeStyleDialog({
     mutationFn: async (gistIds: string[]) => {
       // The gist list doesn't include file contents, so load each of the gists first.
       const [{ analyzeStyle }, ...gists] = await Promise.all([
-        import("../../openai"),
+        import("../../openai/analyze"),
         ...gistIds.map((id) => queryClient.query(gistQueries.detail(id))),
       ]);
       return analyzeStyle(gists);

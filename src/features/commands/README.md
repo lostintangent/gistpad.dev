@@ -6,7 +6,7 @@ metadata, which describe the same operation to every consumer.
 
 ## Ownership
 
-- Features define their commands beside the state they act on (e.g. `useWorkspaceCommands` and
+- Features define their commands beside the state they act on (e.g. `useActiveFileCommands` and
   `useGistCommands`), and register the discoverable ones with `useCommands` while that component is
   mounted. Registration follows the controller's lifetime, not its chrome: a hidden toolbar's
   commands stay registered.

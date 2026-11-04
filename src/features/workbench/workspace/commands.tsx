@@ -5,12 +5,12 @@ import type { CommandPage } from "@/features/commands/palette";
 import { useCommands } from "@/features/commands/registry";
 import { closeComments, commentsPanelOpenAtom, openComments } from "@/features/comments/store";
 import { useCommentThreads } from "@/features/comments/useCommentThreads";
+import { useActiveFileCommands } from "@/features/files/commands";
 import { useDraft } from "@/features/files/draft";
-import { openFile, readFileContent, useIsSaving, type ActiveFile } from "@/features/files/file";
+import { openFile, useIsSaving, type ActiveFile } from "@/features/files/file";
 import { deleteCommand, useGistCommands } from "@/features/gists/commands";
 import { manageTagsCommand, tagCommands } from "@/features/gists/tagCommands";
 import { gistQueries } from "@/features/gists/queries";
-import { useRouter } from "@tanstack/react-router";
 import { getFileDisplayName, getMarkdownFiles, isDailyNote } from "@/shared/github";
 import { timeAgo } from "@/shared/dates";
 import { useIsMobile } from "@/shared/useMediaQuery";
@@ -18,13 +18,10 @@ import { useSelector } from "@tanstack/react-store";
 import { useQuery } from "@tanstack/react-query";
 import {
   Columns2,
-  ExternalLink,
   Eye,
   EyeOff,
   FileText,
-  Fullscreen,
   History,
-  Link,
   MessageSquare,
   Pencil,
   Plus,
@@ -32,19 +29,18 @@ import {
   Tag,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useEditorMode, type EditorMode } from "../layout/mode";
 import { zenModeAtom } from "../layout/state";
-import { revisionAtom, toContentRevisions, useIsViewingRevision } from "./history/revision";
+import { revisionAtom, toContentRevisions } from "./history/revision";
 
 /** The active workspace's controller. Commands and toolbar state outlive the toolbar's chrome. */
 export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
-  const router = useRouter();
   const isMobile = useIsMobile();
   const [mode, setMode] = useEditorMode();
   const isZenMode = useSelector(zenModeAtom);
   const isCommentsOpen = useSelector(commentsPanelOpenAtom);
-  const isViewingRevision = useIsViewingRevision();
+  const revisionId = useSelector(revisionAtom);
+  const isViewingRevision = revisionId !== null;
   const hasChanges = !!useDraft(file);
   const isSaving = useIsSaving(file);
   const { comments, isEnabled: isCommentsEnabled } = useCommentThreads(file);
@@ -52,7 +48,6 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
   const { tags, gistTags } = usePreferences();
   const updatePreferences = useUpdatePreferences();
   const gist = useGistCommands(file.gist);
-  const revisionId = useSelector(revisionAtom);
   // (What the toolbar is editing, which is reset for the next file)
   const [editing, setEditing] = useState<{ fileKey: string; what: "title" | "file" } | null>(null);
   const [historyRequested, setHistoryRequested] = useState<string | null>(null);
@@ -106,59 +101,11 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
       if (!isZenMode) setMode("split");
     },
   };
-  const share = {
-    copyUrl: {
-      id: `file.copyUrl:${file.key}`,
-      group: "This gist",
-      title: "Copy URL",
-      icon: Link,
-      disabled: isDisabled || isViewingRevision,
-      agent: "Copy the document's URL to the clipboard.",
-      run: async () => {
-        await navigator.clipboard.writeText(location.href);
-        toast.success("URL copied to clipboard!");
-      },
-    } satisfies Command,
-    copyHtml: {
-      id: `file.copyHtml:${file.key}`,
-      group: "This gist",
-      title: "Copy as HTML",
-      icon: FileText,
-      disabled: isDisabled || isViewingRevision,
-      agent: "Copy the document to the clipboard as HTML.",
-      run: async () => {
-        const { copyAsHtml } = await import("@/features/markdown/toHtml");
-        await copyAsHtml(readFileContent(file));
-        toast.success("HTML copied to clipboard!");
-      },
-    } satisfies Command,
-    zen,
-    fullscreen: {
-      id: `file.fullscreen:${file.key}`,
-      group: "This gist",
-      title: "View fullscreen",
-      icon: Fullscreen,
-      disabled: isDisabled || isViewingRevision,
-      agent: "Show the rendered document fullscreen (its share page).",
-      run: () =>
-        router.navigate({
-          to: "/share/$gistId/{-$filePath}",
-          params: { gistId: file.gistId!, filePath: file.filename },
-        }),
-    } satisfies Command,
-    github: {
-      id: `file.github:${file.key}`,
-      group: "This gist",
-      title: "Open in GitHub",
-      icon: ExternalLink,
-      disabled: isDisabled || isViewingRevision,
-      agent: "Open the gist on GitHub, in a new tab.",
-      run: () => {
-        const anchor = file.isReadme ? "" : `#file-${file.filename.replace(/\./g, "-")}`;
-        window.open(`https://gist.github.com/${file.gistId}${anchor}`, "_blank");
-      },
-    } satisfies Command,
-  };
+  const { copyUrl, copyHtml, fullscreen, github } = useActiveFileCommands(
+    file,
+    isDisabled || isViewingRevision,
+  );
+  const share = { copyUrl, copyHtml, zen, fullscreen, github };
 
   const commands = {
     mode,
@@ -167,9 +114,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
     gist,
     isDisabled,
     isViewingRevision,
-    hasChanges,
     canViewHistory,
-    canEditFiles,
     isCommentsOpen,
     isCommentsEnabled,
     commentCount: comments.length + (review?.comments.length ?? 0),

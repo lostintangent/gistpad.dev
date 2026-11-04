@@ -37,7 +37,7 @@ export function useResearchTasks() {
 
     /** Starts researching a topic, whose results are saved to the gist (if there is one). */
     start: async (request: ResearchRequest, gistId?: string) => {
-      const { startResearch } = await import("../openai");
+      const { startResearch } = await import("../openai/research");
       const id = await startResearch(request);
 
       const startedTime = new Date().toISOString();
@@ -51,18 +51,15 @@ export function useResearchTasks() {
 
     /** Cancels (and removes) a task that's in progress. */
     cancel: async (id: string) => {
-      const { cancelResearch } = await import("../openai");
+      const { cancelResearch } = await import("../openai/research");
       await cancelResearch(id);
       updateTasks(removeTask(id));
     },
   };
 }
 
-/**
- * The tasks' results, by task (once they've been fetched). The tasks in progress are polled until
- * they complete (or fail, which removes them), which the research status is always mounted for.
- */
-export function useResearchResults() {
+/** Reads cached task results. Only the workbench enables polling. */
+export function useResearchResults(isPoller = false) {
   const { researchTasks: tasks } = usePreferences();
   const updateTasks = useUpdateTasks();
 
@@ -71,7 +68,7 @@ export function useResearchResults() {
       queryOptions({
         queryKey: ["research", task.id],
         queryFn: async (): Promise<ResearchResult | null> => {
-          const { pollResearch } = await import("../openai");
+          const { pollResearch } = await import("../openai/research");
           const result = await pollResearch(task.id);
           if (!result) return null;
 
@@ -90,6 +87,7 @@ export function useResearchResults() {
           return result;
         },
         staleTime: Infinity,
+        enabled: isPoller,
         refetchInterval: ({ state }) => (state.data ? false : POLLING_INTERVAL),
         meta: { persist: false },
       }),

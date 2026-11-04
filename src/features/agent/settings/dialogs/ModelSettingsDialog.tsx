@@ -84,7 +84,7 @@ export default function ModelSettingsDialog({ onClose }: { onClose: () => void }
   const { data: availableModels = [], isError } = useQuery({
     queryKey: ["openai-models", modelsApiKey],
     queryFn: async ({ signal }) => {
-      const { listModels } = await import("../../openai");
+      const { listModels } = await import("../../openai/client");
       return listModels(modelsApiKey, signal);
     },
     enabled: !!modelsApiKey,

@@ -4,7 +4,7 @@ import { uploadImage } from "@/shared/supabase";
 import { toast } from "sonner";
 import { z } from "zod";
 import { runCommandTool } from "../model/commandCatalog";
-import { gistTools } from "../model/gistTools";
+import { gistTools } from "@/features/gists/tools";
 import type { AgentMode } from "../model/modes";
 import type { AgentTool } from "../model/tools";
 import { playChime } from "../shared/chime";
@@ -107,7 +107,7 @@ export const talkTools: TalkTool[] = [
     }),
     handler: async ({ prompt, summary }, { file }) => {
       const generate = async () => {
-        const { generateImage } = await import("../openai");
+        const { generateImage } = await import("../openai/images");
         return uploadImage(file.gistId!, await generateImage(prompt));
       };
 
