@@ -16,7 +16,7 @@ interface EditorSearch {
   replyTo?: number;
 }
 
-export const WorkbenchPage = lazyRouteComponent(() => import("../WorkbenchPage"));
+export const WorkbenchPage = lazyRouteComponent(() => import("./WorkbenchPage"));
 
 // Overlap page loading with cache restoration and OAuth when the shell expects the workbench.
 if (!import.meta.env.SSR && document.documentElement.dataset.startupPage === "workbench") {

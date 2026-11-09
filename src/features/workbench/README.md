@@ -30,7 +30,8 @@ the user's accent color.
 
 ## Controllers and consumers
 
-`WorkbenchPage` registers the account, gist-list and layout commands, and mounts the research
+`routes/WorkbenchPage.tsx` composes the page beside its route definition in `routes/index.tsx`.
+It registers the account, gist-list and layout commands, and mounts the research
 poller (which the sidebar's footer and rail, and zen mode, read their status from). `Workspace`
 registers the open file's commands (through `workspace/commands`, which also owns the toolbar's
 editing state and the palette's history page). File-sharing commands belong to the files feature, while gist actions

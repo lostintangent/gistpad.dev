@@ -8,10 +8,19 @@ import { SharePage } from "@/features/share/routes";
 
 const pages = { signin: SignInPage, workbench: WorkbenchPage, share: SharePage };
 
+export default function LoadingShell() {
+  return (
+    <Suspense fallback={<ShellContent />}>
+      <BrowserShell />
+    </Suspense>
+  );
+}
+
 function ShellContent() {
   const isInitial = useRouter().isShell();
   const pathname = useLocation({ select: (location) => location.pathname });
   const { session } = useSession();
+
   // The prepaint hint stands in for a session until authentication resolves.
   let page: keyof typeof pages | undefined;
   if (typeof window !== "undefined") {
@@ -21,6 +30,7 @@ function ShellContent() {
       page =
         session || (session === undefined && initialPage !== "signin") ? "workbench" : "signin";
   }
+
   return (
     <>
       <main data-initial-shell={isInitial ? "" : undefined} inert>
@@ -41,13 +51,6 @@ function ShellContent() {
 
 function BrowserShell() {
   use(browser());
-  return <ShellContent />;
-}
 
-export default function LoadingShell() {
-  return (
-    <Suspense fallback={<ShellContent />}>
-      <BrowserShell />
-    </Suspense>
-  );
+  return <ShellContent />;
 }

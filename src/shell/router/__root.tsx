@@ -6,7 +6,7 @@ import { GitHubError } from "@/shared/github";
 import ErrorCard from "@/shared/cards/ErrorCard";
 import NotFoundCard from "@/shared/cards/NotFoundCard";
 import SignInPage from "@/features/account/SignInCard";
-import { registerServiceWorker } from "./worker/register";
+import { registerServiceWorker } from "../worker/register";
 
 import "./styles.css";
 

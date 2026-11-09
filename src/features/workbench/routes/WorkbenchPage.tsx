@@ -1,8 +1,8 @@
 import UnsavedChangesGuard from "@/features/files/UnsavedChangesGuard";
-import { DashboardPanel } from "./panels/DashboardPanel";
+import { DashboardPanel } from "../panels/DashboardPanel";
 import { useIsMobile } from "@/shared/useMediaQuery";
-import { Sidebar } from "./panels/Sidebar";
-import Workspace from "./workspace/Workspace";
+import { Sidebar } from "../panels/Sidebar";
+import Workspace from "../workspace/Workspace";
 import ResearchStatus from "@/features/agent/research/ResearchStatus";
 import { useResearchResults } from "@/features/agent/research/useResearchTasks";
 import { Button } from "@/shared/ui/button";
@@ -13,14 +13,14 @@ import { useIsStarred } from "@/features/gists/queries";
 import { useUpdatePreferences } from "@/features/account/queries";
 import DeleteGistDialog from "@/features/gists/dialogs/DeleteGistDialog";
 import EditTagsDialog from "@/features/gists/dialogs/EditTagsDialog";
-import { mobilePanelAtom, zenModeAtom } from "./layout/state";
+import { mobilePanelAtom, zenModeAtom } from "../layout/state";
 import { draftAtom } from "@/features/files/draft";
 import { useSelector } from "@tanstack/react-store";
 import { EyeOff } from "lucide-react";
 import { useEffect, useEffectEvent, type CSSProperties } from "react";
 import { useAccountCommands } from "@/features/account/commands";
 import { useGistListCommands } from "@/features/gists/commands";
-import { useLayoutCommands } from "./layout/commands";
+import { useLayoutCommands } from "../layout/commands";
 
 /**
  * Adds other people's files to the user's recently viewed files (unless they've starred

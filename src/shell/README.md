@@ -1,11 +1,11 @@
 # Static application shell
 
-`router/routes.ts` maps URLs to `features/*/routes/` modules using TanStack virtual file routes.
-The router entry and generated tree live alongside that map. This folder owns the root document,
-global styles, loading shell, and browser startup support grouped under `prepaint/` and `worker/`.
+`vite.config.ts` maps URLs to `features/*/routes/` modules using TanStack virtual file routes.
+The router entry, root route, global styles, and generated tree live in `router/`.
+The shell also owns first-paint support in `prepaint/` and asset caching in `worker/`.
 Features own their route loaders, lazy pages, components, and layout.
 
-Start SPA mode prerenders the root document with `LoadingShell`, which renders the actual sign-in,
+Start SPA mode prerenders the root document with `prepaint/LoadingShell.tsx`, which renders the actual sign-in,
 workbench, and share components. React Suspense selects the browser page without hydrating a
 mismatched build-time layout. Features retain their own skeletons and lazy boundaries.
 

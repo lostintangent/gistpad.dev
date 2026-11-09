@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/shell/styles.css",
+    "css": "src/shell/router/styles.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""

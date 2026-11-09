@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { defineConfig, type HotUpdateOptions } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { layout, rootRoute, route } from "@tanstack/virtual-file-routes";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -29,7 +30,14 @@ export default defineConfig(async () => {
           entry: "shell/router/router.tsx",
           routesDirectory: ".",
           generatedRouteTree: "shell/router/routeTree.gen.ts",
-          virtualRouteConfig: "./src/shell/router/routes.ts",
+          virtualRouteConfig: rootRoute("shell/router/__root.tsx", [
+            layout("_authenticated", "features/account/routes/authenticated.tsx", [
+              route("/{-$gistId}/{-$filePath}", "features/workbench/routes/index.tsx"),
+              route("/new", "features/gists/routes/new.tsx"),
+              route("/today", "features/gists/routes/today.tsx"),
+            ]),
+            route("/share/$gistId/{-$filePath}", "features/share/routes/index.tsx"),
+          ]),
           // Pages already split at the shared lazy imports; route wrappers need no extra chunks.
           codeSplittingOptions: { defaultBehavior: [] },
         },

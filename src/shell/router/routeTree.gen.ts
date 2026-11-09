@@ -8,7 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './../__root'
+import { Route as rootRouteImport } from './__root'
 import { Route as featuresAccountRoutesAuthenticatedRouteImport } from './../../features/account/routes/authenticated'
 import { Route as featuresGistsRoutesNewRouteImport } from './../../features/gists/routes/new'
 import { Route as featuresGistsRoutesTodayRouteImport } from './../../features/gists/routes/today'

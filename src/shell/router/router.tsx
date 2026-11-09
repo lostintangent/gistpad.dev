@@ -6,7 +6,7 @@ import { resetComments } from "@/features/comments/store";
 import { resetAgentForFile } from "@/features/agent/model/store";
 import { revisionAtom } from "@/features/workbench/workspace/history/revision";
 import { closeMobilePanels } from "@/features/workbench/layout/state";
-import LoadingShell from "../LoadingShell";
+import LoadingShell from "../prepaint/LoadingShell";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
