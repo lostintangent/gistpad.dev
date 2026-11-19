@@ -19,13 +19,13 @@ export interface WidgetDefinition<T = any> {
     minValue?: number;
     maxValue?: number;
   }[];
-  fetchData: (config: Record<string, string>) => Promise<T>;
+  fetchData?: (config: Record<string, string>) => Promise<T>;
   component: ComponentType<WidgetProps<T>>;
   staleTime?: number;
   getExternalUrl?: (config: Record<string, string>) => string;
 }
 
-/** The props that each widget's component receives (whose data is undefined while it's loading). */
+/** Shared widget props. Data is undefined while loading, or for widgets without a fetch function. */
 export interface WidgetProps<T> {
   data: T | undefined;
   config: Record<string, string>;

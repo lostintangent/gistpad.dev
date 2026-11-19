@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/shared/ui/separator";
 import { Slider } from "@/shared/ui/slider";
 import { queryClient } from "@/shared/query-client";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronRight,
@@ -203,9 +203,10 @@ export function Widget({ widget, index, isLast, isEditMode, onEditModeChange }: 
   }, toggleCollapsed);
 
   const queryKey = ["widgets", widget.type, config];
+  const { fetchData } = definition;
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey,
-    queryFn: () => definition.fetchData(config),
+    queryFn: fetchData ? () => fetchData(config) : skipToken,
     staleTime: definition.staleTime ?? 1000 * 60 * 5,
     retry: 1,
     enabled: isReady,
@@ -257,7 +258,7 @@ export function Widget({ widget, index, isLast, isEditMode, onEditModeChange }: 
   const actionGroups = (
     isEditMode
       ? [canEditConfig && [editConfig], [moveUp, moveDown], [remove]]
-      : [getExternalUrl && [openWebsite], [refresh]]
+      : [getExternalUrl && [openWebsite], fetchData && [refresh]]
   ).filter((group) => !!group);
 
   return (
@@ -315,7 +316,7 @@ export function Widget({ widget, index, isLast, isEditMode, onEditModeChange }: 
             <div className="text-red-500 text-sm">
               Error: {error.message || "Failed to load data"}
             </div>
-          ) : !isLoading && isEmpty ? (
+          ) : fetchData && !isLoading && isEmpty ? (
             <div className="text-muted-foreground text-sm">No data available</div>
           ) : (
             <definition.component data={data} config={config} />

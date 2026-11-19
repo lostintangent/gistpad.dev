@@ -42,3 +42,16 @@ registration), so hiding a feature's chrome doesn't unregister its commands.
 
 The document preview uses the shared `ScrollArea`, whose ref targets the scrollable viewport, so
 heading navigation and editor-synchronized scrolling share one scroll surface.
+
+## Dashboard calendar
+
+New dashboards start with Weather, Hacker News, NASA Daily Picture, then Calendar. Saved layouts
+are unchanged. Widgets can be added, moved, or removed through the dashboard's edit mode.
+
+The calendar starts at the current month, highlights today, and pages up to two months in either
+direction. It calculates the 11 recurring nationwide U.S. federal holidays locally, marking
+actual and Friday/Monday observed dates with
+accent-colored dots and hover/focus tooltips. The month is centered between its paging arrows.
+It needs no API or network access and updates at local midnight. Regional holidays and one-off
+federal closures are not included. Other widgets retain their existing data fetching and refresh.
+Local widgets omit `fetchData`, so the shared frame skips fetching and hides the refresh action.

@@ -4,6 +4,7 @@ import hackerNewsWidget from "./widgets/HackerNews";
 import onThisDayWidget from "./widgets/OnThisDay";
 import weatherWidget from "./widgets/Weather";
 import nasaApodWidget from "./widgets/NasaApod";
+import calendarWidget from "./widgets/Calendar";
 
 export const widgetRegistry: Record<string, WidgetDefinition> = {
   weather: weatherWidget,
@@ -11,6 +12,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
   onthisday: onThisDayWidget,
   espnnews: espnWidget,
   nasaapod: nasaApodWidget,
+  calendar: calendarWidget,
 };
 
 /** The config options that the user has to set (i.e. the ones without a default value). */
