@@ -201,7 +201,7 @@ export function CommandPalette({
           navigation.reset();
         }}
         onKeyDown={onKeyDown}
-        placeholder={page ? `Search ${page.title.toLowerCase()}` : "Search gists, or run a command"}
+        placeholder={page ? `Search ${page.title.toLowerCase()}` : "Search gists or run a command"}
         spellCheck={false}
         className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
       />

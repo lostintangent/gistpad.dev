@@ -43,7 +43,7 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
   const isViewingRevision = revisionId !== null;
   const hasChanges = !!useDraft(file);
   const isSaving = useIsSaving(file);
-  const { comments, isEnabled: isCommentsEnabled } = useCommentThreads(file);
+  const { comments, quotedThreads, isEnabled: isCommentsEnabled } = useCommentThreads(file);
   const review = useAgentReview(file.key);
   const { tags, gistTags } = usePreferences();
   const updatePreferences = useUpdatePreferences();
@@ -113,10 +113,11 @@ export function useWorkspaceCommands(file: ActiveFile, save: () => unknown) {
     share,
     gist,
     isDisabled,
+    isZenMode,
     isViewingRevision,
     canViewHistory,
-    isCommentsOpen,
     isCommentsEnabled,
+    quotedThreads,
     commentCount: comments.length + (review?.comments.length ?? 0),
     isEditingTitle: editing?.fileKey === file.key && editing.what === "title",
     isAddingFile: editing?.fileKey === file.key && editing.what === "file",

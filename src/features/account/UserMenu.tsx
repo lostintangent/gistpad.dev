@@ -27,6 +27,7 @@ import { useActiveFile, openFile } from "@/features/files/file";
 import { closeMobilePanels } from "@/features/workbench/layout/state";
 import type { Command } from "@/features/commands/command";
 import { CommandDropdownItem } from "@/features/commands/CommandDropdownItem";
+import { modelSettingsCommand } from "@/features/agent/settings/commands";
 import { executeCommand } from "@/features/commands/registry";
 import { usePreferences, useSession, useUpdatePreferences } from "./queries";
 import { useAccountSettingsCommands } from "./settings";
@@ -143,6 +144,8 @@ export function UserMenu({ side }: { side: "top" | "right" }) {
               }}
             />
           </DropdownMenuItem>
+
+          <CommandDropdownItem command={modelSettingsCommand} />
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>

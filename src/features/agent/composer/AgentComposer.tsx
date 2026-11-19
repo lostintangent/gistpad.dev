@@ -18,7 +18,6 @@ import { agentStore, useIsAgentRunning, useRunningMode } from "../model/store";
 import { useAgent } from "../model/useAgent";
 import AgentSettingsDialog from "../settings/dialogs/AgentSettingsDialog";
 import AnalyzeStyleDialog from "../settings/dialogs/AnalyzeStyleDialog";
-import ModelSettingsDialog from "../settings/dialogs/ModelSettingsDialog";
 import { useAgentSettings } from "../settings/useAgentSettings";
 import { useTalkSession } from "../talk/useTalkSession";
 import { useAgentCommands } from "./commands";
@@ -191,9 +190,6 @@ export default function AgentComposer({
       )}
       {commands.settingsView === "file-settings" && (
         <AgentSettingsDialog scope="file" onClose={commands.closeSettings} />
-      )}
-      {commands.settingsView === "model-settings" && (
-        <ModelSettingsDialog onClose={commands.closeSettings} />
       )}
       {commands.settingsView === "analyze-style" && (
         <AnalyzeStyleDialog gists={gists} onClose={commands.closeSettings} />

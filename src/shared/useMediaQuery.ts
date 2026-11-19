@@ -4,17 +4,7 @@ import { useSyncExternalStore } from "react";
 // subscribers), which every component that asks about it shares. So asking is a snapshot read,
 // however many components ask, and however often they render.
 
-interface MediaQueryStore {
-  subscribe: (onChange: () => void) => () => void;
-  getSnapshot: () => boolean;
-}
-
-const stores = new Map<string, MediaQueryStore>();
-
-function getStore(query: string): MediaQueryStore {
-  const existing = stores.get(query);
-  if (existing) return existing;
-
+function createMediaQueryStore(query: string) {
   let media: MediaQueryList | undefined;
   const getMedia = () => (media ??= window.matchMedia(query));
   const subscribers = new Set<() => void>();
@@ -22,9 +12,9 @@ function getStore(query: string): MediaQueryStore {
     for (const subscriber of subscribers) subscriber();
   };
 
-  const store: MediaQueryStore = {
+  return {
     getSnapshot: () => getMedia().matches,
-    subscribe: (onChange) => {
+    subscribe: (onChange: () => void) => {
       subscribers.add(onChange);
       if (subscribers.size === 1) getMedia().addEventListener("change", notify);
 
@@ -34,17 +24,15 @@ function getStore(query: string): MediaQueryStore {
       };
     },
   };
-  stores.set(query, store);
-  return store;
-}
-
-/** Whether a media query matches (and `serverFallback` where there's no window, e.g. when prerendering). */
-function useMediaQuery(query: string, serverFallback = false) {
-  const store = getStore(query);
-  return useSyncExternalStore(store.subscribe, store.getSnapshot, () => serverFallback);
 }
 
 export const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
+const mobile = createMediaQueryStore(MOBILE_MEDIA_QUERY);
+const darkMode = createMediaQueryStore("(prefers-color-scheme: dark)");
 
-export const useIsMobile = () => useMediaQuery(MOBILE_MEDIA_QUERY);
-export const useIsDarkMode = () => useMediaQuery("(prefers-color-scheme: dark)");
+/** Whether a media query matches (which it never does where there's no window, e.g. when prerendering). */
+const useMediaQuery = ({ subscribe, getSnapshot }: ReturnType<typeof createMediaQueryStore>) =>
+  useSyncExternalStore(subscribe, getSnapshot, () => false);
+
+export const useIsMobile = () => useMediaQuery(mobile);
+export const useIsDarkMode = () => useMediaQuery(darkMode);

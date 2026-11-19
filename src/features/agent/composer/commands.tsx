@@ -5,11 +5,11 @@ import type { AgentCommandSettings } from "../model/input";
 import type { AgentMode, ComposerMode } from "../model/modes";
 import { talkCommands } from "../talk/commands";
 import type { TalkSession } from "../talk/talk";
+import { modelSettingsCommand } from "../settings/commands";
 import { composerModes, MODES } from "./modes";
-import { BookOpen, FileText, Globe, Settings2 } from "lucide-react";
+import { BookOpen, FileText, Globe } from "lucide-react";
 
-export type AgentSettingsView =
-  "global-settings" | "file-settings" | "model-settings" | "analyze-style";
+export type AgentSettingsView = "global-settings" | "file-settings" | "analyze-style";
 
 /**
  * The agent's commands, which the composer registers (and its mode menu lists): selecting a mode
@@ -76,7 +76,6 @@ export function useAgentCommands({
   const configuration = {
     global: configure("global-settings", "Global agent settings", Globe),
     file: configure("file-settings", "File agent settings", FileText, !hasFile || !isAvailable),
-    models: configure("model-settings", "Agent model settings", Settings2),
     style: configure("analyze-style", "Analyze writing style", BookOpen, !hasGists),
   };
 
@@ -106,7 +105,7 @@ export function useAgentCommands({
   return {
     modes,
     voice,
-    configuration,
+    configuration: { ...configuration, models: modelSettingsCommand },
     settingsView,
     closeSettings: () => setSettingsView(null),
   };

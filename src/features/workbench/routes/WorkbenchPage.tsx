@@ -5,6 +5,7 @@ import { Sidebar } from "../panels/Sidebar";
 import Workspace from "../workspace/Workspace";
 import ResearchStatus from "@/features/agent/research/ResearchStatus";
 import { useResearchResults } from "@/features/agent/research/useResearchTasks";
+import ModelSettings from "@/features/agent/settings/commands";
 import { Button } from "@/shared/ui/button";
 import { TooltipProvider } from "@/shared/ui/tooltip";
 import { useActiveFile, type ActiveFile } from "@/features/files/file";
@@ -117,6 +118,7 @@ export default function WorkbenchPage() {
           </div>
         </div>
       </div>
+      <ModelSettings />
 
       <UnsavedChangesGuard />
       <DeleteGistDialog />

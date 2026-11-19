@@ -55,11 +55,15 @@ configuration; opening their dialogs is a command. The mode menu and palette con
 definitions. Supplying text to a mode command submits it; invoking it without text selects the mode.
 
 The workbench owns the shared **action bar**, and `AgentComposer` is one of its two surfaces
-(beside `CommandPalette`). The composer owns its draft, selected mode, dialogs, results and voice
+(beside `CommandPalette`). The composer owns its draft, selected mode, agent dialogs, results and voice
 session, but not the bar or the palette, and it stays mounted while the palette shows. It hands
 the bar an `ActionBarSurface`: its panels, the mode menu (as the leading control's menu, which
 keeps its own contents and focus policy), the prompt, and a send or cancel control. The workbench
 owns the row's geometry and the controls' chrome.
+
+`settings/commands` owns the always-available **AI settings** command and its single dialog host,
+mounted by the workbench. The avatar menu, palette, and AI mode menu share that command. The key/model
+dialog loads only when opened, independently of the gated composer and agent/voice runtimes.
 
 The edit panel uses a content-sized row with even padding, a centered separator, and a compact diff
 toggle. Its actions and statistics use muted red/green colors. Reject uses the same destructive

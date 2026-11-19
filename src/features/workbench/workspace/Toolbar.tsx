@@ -267,7 +267,7 @@ function DesktopActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspac
       {(file.isLoading || toolbar.isCommentsEnabled) && (
         <Toggle
           size="sm"
-          pressed={toolbar.isCommentsOpen}
+          pressed={toolbar.comments.checked}
           onPressedChange={() => void executeCommand(toolbar.comments)}
           disabled={toolbar.comments.disabled}
           className="relative"
@@ -323,7 +323,7 @@ function DesktopActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspac
 }
 
 function MobileActions({ file, toolbar }: { file: ActiveFile; toolbar: WorkspaceCommands }) {
-  const { mode, isCommentsOpen, isDisabled, isViewingRevision } = toolbar;
+  const { mode, comments, isDisabled, isViewingRevision } = toolbar;
 
   return (
     <>
@@ -332,7 +332,7 @@ function MobileActions({ file, toolbar }: { file: ActiveFile; toolbar: Workspace
         size="sm"
         spacing={0}
         className="mr-1"
-        value={isDisabled ? [] : [isCommentsOpen ? "comments" : mode]}
+        value={isDisabled ? [] : [comments.checked ? "comments" : mode]}
         onValueChange={([value]) => {
           if (!value) return;
           if (value === "comments") return void executeCommand(toolbar.comments);

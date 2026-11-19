@@ -1,5 +1,5 @@
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
@@ -102,66 +102,64 @@ export default function ModelSettingsDialog({ onClose }: { onClose: () => void }
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Configure models</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 pt-5">
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="apiKey">OpenAI API Key</Label>
-              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-              </a>
-            </div>
-            <div className="relative">
-              <Input
-                id="apiKey"
-                placeholder="sk-..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                type="password"
-                className="pr-9"
-              />
-              {apiKey && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-red-500 hover:text-red-600"
-                  onClick={() => setApiKey("")}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            {isError && (
-              <p className="text-xs text-red-500">
-                Couldn't load the available models. Make sure your API key is valid.
-              </p>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Configure models</DialogTitle>
+      </DialogHeader>
+      <div className="grid gap-4 pt-5">
+        <div className="grid gap-2">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="apiKey">OpenAI API Key</Label>
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
+              <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+            </a>
+          </div>
+          <div className="relative">
+            <Input
+              id="apiKey"
+              placeholder="sk-..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              type="password"
+              className="pr-9"
+            />
+            {apiKey && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-red-500 hover:text-red-600"
+                onClick={() => setApiKey("")}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <ModelPicker
-              label="Agent model"
-              tooltip="The model that the agent uses to answer questions, and edit and review files"
-              model={agentModel}
-              availableModels={availableModels}
-              onChange={setAgentModel}
-            />
-            <ModelPicker
-              label="Research model"
-              tooltip="The model that the agent uses to perform research tasks, and analyze writing styles"
-              model={researchModel}
-              availableModels={availableModels}
-              onChange={setResearchModel}
-            />
-          </div>
+          {isError && (
+            <p className="text-xs text-red-500">
+              Couldn't load the available models. Make sure your API key is valid.
+            </p>
+          )}
         </div>
-        <DialogFooter>
-          <Button onClick={save}>Save</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <ModelPicker
+            label="Agent model"
+            tooltip="The model that the agent uses to answer questions, and edit and review files"
+            model={agentModel}
+            availableModels={availableModels}
+            onChange={setAgentModel}
+          />
+          <ModelPicker
+            label="Research model"
+            tooltip="The model that the agent uses to perform research tasks, and analyze writing styles"
+            model={researchModel}
+            availableModels={availableModels}
+            onChange={setResearchModel}
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button onClick={save}>Save</Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }

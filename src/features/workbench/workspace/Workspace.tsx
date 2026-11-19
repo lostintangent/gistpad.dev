@@ -1,6 +1,5 @@
 import type { CommandPage } from "@/features/commands/palette";
 import { openComments } from "@/features/comments/store";
-import { useCommentThreads } from "@/features/comments/useCommentThreads";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable";
 import { useActiveFile, useSaveFile } from "@/features/files/file";
 import { useEditorMode, type EditorMode } from "../layout/mode";
@@ -8,16 +7,16 @@ import { getPaneLayout } from "../layout/preferences";
 import { useIsMobile } from "@/shared/useMediaQuery";
 import { useIsAgentRunning } from "@/features/agent/model/store";
 import { useIsAgentEnabled } from "@/features/agent/settings/modelSettings";
-import { editorPaneSizeAtom, zenModeAtom } from "../layout/state";
+import { editorPaneSizeAtom } from "../layout/state";
 import { editorViewAtom } from "@/features/editor/store";
-import { commentsPanelOpenAtom, commentsPanelSizeAtom } from "@/features/comments/store";
+import { commentsPanelSizeAtom } from "@/features/comments/store";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useSelector } from "@tanstack/react-store";
 import { Activity, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useGroupRef } from "react-resizable-panels";
 import ForkGistDialog from "./dialogs/ForkGistDialog";
 import { RevisionBanner } from "./history/RevisionBanner";
-import { useIsViewingRevision, useRevision } from "./history/revision";
+import { useRevision } from "./history/revision";
 import LoadingSkeleton from "@/shared/LoadingSkeleton";
 import Toolbar from "./Toolbar";
 import { ActionBar } from "../action-bar/ActionBar";
@@ -114,25 +113,21 @@ const WORKSPACE_CLASS = "raised rounded-xl overflow-clip w-full h-full";
 export default function Workspace({ commandPages }: { commandPages: readonly CommandPage[] }) {
   const file = useActiveFile();
   const isMobile = useIsMobile();
-  const isZenMode = useSelector(zenModeAtom);
   const isAgentEnabled = useIsAgentEnabled();
-  const isCommentsOpen = useSelector(commentsPanelOpenAtom);
   const revision = useRevision(file);
-  const isViewingRevision = useIsViewingRevision();
-  const [mode] = useEditorMode();
   const save = useSaveFile(file);
-  const { quotedThreads, isEnabled: isCommentsEnabled } = useCommentThreads(file);
   const previewRef = useRef<HTMLDivElement>(null);
   const [isForkDialogOpen, setIsForkDialogOpen] = useState(false);
+
+  // Saving someone else's gist forks it, so the user is asked first
+  const requestSave = () => (file.isReadOnly ? setIsForkDialogOpen(true) : save());
+  const commands = useWorkspaceCommands(file, requestSave);
+  const { mode, isViewingRevision, isCommentsEnabled, quotedThreads } = commands;
 
   // Start the editor after the workspace commits, overlapping its download with gist data.
   useEffect(() => {
     if (file.gistId && mode !== "preview" && !file.error) loadEditorPane().catch(() => {});
   }, [file.gistId, mode, file.error]);
-
-  // Saving someone else's gist forks it, so the user is asked first
-  const requestSave = () => (file.isReadOnly ? setIsForkDialogOpen(true) : save());
-  const commands = useWorkspaceCommands(file, requestSave);
 
   // Mod+Z undoes the editor's last change from anywhere in the workspace (while the editor, like
   // other text inputs, handles its own undo)
@@ -148,7 +143,7 @@ export default function Workspace({ commandPages }: { commandPages: readonly Com
   );
 
   // Comments are hidden while viewing a past revision
-  const showComments = isCommentsEnabled && isCommentsOpen && !revision;
+  const showComments = isCommentsEnabled && commands.comments.checked && !revision;
 
   // The composer doesn't fit alongside the comments on mobile, so they close when the agent
   // starts (e.g. from the palette), to show it
@@ -213,7 +208,7 @@ export default function Workspace({ commandPages }: { commandPages: readonly Com
   return (
     <div className={`${WORKSPACE_CLASS} relative flex flex-col`}>
       {!file.isLoading && actionBar}
-      <Toolbar key={file.key} file={file} hidden={isZenMode} commands={commands} />
+      <Toolbar key={file.key} file={file} hidden={commands.isZenMode} commands={commands} />
 
       <div className="flex-1 min-h-0">
         {isMobile ? (
