@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun --bun vite --host ${GISTPAD_DEV_HOST:-0.0.0.0} --port 8080",
     "build": "NODE_ENV=production bun --bun vite build",
+    "eval": "bun src/features/agent/eval/harness/run.ts",
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
@@ -20,7 +21,7 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
     "@emoji-mart/data": "^1.2.1",
-    "@openai/agents": "^0.20.0",
+    "@openai/agents": "^0.21.0",
     "@streamparser/json": "^0.0.26",
     "@supabase/auth-js": "^2.119.2",
     "@tanstack/query-async-storage-persister": "^5.108.1",

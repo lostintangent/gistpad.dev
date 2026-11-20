@@ -1,0 +1,11 @@
+--- a/fixture.md
++++ b/fixture.md
+@@ -152,7 +152,7 @@
+ ## Reading group
+ 
+ - [ ] Prepare discussion
+-  - [ ] Read the [reading guide](https://example.test/reading-guide) before discussion.
++  - [x] Read the [reading guide](https://example.test/reading-guide) before discussion.
+ - [ ] Review notes
+ 
+ ## Personal review

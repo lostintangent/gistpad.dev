@@ -1,0 +1,17 @@
+diff --git a/fixture.md b/fixture.md
+index 606ebac..2bd5920 100644
+--- a/fixture.md
++++ b/fixture.md
+@@ -136,9 +136,9 @@ Fictional series I keep notes on. Titles, volumes, and links are made up so this
+ I meant to read these in this order, but the numbers drifted. Do not sort by title.
+ 
+ 1. [River Gate](https://example.test/river-gate) — Vol. 1. Opening notes.
+-4. [Harbor Stack](https://example.test/harbor-stack) — Vol. 2. Second on purpose.
+-2. [Lamp Row](https://example.test/lamp-row) — Vol. 3. Third on purpose.
+-9. [Closed Wing](https://example.test/closed-wing) — Vol. 4. Last in this queue.
++2. [Harbor Stack](https://example.test/harbor-stack) — Vol. 2. Second on purpose.
++3. [Lamp Row](https://example.test/lamp-row) — Vol. 3. Third on purpose.
++4. [Closed Wing](https://example.test/closed-wing) — Vol. 4. Last in this queue.
+ 
+ Nearby unordered items are not part of that numbering:
+ 

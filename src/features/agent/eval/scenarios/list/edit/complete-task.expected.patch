@@ -1,0 +1,9 @@
+--- a/fixture.md
++++ b/fixture.md
+@@ -155,5 +155,5 @@
+ 
+ - [x] Reserve Vol. 4 of [Glass Harbor](https://example.test/glass-harbor) — Pickup Friday.
+-- [ ] Return Vol. 3 of [Glass Harbor](https://example.test/glass-harbor) — Due Monday.
++- [x] Return Vol. 3 of [Glass Harbor](https://example.test/glass-harbor) — Due Monday.
+ - [X] Update shelf inventory — Includes borrowed books.
+ - [ ] Reserve Vol. 2 of [Glass Harbour](https://example.test/glass-harbour) — Different series.

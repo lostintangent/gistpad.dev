@@ -1,0 +1,20 @@
+diff --git a/fixture.md b/fixture.md
+index 606ebac..02e8214 100644
+--- a/fixture.md
++++ b/fixture.md
+@@ -4,7 +4,6 @@ Fictional series I keep notes on. Titles, volumes, and links are made up so this
+ 
+ ## Reading
+ 
+-- [Glass Harbor](https://example.test/glass-harbor) — Vol. 3. Harbor-glass notes.
+ - [Glass Harbour](https://example.test/glass-harbour) — Vol. 1. Different series.
+ - [Paper Lantern](https://example.test/paper-lantern) — Vol. 2. Warm indoor light.
+ - [Paper Lantern](https://example.test/paper-lantern) — Vol. 2. Warm indoor light.
+@@ -90,6 +89,7 @@ Fictional series I keep notes on. Titles, volumes, and links are made up so this
+ 
+ ## Completed
+ 
++- [Glass Harbor](https://example.test/glass-harbor) — Vol. 3. Harbor-glass notes.
+ - [Amber Castle](https://example.test/amber-castle) — Vol. 3. Art is denser than the plot.
+ - [Amber Forge](https://example.test/amber-forge) — Vol. 6. Translation feels uneven.
+ - [Amber Inlet](https://example.test/amber-inlet) — Vol. 9. Short margin note about pacing.

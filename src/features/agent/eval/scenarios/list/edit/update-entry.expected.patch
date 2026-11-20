@@ -1,0 +1,13 @@
+diff --git a/fixture.md b/fixture.md
+index 606ebac..c8e0770 100644
+--- a/fixture.md
++++ b/fixture.md
+@@ -4,7 +4,7 @@ Fictional series I keep notes on. Titles, volumes, and links are made up so this
+ 
+ ## Reading
+ 
+-- [Glass Harbor](https://example.test/glass-harbor) — Vol. 3. Harbor-glass notes.
++- [Glass Harbor](https://example.test/glass-harbor) — Vol. 4. Harbor-glass notes.
+ - [Glass Harbour](https://example.test/glass-harbour) — Vol. 1. Different series.
+ - [Paper Lantern](https://example.test/paper-lantern) — Vol. 2. Warm indoor light.
+ - [Paper Lantern](https://example.test/paper-lantern) — Vol. 2. Warm indoor light.

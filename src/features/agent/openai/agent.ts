@@ -4,8 +4,12 @@ import {
   OpenAIResponsesModel,
   run,
   webSearchTool,
+  type AgentInputItem,
+  type protocol,
   type Tool,
 } from "@openai/agents";
+import type OpenAI from "openai";
+import type { ResponseUsage } from "openai/resources/responses/responses";
 import { JSONParser, type ParsedElementInfo } from "@streamparser/json";
 import { answerSchema, createAnswerParser } from "../ask/answer";
 import { gistTools } from "@/features/gists/tools";
@@ -32,17 +36,64 @@ function createJsonParser(onValue: (info: ParsedElementInfo) => void) {
   };
 }
 
+/** Runtime overrides and observations. Callers can inspect usage without changing agent behavior. */
+export interface OpenAIAgentRuntime {
+  client?: OpenAI;
+  model?: string;
+  includeGistTools?: boolean;
+  includeWebSearch?: boolean;
+  maxTurns?: number;
+  maxOutputTokens?: number;
+  onUsage?: (usage: ResponseUsage | undefined) => void;
+  onPatch?: (event: { failed: boolean; output: string }) => void;
+  onPrompt?: (prompt: { instructions: string; input: string }) => void;
+}
+
 /**
  * Responds to a request, by answering it, editing or reviewing the current document, or starting
  * a research task (depending on the mode, and what the agent decides). Returns the response's
  * ID, which allows continuing the conversation.
  */
-export async function runAgent(request: AgentRequest) {
+export async function runAgent(request: AgentRequest, runtime?: OpenAIAgentRuntime) {
   const { document, signal } = request;
-  const { capabilities, instructions, input } = getAgentPrompt(request);
+  const { capabilities, instructions, sharedInstructions, context, input } =
+    getAgentPrompt(request);
+  const messages: AgentInputItem[] = [];
+  if (!request.previousResponseId) {
+    // This SDK carries developer messages through its provider-specific input item.
+    const developerMessage = {
+      type: "message",
+      role: "developer",
+      content: [
+        {
+          type: "input_text",
+          text: sharedInstructions,
+          prompt_cache_breakpoint: { mode: "explicit" },
+        },
+      ],
+    } satisfies OpenAI.Responses.EasyInputMessage;
+    messages.push({ type: "unknown", providerData: developerMessage });
+  }
+  const content: protocol.InputText[] = [];
+  if (context) {
+    content.push({
+      type: "input_text",
+      text: context,
+      promptCacheBreakpoint: { mode: "explicit" },
+    });
+  }
+  content.push({ type: "input_text", text: input });
+  messages.push({ role: "user", content });
+  runtime?.onPrompt?.({ instructions, input: JSON.stringify(messages, null, 2) });
 
-  const tools: Tool[] = [webSearchTool(), ...gistTools.map((gistTool) => toSdkTool(gistTool))];
-  if (document && capabilities.canEdit) tools.push(editTool(document, request.onEdit));
+  const tools: Tool[] = [];
+  if (runtime?.includeWebSearch !== false) tools.push(webSearchTool());
+  if (runtime?.includeGistTools !== false) {
+    tools.push(...gistTools.map((gistTool) => toSdkTool(gistTool)));
+  }
+  if (document && capabilities.canEdit) {
+    tools.push(editTool(document, request.onEdit, runtime?.onPatch));
+  }
   if (capabilities.canReview) tools.push(toSdkTool(reviewTool(request.onReviewEnd)));
   if (request.onResearch && capabilities.canResearch) {
     tools.push(toSdkTool(researchTool(request.onResearch)));
@@ -51,20 +102,26 @@ export async function runAgent(request: AgentRequest) {
   const agent = new Agent({
     name: "GistPad",
     instructions,
-    model: new OpenAIResponsesModel(createOpenAIClient(), agentModelAtom.get()),
+    model: new OpenAIResponsesModel(
+      runtime?.client ?? createOpenAIClient(),
+      runtime?.model ?? agentModelAtom.get(),
+    ),
     modelSettings: {
       // Its reasoning is summarized as it streams in, which is displayed as its progress
       reasoning: { summary: "auto" },
       text: { verbosity: "low" },
+      maxTokens: runtime?.maxOutputTokens,
+      promptCacheOptions: { mode: "implicit" },
     },
     outputType: answerSchema,
     tools,
   });
 
-  const stream = await run(agent, input, {
+  const stream = await run(agent, messages, {
     stream: true,
     signal,
     previousResponseId: request.previousResponseId,
+    maxTurns: runtime?.maxTurns,
   });
 
   // Answers stream in as messages, and reviews stream in as the review tool's arguments
@@ -111,6 +168,11 @@ export async function runAgent(request: AgentRequest) {
         break;
       case "response.web_search_call.completed":
         request.onProgress({ isWebSearching: false });
+        break;
+      case "response.completed":
+      case "response.incomplete":
+      case "response.failed":
+        runtime?.onUsage?.(data.response.usage);
         break;
     }
   }

@@ -21,11 +21,18 @@ const normalizePath = (path: string) => path.replace(/^\.?\//, "");
  * edit), by applying patches to it. Failures are reported back to the agent, so that it can correct
  * them and try again.
  */
-export function editTool(document: AgentDocument, onEdit: (content: string) => Promise<void>) {
+export function editTool(
+  document: AgentDocument,
+  onEdit: (content: string) => Promise<void>,
+  onPatch?: (event: { failed: boolean; output: string }) => void,
+) {
   let content = document.content;
   let pendingEdit: Promise<unknown> = Promise.resolve();
 
-  const failed = (output: string): ApplyPatchResult => ({ status: "failed", output });
+  const failed = (output: string): ApplyPatchResult => {
+    onPatch?.({ failed: true, output });
+    return { status: "failed", output };
+  };
   const checkPath = (path: string) =>
     normalizePath(path) === normalizePath(document.path)
       ? null
@@ -45,6 +52,7 @@ export function editTool(document: AgentDocument, onEdit: (content: string) => P
 
       await onEdit(edited);
       content = edited;
+      onPatch?.({ failed: false, output: `Edited ${document.path}.` });
       return { output: `Edited ${document.path}.` };
     });
 

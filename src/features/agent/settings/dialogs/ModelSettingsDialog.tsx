@@ -24,12 +24,14 @@ function ModelPicker({
   tooltip,
   model,
   availableModels,
+  disabled,
   onChange,
 }: {
   label: string;
   tooltip: string;
   model: string;
   availableModels: string[];
+  disabled: boolean;
   onChange: (model: string) => void;
 }) {
   const id = useId();
@@ -52,7 +54,12 @@ function ModelPicker({
           </TooltipContent>
         </Tooltip>
       </div>
-      <Select items={items} value={model} onValueChange={(value) => value && onChange(value)}>
+      <Select
+        items={items}
+        value={model}
+        disabled={disabled}
+        onValueChange={(value) => value && onChange(value)}
+      >
         <SelectTrigger id={id} className="w-full">
           <SelectValue placeholder="Select a model..." />
         </SelectTrigger>
@@ -87,7 +94,7 @@ export default function ModelSettingsDialog({ onClose }: { onClose: () => void }
       const { listModels } = await import("../../openai/client");
       return listModels(modelsApiKey, signal);
     },
-    enabled: !!modelsApiKey,
+    enabled: !!modelsApiKey.trim(),
     staleTime: 1000 * 60 * 60,
     retry: false,
     // Since it's keyed by the API key, don't copy it into the query cache's localStorage
@@ -146,6 +153,7 @@ export default function ModelSettingsDialog({ onClose }: { onClose: () => void }
             tooltip="The model that the agent uses to answer questions, and edit and review files"
             model={agentModel}
             availableModels={availableModels}
+            disabled={!apiKey.trim()}
             onChange={setAgentModel}
           />
           <ModelPicker
@@ -153,6 +161,7 @@ export default function ModelSettingsDialog({ onClose }: { onClose: () => void }
             tooltip="The model that the agent uses to perform research tasks, and analyze writing styles"
             model={researchModel}
             availableModels={availableModels}
+            disabled={!apiKey.trim()}
             onChange={setResearchModel}
           />
         </div>

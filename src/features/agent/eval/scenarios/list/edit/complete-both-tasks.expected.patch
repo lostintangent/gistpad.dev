@@ -1,0 +1,14 @@
+--- a/fixture.md
++++ b/fixture.md
+@@ -154,9 +154,9 @@
+ - [ ] Prepare discussion
+   - [ ] Read the [reading guide](https://example.test/reading-guide) before discussion.
+-- [ ] Review notes
++- [x] Review notes
+ 
+ ## Personal review
+ 
+-- [ ] Review notes
++- [x] Review notes
+ 
+ ## Markdown notes

@@ -37,6 +37,7 @@ export const reviewInstructions = `# Reviewing the document
 * Provide a concise \`title\` that summarizes the objective of the user's request (prefixed with an emoji).
 * Unless the user request's otherwise, be very concise in your comment bodies, favoring 1-2 sentences when possible. However, don't compromise on important detail or nuance.
 * When suggesting changes, or providing critique, make sure to match the tone, style, and personality of the existing document. Don't suggest changes that would be inconsistent with the document's existing style.
+* If the user or document identifies a source of truth, respect it in your comments, suggested replacements, and applyPrompt. Correct conflicting secondary content, not the authoritative source, unless the user asks otherwise. If that source contradicts itself, flag the conflict rather than choosing which fact is correct. Any proposed unit conversion must preserve the stated quantity.
 * When you have general thoughts / feedback / suggestions about the entire document (e.g. a suggestion that would impact multiple places vs. one paragraph), then set referencedText, replaceWith, and insertAfter to \`null\`, since you're commenting on the entire document as opposed to a specific piece of text.
 * When you have thoughts / suggestions about a specific piece of text (e.g. a heading, a section, a list item, a table row, a sentence, etc.), then...
     - Always set referencedText to the exact text from the document that you're commenting on

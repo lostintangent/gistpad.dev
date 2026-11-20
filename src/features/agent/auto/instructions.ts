@@ -18,7 +18,7 @@ export function routingInstructions({ canEdit, canReview, canResearch, mode }: C
 
   const modeTool = mode === "edit" ? EDIT_TOOL : mode === "review" ? REVIEW_TOOL : null;
   const modeInstruction = modeTool
-    ? `The user has explicitly asked you to ${mode} the current document, so fulfil their request by calling the \`${modeTool}\` tool. Only respond with an answer if the request is unclear (e.g. to ask for clarification).`
+    ? `The user has explicitly asked you to ${mode} the current document, so fulfil their request by calling the \`${modeTool}\` tool. Only respond with an answer if the request is unclear${mode === "edit" ? " or the requested result is already satisfied and no edit is needed" : ""}.`
     : "Decide which of these best fulfils the user's request (and the available context), and if none clearly does, answer it.";
 
   // Without any tools to call (e.g. in "ask" mode), the agent can only answer

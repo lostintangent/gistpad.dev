@@ -1,0 +1,12 @@
+--- a/fixture.md
++++ b/fixture.md
+@@ -153,8 +153,8 @@
+ ## To-do
+ 
+ - [x] Reserve Vol. 4 of [Glass Harbor](https://example.test/glass-harbor) — Pickup Friday.
+-- [ ] Return Vol. 3 of [Glass Harbor](https://example.test/glass-harbor) — Due Monday.
++- [x] Return Vol. 3 of [Glass Harbor](https://example.test/glass-harbor) — Due Monday.
+ - [X] Update shelf inventory — Includes borrowed books.
+ - [ ] Reserve Vol. 2 of [Glass Harbour](https://example.test/glass-harbour) — Different series.
+-- [ ] Back up reading notes — Keep a local copy.
++- [ ] Renew the library card — Before the next pickup.

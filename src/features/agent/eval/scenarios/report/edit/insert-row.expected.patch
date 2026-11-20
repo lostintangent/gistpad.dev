@@ -1,0 +1,12 @@
+diff --git a/fixture.md b/fixture.md
+index d8b465c..ae5a6d9 100644
+--- a/fixture.md
++++ b/fixture.md
+@@ -7,6 +7,7 @@ Ribbon Phone launched in 2011.
+ | Name | Peak year | Peak users (M) | Monthly cost | Notes |
+ | --- | ---: | ---: | ---: | --- |
+ | Ribbon Phone | 2011 | 12 | $4 | Hardware plus a closed message network. |
++| Copper Nook | 2012 | 5 | $3 | Short-lived companion hardware. |
+ | Glass Harbor Chat | 2013 | 18 | $0 | Free client, ads after month three. |
+ | Paper Lantern Mail | 2014 | 9 | $3 | Slow, searchable, no public posts. |
+ | North Station Maps | 2015 | 22 | $2 | Offline tiles were the actual product. |

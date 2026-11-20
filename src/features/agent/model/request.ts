@@ -11,6 +11,7 @@ import {
 import {
   customInstructionsAsContext,
   getAgentInstructions,
+  sharedAgentInstructions,
   type CustomInstructions,
 } from "./instructions";
 import type { AgentMode, Capabilities } from "./modes";
@@ -62,8 +63,7 @@ export function getAgentPrompt(request: AgentRequest) {
     mode: mode === "auto" ? undefined : mode,
   };
 
-  const input = [
-    `<request>${request.prompt}</request>`,
+  const context = [
     documentAsContext(document),
     userCommentsAsContext(request.userComments),
     referencesAsContext(request.references),
@@ -72,5 +72,13 @@ export function getAgentPrompt(request: AgentRequest) {
     .filter(Boolean)
     .join("\n\n");
 
-  return { capabilities, instructions: getAgentInstructions(capabilities), input };
+  const input = `<request>${request.prompt}</request>\n\nFor your reference, the current date/time (in ISO format) is ${new Date().toISOString()}.`;
+
+  return {
+    capabilities,
+    instructions: getAgentInstructions(capabilities),
+    sharedInstructions: sharedAgentInstructions,
+    context,
+    input,
+  };
 }
